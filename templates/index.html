@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 페이지</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>로그인</h1>
+        
+        <!-- 로그인 섹션 -->
+        <div class="section">
+            <h2>로그인</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginTrainingKey">트레이닝 키</label>
+                    <input type="text" id="loginTrainingKey" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginUsername">아이디</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">비밀번호</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit">로그인</button>
+                <div id="loginError" class="error"></div>
+            </form>
+            <div style="margin-top:10px;">
+                <a href="/register">회원가입</a>
+            </div>
+        </div>
+
+        <!-- 회원가입 섹션 (초기에는 숨김) -->
+        <div class="section" id="registerSection" style="display:none;">
+            <h2>회원 가입</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>아이디</label>
+                    <span id="registerUserId" style="font-weight:bold;"></span>
+                </div>
+                <div class="form-group">
+                    <label for="registerName">이름</label>
+                    <input type="text" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">비밀번호</label>
+                    <input type="password" id="registerPassword" required>
+                </div>
+                <button type="submit">회원 가입</button>
+                <div id="registerError" class="error"></div>
+            </form>
+            <div id="registerResult" style="margin-top:15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // 로그인 폼 제출 처리
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const trainingKey = document.getElementById('loginTrainingKey').value;
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = '';
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ training_key: trainingKey, username, password }),
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    document.cookie = "session_id=1; path=/";
+                    window.location.href = '/portal';
+                } else {
+                    errorDiv.textContent = data.detail;
+                }
+            } catch (error) {
+                errorDiv.textContent = '서버 오류가 발생했습니다.';
+            }
+        });
+
+        // 트레이닝 키 폼 제출 처리
+        document.getElementById('trainingKeyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const trainingKey = document.getElementById('trainingKey').value;
+            const errorDiv = document.getElementById('trainingKeyError');
+            errorDiv.textContent = '';
+            try {
+                const response = await fetch('http://localhost:8000/api/check-training-key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ training_key: trainingKey })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    // 다음 회원 번호 받아오기
+                    const nextRes = await fetch('http://localhost:8000/api/next-member-key', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ training_key: trainingKey })
+                    });
+                    const nextData = await nextRes.json();
+                    if (nextRes.ok) {
+                        document.getElementById('registerUserId').textContent = 'labuser' + nextData.next_member_key;
+                        document.getElementById('registerSection').style.display = '';
+                        document.getElementById('trainingKeySection').style.display = 'none';
+                        document.getElementById('registerForm').dataset.trainingKey = trainingKey;
+                        document.getElementById('registerForm').dataset.memberKey = nextData.next_member_key;
+                    } else {
+                        errorDiv.textContent = nextData.detail;
+                    }
+                } else {
+                    errorDiv.textContent = data.detail;
+                }
+            } catch (error) {
+                errorDiv.textContent = '서버 오류가 발생했습니다.';
+            }
+        });
+
+        // 회원가입 폼 제출 처리
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const trainingKey = e.target.dataset.trainingKey;
+            const memberKey = e.target.dataset.memberKey;
+            const memberId = document.getElementById('registerUserId').textContent;
+            const memberName = document.getElementById('registerName').value;
+            const password = document.getElementById('registerPassword').value;
+            const errorDiv = document.getElementById('registerError');
+            const resultDiv = document.getElementById('registerResult');
+            errorDiv.textContent = '';
+            resultDiv.textContent = '';
+            try {
+                const response = await fetch('http://localhost:8000/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        training_key: trainingKey,
+                        member_key: memberKey,
+                        member_id: memberId,
+                        member_name: memberName,
+                        member_password: password
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    resultDiv.innerHTML = `<b>회원가입 성공!</b><br>아이디: ${data.member_id}`;
+                } else {
+                    errorDiv.textContent = data.detail;
+                }
+            } catch (error) {
+                errorDiv.textContent = '서버 오류가 발생했습니다.';
+            }
+        });
+    </script>
+</body>
+</html> 

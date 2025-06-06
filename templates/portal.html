@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello AI Training Portal</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 60px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 40px; text-align: center; }
+        h1 { color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hello AI Training Portal</h1>
+        <p>환영합니다! 성공적으로 로그인하셨습니다.</p>
+        <button onclick="document.cookie='session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'; window.location.href='/'">로그아웃</button>
+    </div>
+    <script>if (!document.cookie.includes('session_id=1')) { window.location.href = '/'; }</script>
+</body>
+</html> 
