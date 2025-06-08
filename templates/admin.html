@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>관리자 페이지</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f5f5f5; 
+            margin: 0;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: #fff; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            padding: 40px; 
+        }
+        h1 { 
+            color: #007bff; 
+            margin-bottom: 30px;
+        }
+        .admin-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .user-list {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .user-list th, .user-list td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .user-list th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .user-list tr:hover {
+            background-color: #f5f5f5;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .button.danger {
+            background-color: #dc3545;
+        }
+        .button.danger:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>관리자 페이지</h1>
+        
+        <div class="admin-section">
+            <h2>사용자 관리</h2>
+            <button class="button" onclick="window.location.href='/admin/user_analytics'">사용자 분석</button>
+        </div>
+
+        <div class="admin-section">
+            <h2>과정 관리</h2>
+            <button class="button" onclick="showAddCourseModal()">과정 추가</button>
+            <table class="user-list" style="margin-top:10px;">
+                <thead>
+                    <tr>
+                        <th>과정키</th>
+                        <th>과정명</th>
+                        <th>설명</th>
+                        <th>최대인원</th>
+                        <th>생성일</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="courseTableBody">
+                    <!-- 과정 목록이 여기에 동적으로 추가됩니다 -->
+                </tbody>
+            </table>
+        </div>
+
+        <button class="button" onclick="document.cookie='session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'; window.location.href='/'">로그아웃</button>
+    </div>
+
+    <div id="courseModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:#fff; padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:0 4px 24px rgba(0,0,0,0.15); position:relative;">
+            <h2 id="courseModalTitle" style="margin-bottom:24px; color:#007bff; text-align:center;">코스 추가/수정</h2>
+            <form id="courseForm">
+                <input type="hidden" id="modalTrainingKey">
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:15px; margin-bottom:6px;">코스명</label>
+                    <input type="text" id="modalCourseName" required style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                </div>
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:15px; margin-bottom:6px;">설명</label>
+                    <input type="text" id="modalCourseContent" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                </div>
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:15px; margin-bottom:6px;">최대인원</label>
+                    <input type="number" id="modalMaxMember" min="1" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label style="font-size:15px; margin-bottom:6px;">상태</label>
+                    <select id="modalStatus" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                        <option value="10">준비중</option>
+                        <option value="20">실행중</option>
+                        <option value="30">종료</option>
+                        <option value="40">보류</option>
+                    </select>
+                </div>
+                <div style="margin-top:10px; text-align:center;">
+                    <button type="submit" class="button" style="min-width:100px;">저장</button>
+                    <button type="button" class="button danger" onclick="closeCourseModal()" style="min-width:100px;">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 세션 체크
+        if (!document.cookie.includes('session_id=1')) {
+            window.location.href = '/';
+        }
+
+        // 코스 상태값 변환
+        function statusToText(status) {
+            switch(status) {
+                case 10: return '준비중';
+                case 20: return '실행중';
+                case 30: return '종료';
+                case 40: return '보류';
+                default: return status;
+            }
+        }
+
+        // 코스 목록 가져오기
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/admin/courses');
+                const data = await response.json();
+                const tableBody = document.getElementById('courseTableBody');
+                tableBody.innerHTML = '';
+                data.forEach(course => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${course.training_key}</td>
+                        <td><a href="#" onclick="goLabPage('${course.training_key}')" style="color:#007bff; text-decoration:underline; font-weight:bold;">${course.course_name}</a></td>
+                        <td>${course.course_content || ''}</td>
+                        <td>${course.max_member || ''}</td>
+                        <td>${course.create_date || ''}</td>
+                        <td>${statusToText(course.training_status)}</td>
+                        <td>
+                            <button class="button" onclick="editCourse('${course.training_key}')">수정</button>
+                            <button class="button danger" onclick="deleteCourse('${course.training_key}')">삭제</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('코스 목록을 불러오는데 실패했습니다:', error);
+            }
+        }
+
+        // 코스 추가/수정 모달 열기
+        function showAddCourseModal() {
+            document.getElementById('courseModalTitle').textContent = '코스 추가';
+            document.getElementById('modalTrainingKey').value = '';
+            document.getElementById('modalCourseName').value = '';
+            document.getElementById('modalCourseContent').value = '';
+            document.getElementById('modalMaxMember').value = '';
+            document.getElementById('modalStatus').value = 10;
+            document.getElementById('courseModal').style.display = 'flex';
+        }
+        function closeCourseModal() {
+            document.getElementById('courseModal').style.display = 'none';
+        }
+        // 코스 수정 모달 열기
+        async function editCourse(trainingKey) {
+            try {
+                const response = await fetch(`/api/admin/courses/${trainingKey}`);
+                const course = await response.json();
+                document.getElementById('courseModalTitle').textContent = '코스 수정';
+                document.getElementById('modalTrainingKey').value = course.training_key;
+                document.getElementById('modalCourseName').value = course.course_name;
+                document.getElementById('modalCourseContent').value = course.course_content || '';
+                document.getElementById('modalMaxMember').value = course.max_member || '';
+                document.getElementById('modalStatus').value = course.training_status;
+                document.getElementById('courseModal').style.display = 'flex';
+            } catch (error) {
+                alert('코스 정보를 불러오지 못했습니다.');
+            }
+        }
+        // 코스 삭제
+        async function deleteCourse(trainingKey) {
+            if (confirm('정말로 이 코스를 삭제하시겠습니까?')) {
+                try {
+                    const response = await fetch(`/api/admin/courses/${trainingKey}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        loadCourses();
+                    } else {
+                        alert('코스 삭제에 실패했습니다.');
+                    }
+                } catch (error) {
+                    alert('코스 삭제 중 오류가 발생했습니다.');
+                }
+            }
+        }
+        // 코스 추가/수정 폼 제출
+        document.getElementById('courseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const trainingKey = document.getElementById('modalTrainingKey').value;
+            const courseName = document.getElementById('modalCourseName').value;
+            const courseContent = document.getElementById('modalCourseContent').value;
+            const maxMember = document.getElementById('modalMaxMember').value;
+            const status = document.getElementById('modalStatus').value;
+            const payload = {
+                course_name: courseName,
+                course_content: courseContent,
+                max_member: maxMember,
+                training_status: parseInt(status)
+            };
+            let url = '/api/admin/courses';
+            let method = 'POST';
+            if (trainingKey) {
+                url += `/${trainingKey}`;
+                method = 'PUT';
+            }
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    closeCourseModal();
+                    loadCourses();
+                } else {
+                    alert('저장에 실패했습니다.');
+                }
+            } catch (error) {
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        });
+        // 페이지 로드시 코스 목록도 불러오기
+        loadCourses();
+
+        // 랩 관리 페이지 이동
+        function goLabPage(trainingKey) {
+            window.location.href = `/admin/lab?training_key=${trainingKey}`;
+        }
+    </script>
+</body>
+</html> 

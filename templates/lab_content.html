@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>랩 콘텐츠 관리</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .dimmed-content-item {
+            background-color: #f8f8f8;
+        }
+        .content-text-cell {
+            opacity: 0.6;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .form-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .form-actions button {
+            margin-left: 10px;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        /* 토글 스위치 스타일 */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2196F3; }
+        input:focus + .slider { box-shadow: 0 0 1px #2196F3; }
+        input:checked + .slider:before {
+            -webkit-transform: translateX(16px);
+            -ms-transform: translateX(16px);
+            transform: translateX(16px);
+        }
+
+        /* Form specific styles */
+        .modal-content .form-group {
+            margin-bottom: 20px; /* Increased space between form groups */
+        }
+
+        .modal-content label {
+            font-weight: 600;
+            margin-bottom: 8px; /* Space below label */
+            color: #555;
+        }
+
+        .modal-content input[type="text"],
+        .modal-content textarea,
+        .modal-content select {
+            border: 1px solid #c8d1da; /* Lighter border */
+            padding: 10px 12px; /* More padding */
+            border-radius: 6px; /* Slightly more rounded corners */
+            transition: border-color 0.2s; /* Smooth transition for focus */
+        }
+
+        .modal-content input[type="text"]:focus,
+        .modal-content textarea:focus,
+        .modal-content select:focus {
+            border-color: #007bff; /* Highlight on focus */
+            outline: none; /* Remove default outline */
+        }
+
+        .modal-content .form-group > div {
+            display: flex; /* For radio buttons */
+            align-items: center;
+            gap: 15px; /* Space between radio buttons */
+            margin-top: 5px; /* Space above radio buttons */
+        }
+
+        .modal-content .form-group input[type="radio"] {
+            width: auto; /* Prevent radio buttons from stretching */
+            margin-right: 5px;
+        }
+
+        .modal-content .form-actions {
+            border-top: 1px solid #eee; /* Separator for actions */
+            padding-top: 20px;
+            margin-top: 30px; /* More space above actions */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="labTitle">랩 콘텐츠 관리</h1>
+            <div>
+                <button class="button" onclick="goBackToLabList()" style="margin-right: 10px;">돌아가기</button>
+                <button class="button" onclick="showAddContentModal()">콘텐츠 추가</button>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>콘텐츠 ID</th>
+                    <th>순서</th>
+                    <th>제목</th>
+                    <th>상태</th>
+                    <th>생성일</th>
+                    <th>관리</th>
+                    <th>활성화</th>
+                </tr>
+            </thead>
+            <tbody id="contentList">
+                <!-- 콘텐츠 목록이 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 콘텐츠 추가/수정 모달 -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">콘텐츠 추가</h2>
+            <form id="contentForm">
+                <input type="hidden" id="contentId">
+                <input type="hidden" id="currentTrainingKey">
+                <input type="hidden" id="currentLabId">
+
+                <div class="form-group">
+                    <label for="labContentSubject">제목</label>
+                    <input type="text" id="labContentSubject" required>
+                </div>
+                <div class="form-group">
+                    <label id="labContentLabel" for="labContent">내용 (Markdown)</label>
+                    <textarea id="labContent" placeholder="Markdown 형식의 콘텐츠 내용을 입력하세요." rows="10"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="labContentType">콘텐츠 타입</label>
+                    <select id="labContentType" required onchange="updateContentTypeLabel()">
+                        <option value="0">Markdown</option>
+                        <option value="1">URL</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="labContentStatus">상태</label>
+                    <select id="labContentStatus" required>
+                        <option value="0">비활성화</option>
+                        <option value="1">활성화</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="button">저장</button>
+                    <button type="button" class="button danger" onclick="closeContentModal()">닫기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 이동 모달 -->
+    <div id="moveModal" class="modal">
+        <div class="modal-content">
+            <h2>콘텐츠 이동</h2>
+            <div class="form-group">
+                <label for="moveLabSelect">이동할 랩 선택</label>
+                <select id="moveLabSelect">
+                    <!-- Labs will be loaded here -->
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="button" onclick="confirmMoveContent()">이동</button>
+                <button type="button" class="button danger" onclick="closeMoveModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const contentList = document.getElementById('contentList');
+        const labTitle = document.getElementById('labTitle');
+        const contentModal = document.getElementById('contentModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const contentForm = document.getElementById('contentForm');
+        const contentIdField = document.getElementById('contentId');
+        const labContentSubjectField = document.getElementById('labContentSubject');
+        const labContentField = document.getElementById('labContent');
+        const labContentTypeField = document.getElementById('labContentType');
+        const labContentStatusField = document.getElementById('labContentStatus');
+        const moveModal = document.getElementById('moveModal');
+        const moveLabSelect = document.getElementById('moveLabSelect');
+        let currentLabId = new URLSearchParams(window.location.search).get('lab_id');
+        let currentTrainingKey = new URLSearchParams(window.location.search).get('training_key');
+        let currentContentToMoveId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!currentLabId || !currentTrainingKey) {
+                alert('랩 ID와 트레이닝 키가 필요합니다.');
+                window.location.href = '/admin/lab'; // Or appropriate fallback
+                return;
+            }
+            document.getElementById('currentTrainingKey').value = currentTrainingKey;
+            document.getElementById('currentLabId').value = currentLabId;
+            fetchLabDetails();
+            fetchLabContents();
+            updateContentTypeLabel(); // 초기 로드 시 레이블 설정
+        });
+
+        function getErrorMessage(errorData) {
+            if (errorData && typeof errorData.detail === 'object') {
+                return JSON.stringify(errorData.detail);
+            } else if (errorData && errorData.detail) {
+                return errorData.detail;
+            } else {
+                return '알 수 없는 오류가 발생했습니다.';
+            }
+        }
+
+        async function fetchLabDetails() {
+            try {
+                const response = await fetch(`/api/admin/labs/${currentLabId}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '랩 정보를 불러오는데 실패했습니다.');
+                }
+                const lab = await response.json();
+                labTitle.innerText = `[${lab.lab_name}] 랩 콘텐츠 관리`;
+            } catch (error) {
+                console.error('Error fetching lab details:', error);
+                alert(`랩 정보를 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+
+        async function fetchLabContents() {
+            try {
+                const response = await fetch(`/api/admin/lab_contents?training_key=${currentTrainingKey}&lab_id=${currentLabId}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '랩 콘텐츠를 불러오는데 실패했습니다.');
+                }
+                const contents = await response.json();
+                displayLabContents(contents);
+            } catch (error) {
+                console.error('Error fetching lab contents:', error);
+                alert(`랩 콘텐츠를 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+
+        function displayLabContents(contents) {
+            contentList.innerHTML = '';
+            contents.sort((a, b) => a.view_number - b.view_number); // view_number로 정렬
+            contents.forEach(content => {
+                const row = contentList.insertRow();
+                row.dataset.contentId = content.content_id;
+                row.dataset.viewNumber = content.view_number; // Add view_number to dataset
+                row.dataset.trainingKey = content.training_key;
+                row.dataset.labId = content.lab_id;
+
+                if (content.lab_content_status === 0) {
+                    row.classList.add('dimmed-content-item');
+                }
+
+                const orderOptions = Array.from({ length: contents.length }, (_, i) => i + 1)
+                    .map(num => `<option value="${num}" ${num === content.view_number ? 'selected' : ''}>${num}</option>`)
+                    .join('');
+
+                row.innerHTML = `
+                    <td>${content.content_id}</td>
+                    <td>
+                        <select onchange="updateViewNumber(this, ${content.content_id}, '${content.training_key}', ${content.lab_id})" style="width: 60px;">
+                            ${orderOptions}
+                        </select>
+                    </td>
+                    <td class="${content.lab_content_status !== 1 ? 'content-text-cell' : ''}" title="${content.lab_content_subject}">${truncateText(content.lab_content_subject, 30)}</td>
+                    <td>${content.lab_content_status === 1 ? '활성화' : '비활성화'}</td>
+                    <td>${content.lab_content_create_date}</td>
+                    <td>
+                        <button class="button" onclick="showEditContentModal(${content.content_id})">수정</button>
+                        <button class="button danger" onclick="deleteContent(${content.content_id})">삭제</button>
+                        <button class="button" onclick="showMoveContentModal(${content.content_id})">이동</button>
+                    </td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" ${content.lab_content_status === 1 ? 'checked' : ''} onchange="updateContentStatus(${content.content_id}, ${content.lab_content_status === 1 ? 0 : 1})">
+                            <span class="slider round"></span>
+                        </label>
+                    </td>
+                `;
+            });
+        }
+
+        function showAddContentModal() {
+            modalTitle.innerText = '콘텐츠 추가';
+            contentIdField.value = '';
+            contentForm.reset();
+            labContentTypeField.value = '0'; // Default to Markdown
+            labContentStatusField.value = '1'; // Default to active
+            updateContentTypeLabel(); // 모달 열 때 레이블 초기화
+            contentModal.style.display = 'flex';
+        }
+
+        async function showEditContentModal(contentId) {
+            modalTitle.innerText = '콘텐츠 수정';
+            try {
+                const response = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${currentTrainingKey}&lab_id=${currentLabId}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '콘텐츠 정보를 불러오는데 실패했습니다.');
+                }
+                const content = await response.json();
+                contentIdField.value = content.content_id;
+                labContentSubjectField.value = content.lab_content_subject;
+                labContentField.value = content.lab_content;
+                labContentTypeField.value = content.lab_content_type; // DB 값 로드
+                labContentStatusField.value = content.lab_content_status;
+                updateContentTypeLabel(); // 수정 모달 열 때 레이블 설정
+                contentModal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error fetching content for edit:', error);
+                alert(`콘텐츠 정보를 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+
+        function closeContentModal() {
+            contentModal.style.display = 'none';
+        }
+
+        // 콘텐츠 타입에 따라 레이블 및 플레이스홀더 변경 함수
+        function updateContentTypeLabel() {
+            const type = labContentTypeField.value;
+            const label = document.getElementById('labContentLabel');
+            const textarea = document.getElementById('labContent');
+
+            if (type === '0') { // Markdown
+                label.innerText = '내용 (Markdown)';
+                textarea.placeholder = 'Markdown 형식의 콘텐츠 내용을 입력하세요.';
+                textarea.rows = 10; // Markdown은 더 많은 줄 필요
+            } else if (type === '1') { // URL
+                label.innerText = '내용 (URL)';
+                textarea.placeholder = '콘텐츠 URL을 입력하세요. (예: https://example.com/markdown)';
+                textarea.rows = 2; // URL은 짧은 줄
+            }
+        }
+
+        contentForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const contentId = contentIdField.value;
+            const url = contentId 
+                ? `/api/admin/lab_contents/${contentId}`
+                : `/api/admin/lab_contents`;
+            const method = contentId ? 'PUT' : 'POST';
+
+            const data = {
+                training_key: currentTrainingKey,
+                lab_id: parseInt(currentLabId),
+                lab_content_subject: labContentSubjectField.value,
+                lab_content: labContentField.value,
+                lab_content_type: parseInt(labContentTypeField.value),
+                lab_content_status: parseInt(labContentStatusField.value)
+            };
+
+            if (method === 'PUT') {
+                data.content_id = parseInt(contentId); // For PUT, content_id must be in body if not in URL
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '콘텐츠 저장 실패');
+                }
+                closeContentModal();
+                fetchLabContents();
+            } catch (error) {
+                console.error('Error saving content:', error);
+                alert(`콘텐츠 저장 실패: ${error.message}`);
+            }
+        });
+
+        async function deleteContent(contentId) {
+            if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까?')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '콘텐츠 삭제 실패');
+                }
+                alert('콘텐츠가 성공적으로 삭제되었습니다.');
+                fetchLabContents();
+            } catch (error) {
+                console.error('Error deleting content:', error);
+                alert(`콘텐츠 삭제 실패: ${error.message}`);
+            }
+        }
+
+        async function updateContentStatus(contentId, newStatus) {
+            try {
+                const response = await fetch(`/api/admin/lab_contents/${contentId}/status?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_status: newStatus })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '상태 업데이트 실패');
+                }
+                fetchLabContents(); // Refresh list to reflect changes
+            } catch (error) {
+                console.error('Error updating content status:', error);
+                alert(`콘텐츠 상태 업데이트 실패: ${error.message}`);
+            }
+        }
+
+        async function fetchLabsForMove() {
+            try {
+                const response = await fetch(`/api/admin/labs?training_key=${currentTrainingKey}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '랩 목록을 불러오는데 실패했습니다.');
+                }
+                const labs = await response.json();
+                moveLabSelect.innerHTML = '';
+                labs.forEach(lab => {
+                    if (lab.lab_id !== parseInt(currentLabId)) { // Don't allow moving to the same lab
+                        const option = document.createElement('option');
+                        option.value = lab.lab_id;
+                        option.innerText = lab.lab_name;
+                        moveLabSelect.appendChild(option);
+                    }
+                });
+                if (moveLabSelect.options.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.innerText = '이동할 랩이 없습니다.';
+                    option.disabled = true;
+                    moveLabSelect.appendChild(option);
+                }
+            } catch (error) {
+                console.error('Error fetching labs for move:', error);
+                alert(`랩 목록을 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+
+        function showMoveContentModal(contentId) {
+            currentContentToMoveId = contentId;
+            fetchLabsForMove();
+            moveModal.style.display = 'flex';
+        }
+
+        function closeMoveModal() {
+            moveModal.style.display = 'none';
+            currentContentToMoveId = null;
+        }
+
+        async function confirmMoveContent() {
+            const newLabId = moveLabSelect.value;
+            if (!newLabId) {
+                alert('이동할 랩을 선택해주세요.');
+                return;
+            }
+            if (!confirm('정말로 이 콘텐츠를 선택한 랩으로 이동하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/lab_contents/${currentContentToMoveId}/move`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_lab_id: parseInt(newLabId) })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '콘텐츠 이동 실패');
+                }
+                closeMoveModal();
+                fetchLabContents(); // Refresh the list after moving
+            } catch (error) {
+                console.error('Error moving content:', error);
+                alert(`콘텐츠 이동 실패: ${error.message}`);
+            }
+        }
+
+        async function updateViewNumber(selectElement, contentId, trainingKey, labId) {
+            const newViewNumber = parseInt(selectElement.value);
+            if (isNaN(newViewNumber) || newViewNumber < 1) {
+                alert('유효한 순서 번호를 입력해주세요.');
+                // Revert to original value by re-fetching contents
+                fetchLabContents();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/lab_contents/${contentId}/reorder?training_key=${trainingKey}&lab_id=${labId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_view_number: newViewNumber })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(getErrorMessage(errorData) || '콘텐츠 순서 변경 실패');
+                }
+                fetchLabContents(); // Refresh the list to reflect changes
+            } catch (error) {
+                console.error('Error updating content order:', error);
+                alert(`콘텐츠 순서 변경 실패: ${error.message}`);
+            }
+        }
+
+        // 텍스트 길이 줄이는 함수
+        function truncateText(text, maxLength) {
+            if (text.length > maxLength) {
+                return text.substring(0, maxLength) + '...';
+            }
+            return text;
+        }
+
+        // 돌아가기 버튼 함수
+        function goBackToLabList() {
+            window.location.href = `/admin/lab?training_key=${trainingKey}`;
+        }
+
+    </script>
+</body>
+</html> 

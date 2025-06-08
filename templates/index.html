@@ -125,7 +125,15 @@
                 const data = await response.json();
                 if (response.ok) {
                     document.cookie = "session_id=1; path=/";
-                    window.location.href = '/portal';
+                    // 로그인 성공 시 정보 저장
+                    localStorage.setItem("member_id", username);
+                    localStorage.setItem("training_key", trainingKey);
+                    // role이 100 이상인 경우 관리자 페이지로, 그렇지 않은 경우 일반 포털로 이동
+                    if (data.role >= 100) {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/portal';
+                    }
                 } else {
                     errorDiv.textContent = data.detail;
                 }

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>랩 관리</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            width: 90%;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .form-actions {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .form-actions button {
+            margin-left: 10px;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 id="courseTitle">랩 관리</h1>
+            <button class="button" onclick="showAddLabModal()">랩 추가</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>랩 ID</th>
+                    <th>랩명</th>
+                    <th>콘텐츠 수</th>
+                    <th>랩 상태</th>
+                    <th>생성일</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="labList">
+                <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 랩 추가/수정 모달 -->
+    <div id="labModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">랩 추가</h2>
+            <form id="labForm">
+                <input type="hidden" id="labId">
+                <div class="form-group">
+                    <label for="labName">랩명:</label>
+                    <input type="text" id="labName" required>
+                </div>
+                <div class="form-group">
+                    <label for="labContent">랩 내용:</label>
+                    <textarea id="labContent" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="labStatus">랩 상태:</label>
+                    <select id="labStatus" required>
+                        <option value="10">준비중</option>
+                        <option value="20">실행중</option>
+                        <option value="30">종료</option>
+                        <option value="40">보류</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">저장</button>
+                    <button type="button" class="button" onclick="closeModal('labModal')">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="moveContentModal" class="modal">
+        <div class="modal-content">
+            <h2>콘텐츠 이동</h2>
+            <form id="moveContentForm">
+                <input type="hidden" id="moveContentId">
+                <div class="form-group">
+                    <label for="targetLabId">이동할 랩:</label>
+                    <select id="targetLabId" required>
+                        <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">이동</button>
+                    <button type="button" class="button" onclick="closeModal('moveContentModal')">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 쿼리스트링에서 training_key 추출
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        const trainingKey = getQueryParam('training_key');
+        // 과정명 불러오기
+        async function loadCourseTitle() {
+            const res = await fetch(`/api/admin/courses/${trainingKey}`);
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('courseTitle').textContent = `[${data.course_name}] 랩 관리`;
+            }
+        }
+        // 랩 상태 텍스트 변환
+        function getLabStatusText(status) {
+            const statusMap = {
+                10: '준비중',
+                20: '실행중',
+                30: '종료',
+                40: '보류'
+            };
+            return statusMap[status] || '알 수 없음';
+        }
+        // 랩 목록 로드
+        async function loadLabs() {
+            try {
+                const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
+                if (!res.ok) {
+                    // HTTP 오류 응답의 경우 상태 코드와 텍스트를 함께 출력
+                    const errorText = await res.text();
+                    throw new Error(`랩 목록을 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
+                }
+                const labs = await res.json();
+                const tbody = document.getElementById('labList');
+                tbody.innerHTML = '';
+                if (labs.length === 0) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td colspan="7" style="text-align:center;">랩이 없습니다.</td>';
+                    tbody.appendChild(tr);
+                    return;
+                }
+                labs.forEach(lab => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${lab.lab_id}</td>
+                        <td><a href="/admin/lab_content?training_key=${lab.training_key}&lab_id=${lab.lab_id}">${lab.lab_name}</a></td>
+                        <td>${lab.content_count}</td>
+                        <td>${getLabStatusText(lab.lab_status)}</td>
+                        <td>${lab.create_date}</td>
+                        <td>
+                            <button class="button" onclick="editLab(${lab.lab_id})">수정</button>
+                            <button class="button danger" onclick="deleteLab(${lab.lab_id})">삭제</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error loading labs:', error);
+                alert(`랩 목록을 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+        // 랩 추가/수정 모달 열기
+        function showAddLabModal() {
+            document.getElementById('modalTitle').textContent = '랩 추가';
+            document.getElementById('labId').value = '';
+            document.getElementById('labName').value = '';
+            document.getElementById('labContent').value = '';
+            document.getElementById('labStatus').value = 10;
+            document.getElementById('labModal').style.display = 'flex';
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        // 랩 수정 모달 열기
+        async function editLab(labId) {
+            const res = await fetch(`/api/admin/labs/${labId}`);
+            if (res.ok) {
+                const lab = await res.json();
+                document.getElementById('modalTitle').textContent = '랩 수정';
+                document.getElementById('labId').value = lab.lab_id;
+                document.getElementById('labName').value = lab.lab_name;
+                document.getElementById('labContent').value = lab.lab_content || '';
+                document.getElementById('labStatus').value = lab.lab_status;
+                document.getElementById('labModal').style.display = 'flex';
+            }
+        }
+        // 랩 삭제
+        async function deleteLab(labId) {
+            if (confirm('정말로 이 랩을 삭제하시겠습니까?')) {
+                const res = await fetch(`/api/admin/labs/${labId}`, { method: 'DELETE' });
+                if (res.ok) loadLabs();
+                else alert('랩 삭제에 실패했습니다.');
+            }
+        }
+        // 랩 추가/수정 폼 제출
+        document.getElementById('labForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const labId = document.getElementById('labId').value;
+            const labName = document.getElementById('labName').value;
+            const labContent = document.getElementById('labContent').value;
+            const labStatus = document.getElementById('labStatus').value;
+            const payload = {
+                training_key: trainingKey,
+                lab_name: labName,
+                lab_content: labContent,
+                lab_status: parseInt(labStatus)
+            };
+            let url = '/api/admin/labs';
+            let method = 'POST';
+            if (labId) {
+                url += `/${labId}`;
+                method = 'PUT';
+            }
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                closeModal('labModal');
+                loadLabs();
+            } else {
+                alert('저장에 실패했습니다.');
+            }
+        });
+        // 콘텐츠 이동 모달 열기
+        async function openMoveContentModal(contentId) {
+            const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
+            const labs = await res.json();
+            
+            const select = document.getElementById('targetLabId');
+            select.innerHTML = '';
+            labs.forEach(lab => {
+                const option = document.createElement('option');
+                option.value = lab.lab_id;
+                option.textContent = lab.lab_name;
+                select.appendChild(option);
+            });
+            
+            document.getElementById('moveContentId').value = contentId;
+            document.getElementById('moveContentModal').style.display = 'block';
+        }
+        // 콘텐츠 이동 처리
+        document.getElementById('moveContentForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const contentId = document.getElementById('moveContentId').value;
+            const newLabId = document.getElementById('targetLabId').value;
+            
+            try {
+                const res = await fetch(`/api/admin/lab_contents/${contentId}/move`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_lab_id: newLabId })
+                });
+                
+                if (res.ok) {
+                    alert('콘텐츠가 성공적으로 이동되었습니다.');
+                    closeModal('moveContentModal');
+                    loadLabContents(); // 콘텐츠 목록 새로고침
+                    loadLabs(); // 랩 목록 새로고침 (콘텐츠 수 업데이트)
+                } else {
+                    const error = await res.json();
+                    alert(error.detail || '콘텐츠 이동 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                alert('콘텐츠 이동 중 오류가 발생했습니다.');
+            }
+        };
+        // 페이지 로드시
+        loadCourseTitle();
+        loadLabs();
+    </script>
+</body>
+</html> 

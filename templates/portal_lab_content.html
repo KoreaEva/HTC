@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>랩 콘텐츠 보기</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0; /* 기본 마진 제거 */
+            padding: 0;
+        }
+        .breadcrumbs {
+            padding: 15px 40px;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            font-size: 0.95em;
+            color: #555;
+        }
+        .breadcrumbs a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .breadcrumbs a:hover { text-decoration: underline; }
+        .container {
+            max-width: 1100px;
+            margin: 20px auto 40px auto; /* 상단 여백 추가 */
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 0;
+            display: flex;
+            min-height: 600px;
+        }
+        .sidebar {
+            width: 300px;
+            border-right: 1px solid #eee;
+            padding: 30px 0 30px 30px;
+            background: #fafbfc;
+            position: sticky; /* 스크롤 시 고정 */
+            top: 0; /* 뷰포트 상단에 고정 */
+            height: 100vh; /* 뷰포트 전체 높이 */
+            overflow-y: auto; /* 내용이 길면 스크롤바 생성 */
+            box-sizing: border-box; /* 패딩을 너비에 포함 */
+        }
+        .sidebar h2 { font-size: 1.2em; margin-bottom: 18px; color: #007bff; }
+        .content-list { list-style: none; padding: 0; margin: 0; }
+        .content-list li { padding: 10px 0; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #333; }
+        .content-list li.selected { background: #e6f0ff; color: #007bff; font-weight: bold; }
+        .content-list li:hover { background: #f0f6ff; }
+        .content-list li.disabled-content {
+            color: #aaa; /* 비활성화된 콘텐츠 색상 */
+            cursor: not-allowed; /* 클릭 불가능 커서 */
+            background-color: #f8f8f8; /* 배경색 변경 */
+        }
+        .content-list li.disabled-content:hover { background-color: #f8f8f8; }
+        .main-content { flex: 1; padding: 40px; min-width: 0; }
+        .markdown-body { font-size: 1.1em; line-height: 1.7; color: #222; }
+        .markdown-body pre { background: #f6f8fa; padding: 10px; border-radius: 6px; }
+        .markdown-body code { background: #f6f8fa; padding: 2px 4px; border-radius: 4px; }
+        .back-btn { margin-bottom: 20px; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="breadcrumbs">
+        <a href="/portal">홈</a>
+        <span id="breadcrumbCourse"></span>
+        <span id="breadcrumbLab"></span>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <button class="back-btn button" onclick="window.history.back()">← 뒤로가기</button>
+            <h2>콘텐츠 목록</h2>
+            <ul class="content-list" id="contentList"></ul>
+        </div>
+        <div class="main-content">
+            <h2 id="contentTitle">콘텐츠 보기</h2>
+            <div id="contentBody" class="markdown-body" style="margin-top:20px;"></div>
+        </div>
+    </div>
+    <script>
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+        const trainingKey = getQueryParam('training_key');
+        const labId = getQueryParam('lab_id');
+        const memberId = getQueryParam('member_id'); // Assuming member_id is also passed as a query parameter
+        let contents = [];
+        let selectedIdx = -1; // 초기 선택 인덱스를 -1로 설정
+
+        // Function to load user info and then titles and contents
+        async function fetchUserInfoAndLoadContents() {
+            if (!trainingKey || !labId || !memberId) { 
+                alert('트레이닝 키, 랩 ID, 그리고 멤버 ID가 필요합니다.');
+                window.location.href = '/portal'; // Or appropriate fallback
+                return;
+            }
+
+            try {
+                // Fetch user info to get member_id (and verify if needed, though memberId is already from URL)
+                const userInfoRes = await fetch(`/api/portal-info?training_key=${trainingKey}&member_id=${memberId}`);
+                if (!userInfoRes.ok) {
+                    const errorData = await userInfoRes.json();
+                    throw new Error(errorData.detail || '사용자 정보를 불러오는데 실패했습니다.');
+                }
+                // const userInfo = await userInfoRes.json(); // If you need to use userInfo data beyond just memberId
+
+                // Fetch course name
+                const courseRes = await fetch(`/api/admin/courses/${trainingKey}`);
+                let courseName = '알 수 없는 과정';
+                if (courseRes.ok) {
+                    const courseData = await courseRes.json();
+                    courseName = courseData.course_name;
+                }
+
+                // Fetch lab name
+                const labRes = await fetch(`/api/admin/labs/${labId}`);
+                let labName = '알 수 없는 랩';
+                if (labRes.ok) {
+                    const labData = await labRes.json();
+                    labName = labData.lab_name;
+                }
+
+                // Update breadcrumbs
+                document.getElementById('breadcrumbCourse').innerHTML = ` &gt; <a href="/portal" style="text-decoration: none; color: #007bff;">${courseName}</a>`;
+                document.getElementById('breadcrumbLab').innerHTML = ` &gt; ${labName}`;
+
+                // Load contents for the lab
+                const res = await fetch(`/api/admin/lab_contents?training_key=${trainingKey}&lab_id=${labId}`);
+                contents = await res.json();
+                const list = document.getElementById('contentList');
+                list.innerHTML = '';
+                contents.forEach((c, idx) => {
+                    const li = document.createElement('li');
+                    li.textContent = c.lab_content_subject;
+                    
+                    // 콘텐츠 상태가 1(활성화)인 경우에만 클릭 가능하게 설정
+                    if (c.lab_content_status === 1) {
+                        li.onclick = () => selectContent(idx);
+                    } else {
+                        li.classList.add('disabled-content');
+                    }
+                    list.appendChild(li);
+                });
+                
+                // 첫 번째 활성화된 콘텐츠를 자동으로 선택하거나, 활성화된 콘텐츠가 없으면 비웁니다.
+                const firstActiveContentIdx = contents.findIndex(c => c.lab_content_status === 1);
+                if (firstActiveContentIdx !== -1) {
+                    // selectContent(firstActiveContentIdx); // 자동 선택 제거
+                    list.children[firstActiveContentIdx].classList.add('initial-selection'); // 초기 선택 표시용 클래스 추가
+                    document.getElementById('contentTitle').textContent = "콘텐츠를 선택해주세요.";
+                    document.getElementById('contentBody').innerHTML = '<p style="color:#555;">왼쪽 목록에서 콘텐츠를 선택해주세요.</p>';
+                } else {
+                    document.getElementById('contentTitle').textContent = "콘텐츠를 찾을 수 없습니다.";
+                    document.getElementById('contentBody').innerHTML = '<p style="color:#555;">현재 활성화된 콘텐츠가 없습니다.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading titles or contents:', error);
+                alert(`페이지 로드 실패: ${error.message}`);
+            }
+        }
+
+        async function selectContent(idx) {
+            const content = contents[idx];
+
+            // 활성화되지 않은 콘텐츠는 선택할 수 없음
+            if (content.lab_content_status !== 1) {
+                document.getElementById('contentTitle').textContent = "비활성화된 콘텐츠";
+                document.getElementById('contentBody').innerHTML = '<p style="color:red;">이 콘텐츠는 현재 활성화되어 있지 않아 볼 수 없습니다.</p>';
+                return;
+            }
+
+            selectedIdx = idx;
+            document.querySelectorAll('.content-list li').forEach((li, i) => {
+                li.classList.toggle('selected', i === idx);
+            });
+            document.getElementById('contentTitle').textContent = content.lab_content_subject;
+            const bodyDiv = document.getElementById('contentBody');
+            
+            if (content.lab_content_type === 0) { // Markdown
+                const contentText = content.lab_content || '(내용 없음)';
+                // Check if the content is a URL
+                if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                    try {
+                        const res = await fetch(`/api/proxy-markdown?url=${encodeURIComponent(contentText)}`);
+                        if (res.ok) {
+                            const md = await res.text();
+                            bodyDiv.innerHTML = marked.parse(md);
+                        } else {
+                            bodyDiv.innerHTML = '<span style="color:red">마크다운 URL을 불러올 수 없습니다.</span>';
+                        }
+                    } catch (e) {
+                        bodyDiv.innerHTML = '<span style="color:red">마크다운 URL을 불러오는 중 오류 발생.</span>';
+                    }
+                } else {
+                    bodyDiv.innerHTML = marked.parse(contentText);
+                }
+            } else if (content.lab_content_type === 1) { // URL
+                bodyDiv.innerHTML = `
+                    <p>이 콘텐츠는 외부 웹페이지로, 보안상의 이유로 직접 포함될 수 없습니다.</p>
+                    <p>아래 버튼을 클릭하여 새 탭에서 열어주세요:</p>
+                    <p><button class="button" onclick="window.open('${content.lab_content}', '_blank')">열기</button></p>
+                `;
+            } else {
+                // Fallback for unknown types or initial state
+                bodyDiv.textContent = content.lab_content || '(내용 없음)';
+            }
+
+            // Log the content view
+            try {
+                const logData = {
+                    training_key: trainingKey,
+                    member_id: memberId, 
+                    lab_id: parseInt(labId),
+                    content_id: content.content_id
+                };
+                console.log('Attempting to log content view with data:', logData);
+                const logRes = await fetch('/api/portal/log_content_view', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(logData)
+                });
+                if (!logRes.ok) {
+                    const errorData = await logRes.json();
+                    console.error('Failed to log content view. Server response:', logRes.status, logRes.statusText, errorData);
+                } else {
+                    console.log('Content view logged successfully.');
+                }
+            } catch (error) {
+                console.error('Error logging content view:', error);
+            }
+        }
+        
+        fetchUserInfoAndLoadContents(); // 페이지 로드시 사용자 정보 및 제목과 콘텐츠를 함께 불러옵니다.
+    </script>
+</body>
+</html> 

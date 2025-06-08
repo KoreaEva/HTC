@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사용자 분석</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        #chartContainer {
+            margin-top: 40px;
+            border: 1px solid #eee;
+            padding: 20px;
+            border-radius: 8px;
+            background: #fafbfc;
+            min-height: 400px; /* 차트 영역 최소 높이 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            color: #777;
+        }
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>사용자 분석</h1>
+            <button class="button" onclick="window.location.href='/admin'">뒤로가기</button>
+        </div>
+
+        <h2>랩별 사용자 통계</h2>
+        <table id="labUserCountsTable">
+            <thead>
+                <tr>
+                    <th>랩 ID</th>
+                    <th>랩명</th>
+                    <th>사용자 수</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="labUserCountsTableBody">
+                <!-- 랩별 사용자 수가 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+
+        <div id="chartContainer">
+            랩을 선택하면 사용자별 콘텐츠 진도 차트가 표시됩니다.
+        </div>
+
+    </div>
+
+    <script>
+        let currentChart = null; // Chart.js 인스턴스를 저장할 변수
+
+        // 랩별 사용자 수 불러오기
+        async function loadLabUserCounts() {
+            try {
+                // training_key는 세션이나 다른 방식으로 가져와야 합니다. 여기서는 예시로 하드코딩
+                const trainingKey = '2025060701'; // 실제 training_key로 대체 필요
+
+                const response = await fetch(`/api/admin/lab_user_counts?training_key=${trainingKey}`);
+                if (!response.ok) {
+                    throw new Error('랩별 사용자 수를 불러오는데 실패했습니다.');
+                }
+                const labCounts = await response.json();
+                const tableBody = document.getElementById('labUserCountsTableBody');
+                tableBody.innerHTML = '';
+
+                if (labCounts.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">등록된 랩이 없습니다.</td></tr>';
+                    return;
+                }
+
+                labCounts.forEach(lab => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${lab.lab_id}</td>
+                        <td><a href="#" onclick="displayUserContentProgress(${lab.lab_id}, '${trainingKey}', '${lab.lab_name}')" style="color:#007bff; text-decoration:underline;">${lab.lab_name}</a></td>
+                        <td>${lab.user_count}</td>
+                        <td>
+                            <button class="button" onclick="displayUserContentProgress(${lab.lab_id}, '${trainingKey}', '${lab.lab_name}')">진도 보기</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading lab user counts:', error);
+                alert(`랩별 사용자 수를 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+
+        // 사용자별 콘텐츠 진도 차트 표시
+        async function displayUserContentProgress(labId, trainingKey, labName) {
+            try {
+                const response = await fetch(`/api/admin/user_content_progress?training_key=${trainingKey}&lab_id=${labId}`);
+                if (!response.ok) {
+                    throw new Error('사용자별 콘텐츠 진도를 불러오는데 실패했습니다.');
+                }
+                const progressData = await response.json(); // { users: [], contents: [] }
+
+                const chartContainer = document.getElementById('chartContainer');
+                chartContainer.innerHTML = '<canvas id="progressChart"></canvas>'; // 기존 차트 제거 및 새 캔버스 생성
+                
+                if (currentChart) {
+                    currentChart.destroy(); // 이전 차트 인스턴스가 있으면 파괴
+                }
+
+                if (progressData.users.length === 0 || progressData.contents.length === 0) {
+                    chartContainer.innerHTML = `<div class="chart-title">${labName} 진도 현황</div><p style="text-align:center;">표시할 진도 데이터가 없습니다.</p>`;
+                    return;
+                }
+
+                const ctx = document.getElementById('progressChart').getContext('2d');
+                
+                const datasets = progressData.users.map(user => {
+                    // 각 사용자의 콘텐츠별 진도 (예: 0 또는 1)
+                    const data = progressData.contents.map(content => 
+                        user.viewed_contents.includes(content.content_id) ? 1 : 0
+                    );
+                    return {
+                        label: user.member_name,
+                        data: data,
+                        backgroundColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.6)`,
+                        borderColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)`,
+                        borderWidth: 1,
+                        type: 'bar' // 막대 차트
+                    };
+                });
+
+                currentChart = new Chart(ctx, {
+                    type: 'bar', // 기본 차트 타입
+                    data: {
+                        labels: progressData.contents.map(c => truncateText(c.lab_content_subject, 15)), // X축: 콘텐츠 제목
+                        datasets: datasets
+                    },
+                    options: {
+                        indexAxis: 'x', // X축에 콘텐츠, Y축에 사용자 (bar 차트의 경우)
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${labName} 진도 현황`,
+                                font: { size: 18 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    title: function(tooltipItems) {
+                                        return `콘텐츠: ${tooltipItems[0].label}`;
+                                    },
+                                    label: function(context) {
+                                        const userLabel = context.dataset.label;
+                                        const value = context.raw;
+                                        return `${userLabel}: ${value === 1 ? '조회 완료' : '미조회'}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '콘텐츠'
+                                },
+                                stacked: true // 스택된 바 차트
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '조회 여부 (1:조회, 0:미조회)'
+                                },
+                                stacked: true, // 스택된 바 차트
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        if (value === 0) return '미조회';
+                                        if (value === 1) return '조회 완료';
+                                        return '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error displaying user content progress:', error);
+                const chartContainer = document.getElementById('chartContainer');
+                chartContainer.innerHTML = `<div class="chart-title">${labName} 진도 현황</div><p style="text-align:center; color:red;">진도 데이터를 불러오는데 실패했습니다: ${error.message}</p>`;
+            }
+        }
+
+        // 텍스트 길이 줄이는 함수 (재사용)
+        function truncateText(text, maxLength) {
+            if (text.length > maxLength) {
+                return text.substring(0, maxLength) + '...';
+            }
+            return text;
+        }
+
+        // 페이지 로드 시 랩별 사용자 수 불러오기
+        document.addEventListener('DOMContentLoaded', loadLabUserCounts);
+    </script>
+</body>
+</html> 
