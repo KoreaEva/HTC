@@ -260,13 +260,14 @@
                 </div>
                 <div class="form-group">
                     <label id="labContentLabel" for="labContent">내용 (Markdown)</label>
-                    <textarea id="labContent" placeholder="Markdown 형식의 콘텐츠 내용을 입력하세요." rows="10"></textarea>
+                    <textarea id="labContent" placeholder="Markdown 형식의 콘텐츠 내용을 입력하세요." rows="10" oninput="detectContentType()"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="labContentType">콘텐츠 타입</label>
                     <select id="labContentType" required onchange="updateContentTypeLabel()">
-                        <option value="0">Markdown</option>
-                        <option value="1">URL</option>
+                        <option value="0">URL 기반 마크다운</option>
+                        <option value="1">웹페이지</option>
+                        <option value="2">Text(Markdown)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -419,7 +420,7 @@
             modalTitle.innerText = '콘텐츠 추가';
             contentIdField.value = '';
             contentForm.reset();
-            labContentTypeField.value = '0'; // Default to Markdown
+            labContentTypeField.value = '2'; // Default to Text(Markdown)
             labContentStatusField.value = '1'; // Default to active
             updateContentTypeLabel(); // 모달 열 때 레이블 초기화
             contentModal.style.display = 'flex';
@@ -457,14 +458,46 @@
             const label = document.getElementById('labContentLabel');
             const textarea = document.getElementById('labContent');
 
-            if (type === '0') { // Markdown
-                label.innerText = '내용 (Markdown)';
-                textarea.placeholder = 'Markdown 형식의 콘텐츠 내용을 입력하세요.';
-                textarea.rows = 10; // Markdown은 더 많은 줄 필요
-            } else if (type === '1') { // URL
-                label.innerText = '내용 (URL)';
-                textarea.placeholder = '콘텐츠 URL을 입력하세요. (예: https://example.com/markdown)';
+            if (type === '0') { // URL 기반 마크다운
+                label.innerText = '내용 (마크다운 URL)';
+                textarea.placeholder = '마크다운 파일의 URL을 입력하세요. (예: https://example.com/readme.md)';
                 textarea.rows = 2; // URL은 짧은 줄
+            } else if (type === '1') { // 웹페이지
+                label.innerText = '내용 (웹페이지 URL)';
+                textarea.placeholder = '웹페이지 URL을 입력하세요. (예: https://example.com)';
+                textarea.rows = 2; // URL은 짧은 줄
+            } else if (type === '2') { // Text(Markdown)
+                label.innerText = '내용 (마크다운 텍스트)';
+                textarea.placeholder = '마크다운 코드를 직접 입력하세요. (예: # 제목\n\n내용...)';
+                textarea.rows = 15; // 마크다운 텍스트는 더 많은 줄 필요
+            }
+        }
+
+        // 콘텐츠 내용 입력 시 URL 감지하여 타입 자동 설정
+        function detectContentType() {
+            const content = labContentField.value.trim();
+            
+            // URL 패턴 감지 (http:// 또는 https://로 시작하는 경우)
+            if (content.startsWith('http://') || content.startsWith('https://')) {
+                // URL이 .md로 끝나거나 마크다운 관련 키워드가 포함된 경우 URL 기반 마크다운으로 설정
+                if (content.includes('.md') || content.includes('markdown') || content.includes('readme')) {
+                    if (labContentTypeField.value !== '0') {
+                        labContentTypeField.value = '0';
+                        updateContentTypeLabel();
+                    }
+                } else {
+                    // 일반 URL인 경우 웹페이지로 설정
+                    if (labContentTypeField.value !== '1') {
+                        labContentTypeField.value = '1';
+                        updateContentTypeLabel();
+                    }
+                }
+            } else if (content.length > 0 && !content.startsWith('http://') && !content.startsWith('https://')) {
+                // URL이 아닌 경우 Text(Markdown)으로 설정
+                if (labContentTypeField.value !== '2') {
+                    labContentTypeField.value = '2';
+                    updateContentTypeLabel();
+                }
             }
         }
 

@@ -55,12 +55,84 @@
         }
         .content-list li.disabled-content:hover { background-color: #f8f8f8; }
         .main-content { flex: 1; padding: 40px; min-width: 0; }
-        .markdown-body { font-size: 1.1em; line-height: 1.7; color: #222; }
-        .markdown-body pre { background: #f6f8fa; padding: 10px; border-radius: 6px; }
-        .markdown-body code { background: #f6f8fa; padding: 2px 4px; border-radius: 4px; }
+        .markdown-body { 
+            font-size: 1.1em; 
+            line-height: 1.7; 
+            color: #222; 
+            max-width: 100%;
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        .markdown-body h1 { font-size: 2em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+        .markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }
+        .markdown-body h3 { font-size: 1.25em; }
+        .markdown-body p { margin-bottom: 16px; }
+        .markdown-body ul, .markdown-body ol { padding-left: 2em; margin-bottom: 16px; }
+        .markdown-body li { margin-bottom: 0.25em; }
+        .markdown-body blockquote { 
+            padding: 0 1em; 
+            color: #6a737d; 
+            border-left: 0.25em solid #dfe2e5; 
+            margin: 0 0 16px 0;
+        }
+        .markdown-body pre { 
+            background: #f6f8fa; 
+            padding: 16px; 
+            border-radius: 6px; 
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        .markdown-body code { 
+            background: #f6f8fa; 
+            padding: 0.2em 0.4em; 
+            border-radius: 3px; 
+            font-size: 85%;
+        }
+        .markdown-body pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .markdown-body table th,
+        .markdown-body table td {
+            padding: 6px 13px;
+            border: 1px solid #dfe2e5;
+        }
+        .markdown-body table th {
+            background-color: #f6f8fa;
+            font-weight: 600;
+        }
+        .markdown-body img {
+            max-width: 100%;
+            height: auto;
+        }
+        .markdown-body a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        .markdown-body a:hover {
+            text-decoration: underline;
+        }
         .back-btn { margin-bottom: 20px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 마크다운 파서 설정
+        marked.setOptions({
+            breaks: true,  // 줄바꿈을 <br>로 변환
+            gfm: true,     // GitHub Flavored Markdown 지원
+            sanitize: false // HTML 태그 허용 (XSS 방지는 서버에서 처리)
+        });
+    </script>
 </head>
 <body>
     <div class="breadcrumbs">
@@ -130,6 +202,10 @@
                 // Load contents for the lab
                 const res = await fetch(`/api/admin/lab_contents?training_key=${trainingKey}&lab_id=${labId}`);
                 contents = await res.json();
+                
+                // view_number로 정렬
+                contents.sort((a, b) => a.view_number - b.view_number);
+                
                 const list = document.getElementById('contentList');
                 list.innerHTML = '';
                 contents.forEach((c, idx) => {
@@ -179,9 +255,11 @@
             document.getElementById('contentTitle').textContent = content.lab_content_subject;
             const bodyDiv = document.getElementById('contentBody');
             
-            if (content.lab_content_type === 0) { // Markdown
-                const contentText = content.lab_content || '(내용 없음)';
-                // Check if the content is a URL
+            // 콘텐츠 타입에 따라 다르게 처리
+            const contentText = content.lab_content || '(내용 없음)';
+            
+            if (content.lab_content_type === 0) {
+                // 타입 0: URL 기반 마크다운 처리
                 if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
                     try {
                         const res = await fetch(`/api/proxy-markdown?url=${encodeURIComponent(contentText)}`);
@@ -189,23 +267,51 @@
                             const md = await res.text();
                             bodyDiv.innerHTML = marked.parse(md);
                         } else {
-                            bodyDiv.innerHTML = '<span style="color:red">마크다운 URL을 불러올 수 없습니다.</span>';
+                            bodyDiv.innerHTML = '<span style="color:red">마크다운 콘텐츠를 불러올 수 없습니다.</span>';
                         }
                     } catch (e) {
-                        bodyDiv.innerHTML = '<span style="color:red">마크다운 URL을 불러오는 중 오류 발생.</span>';
+                        bodyDiv.innerHTML = '<span style="color:red">마크다운 콘텐츠를 불러오는 중 오류 발생.</span>';
                     }
                 } else {
-                    bodyDiv.innerHTML = marked.parse(contentText);
+                    bodyDiv.innerHTML = '<span style="color:red">유효하지 않은 마크다운 URL입니다.</span>';
                 }
-            } else if (content.lab_content_type === 1) { // URL
-                bodyDiv.innerHTML = `
-                    <p>이 콘텐츠는 외부 웹페이지로, 보안상의 이유로 직접 포함될 수 없습니다.</p>
-                    <p>아래 버튼을 클릭하여 새 탭에서 열어주세요:</p>
-                    <p><button class="button" onclick="window.open('${content.lab_content}', '_blank')">열기</button></p>
-                `;
+            } else if (content.lab_content_type === 2) {
+                // 타입 2: Text(Markdown) 처리 - 직접 입력된 마크다운 텍스트
+                bodyDiv.innerHTML = marked.parse(contentText);
+            } else if (content.lab_content_type === 1) {
+                // 타입 1: 웹페이지 링크 버튼
+                if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                    bodyDiv.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <div style="margin-bottom: 20px;">
+                                <p style="font-size: 1.1em; color: #555; margin-bottom: 10px;">이 콘텐츠는 외부 웹페이지입니다.</p>
+                                <p style="color: #888; margin-bottom: 30px;">아래 버튼을 클릭하여 웹페이지를 확인하세요.</p>
+                            </div>
+                            <a href="${contentText}" target="_blank" style="
+                                display: inline-block;
+                                background: #007bff;
+                                color: white;
+                                padding: 15px 30px;
+                                border-radius: 8px;
+                                text-decoration: none;
+                                font-weight: 600;
+                                font-size: 1.1em;
+                                transition: background-color 0.3s ease;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
+                                🌐 웹페이지 열기
+                            </a>
+                            <div style="margin-top: 20px; font-size: 0.9em; color: #888;">
+                                <p>링크: <a href="${contentText}" target="_blank" style="color: #007bff; text-decoration: underline;">${contentText}</a></p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    bodyDiv.innerHTML = '<span style="color:red">웹페이지 URL이 아닙니다.</span>';
+                }
             } else {
-                // Fallback for unknown types or initial state
-                bodyDiv.textContent = content.lab_content || '(내용 없음)';
+                // 기타 타입: 기본 텍스트 처리
+                bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
             }
 
             // Log the content view

@@ -2,51 +2,60 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관리자 페이지</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 포털</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #f5f5f5; 
-            margin: 0;
-            padding: 20px;
+        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
+        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .welcome { font-size:1.5em; font-weight:600; color:#FFD700; }
+        .logout-btn { background:#FF6B6B; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:600; }
+        .logout-btn:hover { background:#FF5252; }
+        
+        /* 섹션 스타일 */
+        .admin-section { 
+            margin-bottom:30px; 
+            padding:20px; 
+            background:var(--panel); 
+            border:1px solid #3E3E3E; 
+            border-radius:8px; 
         }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: #fff; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
-            padding: 40px; 
+        .admin-section h2 { 
+            color:#FFD700; 
+            margin-bottom:15px; 
+            font-size:1.3em;
         }
-        h1 { 
-            color: #007bff; 
-            margin-bottom: 30px;
-        }
-        .admin-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
+        
+        /* 테이블 스타일 */
         .user-list {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
         }
         .user-list th, .user-list td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #3E3E3E;
         }
         .user-list th {
-            background-color: #f8f9fa;
-            font-weight: bold;
+            background-color: var(--accent);
+            color: #FFD700;
+            font-weight: 600;
         }
         .user-list tr:hover {
-            background-color: #f5f5f5;
+            background-color: #3E3E3E;
         }
+        .user-list tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* 버튼 스타일 */
         .button {
-            background-color: #007bff;
+            background-color: #2E7D32;
             color: white;
             padding: 10px 20px;
             border: none;
@@ -55,79 +64,108 @@
             text-decoration: none;
             display: inline-block;
             margin: 5px;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
         .button:hover {
-            background-color: #0056b3;
+            background-color: #388E3C;
+            transform: translateY(-1px);
         }
         .button.danger {
-            background-color: #dc3545;
+            background-color: #C62828;
         }
         .button.danger:hover {
-            background-color: #c82333;
+            background-color: #D32F2F;
         }
+        .button.primary {
+            background-color: #1565C0;
+        }
+        .button.primary:hover {
+            background-color: #1976D2;
+        }
+        
+        /* 과정 링크 스타일 */
+        .course-link {
+            color: #66BB6A;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .course-link:hover {
+            text-decoration: underline;
+        }
+        
+        /* 상태 표시 */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .status-ready { background: #F57C00; color: white; }
+        .status-active { background: #388E3C; color: white; }
+        .status-completed { background: #1976D2; color: white; }
+        .status-pending { background: #7B1FA2; color: white; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>관리자 페이지</h1>
-        
-        <div class="admin-section">
-            <h2>사용자 관리</h2>
-            <button class="button" onclick="window.location.href='/admin/user_analytics'">사용자 분석</button>
-        </div>
-
-        <div class="admin-section">
-            <h2>과정 관리</h2>
-            <button class="button" onclick="showAddCourseModal()">과정 추가</button>
-            <table class="user-list" style="margin-top:10px;">
-                <thead>
-                    <tr>
-                        <th>과정키</th>
-                        <th>과정명</th>
-                        <th>설명</th>
-                        <th>최대인원</th>
-                        <th>생성일</th>
-                        <th>상태</th>
-                        <th>관리</th>
-                    </tr>
-                </thead>
-                <tbody id="courseTableBody">
-                    <!-- 과정 목록이 여기에 동적으로 추가됩니다 -->
-                </tbody>
-            </table>
-        </div>
-
-        <button class="button" onclick="document.cookie='session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'; window.location.href='/'">로그아웃</button>
+    <div class="header">
+        <div class="welcome">관리자 포털</div>
+        <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+    
+    <div class="admin-section">
+        <h2>사용자 관리</h2>
+        <button class="button primary" onclick="window.location.href='/admin/user_analytics'">사용자 분석</button>
     </div>
 
-    <div id="courseModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3); z-index:1000; align-items:center; justify-content:center;">
-        <div style="background:#fff; padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:0 4px 24px rgba(0,0,0,0.15); position:relative;">
-            <h2 id="courseModalTitle" style="margin-bottom:24px; color:#007bff; text-align:center;">코스 추가/수정</h2>
+    <div class="admin-section">
+        <h2>과정 관리</h2>
+        <button class="button" onclick="showAddCourseModal()">과정 추가</button>
+        <table class="user-list" style="margin-top:10px;">
+            <thead>
+                <tr>
+                    <th>과정키</th>
+                    <th>과정명</th>
+                    <th>설명</th>
+                    <th>최대인원</th>
+                    <th>생성일</th>
+                    <th>상태</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody id="courseTableBody">
+                <!-- 과정 목록이 여기에 동적으로 추가됩니다 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div id="courseModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:0 8px 32px rgba(0,0,0,0.3); position:relative; border:1px solid #3E3E3E;">
+            <h2 id="courseModalTitle" style="margin-bottom:24px; color:#FFD700; text-align:center; font-size:1.5em;">코스 추가/수정</h2>
             <form id="courseForm">
                 <input type="hidden" id="modalTrainingKey">
                 <div class="form-group" style="margin-bottom:18px;">
-                    <label style="font-size:15px; margin-bottom:6px;">코스명</label>
-                    <input type="text" id="modalCourseName" required style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">코스명</label>
+                    <input type="text" id="modalCourseName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom:18px;">
-                    <label style="font-size:15px; margin-bottom:6px;">설명</label>
-                    <input type="text" id="modalCourseContent" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">설명</label>
+                    <input type="text" id="modalCourseContent" style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom:18px;">
-                    <label style="font-size:15px; margin-bottom:6px;">최대인원</label>
-                    <input type="number" id="modalMaxMember" min="1" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">최대인원</label>
+                    <input type="number" id="modalMaxMember" min="1" style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom:24px;">
-                    <label style="font-size:15px; margin-bottom:6px;">상태</label>
-                    <select id="modalStatus" style="font-size:16px; padding:10px; border-radius:6px; border:1px solid #ccc;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">상태</label>
+                    <select id="modalStatus" style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;">
                         <option value="10">준비중</option>
                         <option value="20">실행중</option>
-                        <option value="30">종료</option>
-                        <option value="40">보류</option>
+                        <option value="30">완료</option>
                     </select>
                 </div>
-                <div style="margin-top:10px; text-align:center;">
-                    <button type="submit" class="button" style="min-width:100px;">저장</button>
+                <div style="margin-top:20px; text-align:center;">
+                    <button type="submit" class="button" style="min-width:100px; margin-right:10px;">저장</button>
                     <button type="button" class="button danger" onclick="closeCourseModal()" style="min-width:100px;">취소</button>
                 </div>
             </form>
@@ -135,8 +173,33 @@
     </div>
 
     <script>
-        // 세션 체크
-        if (!document.cookie.includes('session_id=1')) {
+        // 권한 체크 함수
+        function checkAdminPermission() {
+            const loginInfo = sessionStorage.getItem('loginInfo');
+            if (!loginInfo) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/';
+                return false;
+            }
+            
+            const userInfo = JSON.parse(loginInfo);
+            if (userInfo.role < 100) {
+                alert('관리자 권한이 필요합니다.');
+                window.location.href = '/training-portal';
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 페이지 로드 시 권한 체크
+        if (!checkAdminPermission()) {
+            // 권한이 없으면 위의 함수에서 리다이렉트됨
+        }
+        
+        // 로그아웃 함수
+        function logout() {
+            sessionStorage.removeItem('loginInfo');
             window.location.href = '/';
         }
 
@@ -145,9 +208,18 @@
             switch(status) {
                 case 10: return '준비중';
                 case 20: return '실행중';
-                case 30: return '종료';
-                case 40: return '보류';
+                case 30: return '완료';
                 default: return status;
+            }
+        }
+        
+        // 상태에 따른 CSS 클래스 반환
+        function getStatusClass(status) {
+            switch(status) {
+                case 10: return 'status-ready';
+                case 20: return 'status-active';
+                case 30: return 'status-completed';
+                default: return 'status-ready';
             }
         }
 
@@ -160,13 +232,14 @@
                 tableBody.innerHTML = '';
                 data.forEach(course => {
                     const row = document.createElement('tr');
+                    const statusClass = getStatusClass(course.training_status);
                     row.innerHTML = `
                         <td>${course.training_key}</td>
-                        <td><a href="#" onclick="goLabPage('${course.training_key}')" style="color:#007bff; text-decoration:underline; font-weight:bold;">${course.course_name}</a></td>
+                        <td><a href="#" onclick="goLabPage('${course.training_key}')" class="course-link">${course.course_name}</a></td>
                         <td>${course.course_content || ''}</td>
                         <td>${course.max_member || ''}</td>
                         <td>${course.create_date || ''}</td>
-                        <td>${statusToText(course.training_status)}</td>
+                        <td><span class="status-badge ${statusClass}">${statusToText(course.training_status)}</span></td>
                         <td>
                             <button class="button" onclick="editCourse('${course.training_key}')">수정</button>
                             <button class="button danger" onclick="deleteCourse('${course.training_key}')">삭제</button>

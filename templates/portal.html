@@ -44,6 +44,8 @@
         const data = await res.json();
         let courseTitle = data.course_name ? `과정명: ${data.course_name}` : '과정 정보 없음';
         if (data.course_status === 10) courseTitle += ' (준비중)';
+        else if (data.course_status === 20) courseTitle += ' (실행중)';
+        else if (data.course_status === 30) courseTitle += ' (완료)';
         document.getElementById('courseTitle').textContent = courseTitle;
         const labs = data.labs || [];
         const table = document.getElementById('labTable');
@@ -65,7 +67,7 @@
                     <td>${lab.lab_id}</td>
                     <td>${isReady ? `<span style='color:#888;'>${lab.lab_name}</span>` : `<a href="/portal/lab_content?training_key=${encodeURIComponent(trainingKey)}&lab_id=${lab.lab_id}&member_id=${encodeURIComponent(memberId)}" style="color:#007bff; text-decoration:underline; font-weight:bold;">${lab.lab_name}</a>`}</td>
                     <td>${lab.lab_content || ''}</td>
-                    <td>${lab.lab_status === 10 ? '준비중' : lab.lab_status === 20 ? '실행중' : lab.lab_status === 30 ? '종료' : lab.lab_status === 40 ? '보류' : lab.lab_status}</td>
+                    <td>${lab.lab_status === 10 ? '준비중' : lab.lab_status === 20 ? '실행중' : lab.lab_status === 30 ? '완료' : lab.lab_status}</td>
                     <td>${lab.create_date || ''}</td>
                 `;
                 if (isReady) {

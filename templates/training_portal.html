@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training Center Portal</title>
+    <style>
+        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
+        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .welcome { font-size:1.5em; font-weight:600; }
+        .logout-btn { background:#FF6B6B; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; }
+        .logout-btn:hover { background:#FF5252; }
+        
+
+        
+        /* 랩 목록 스타일 */
+        .labs-section { margin-bottom:30px; }
+        .labs-section h2 { color:#FFD700; margin-bottom:15px; }
+        .labs-container { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:15px; }
+        .lab-card { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; padding:20px; cursor:pointer; transition:all 0.3s ease; }
+        .lab-card:hover { border-color:#FFD700; transform:translateY(-2px); }
+        .lab-card.disabled { cursor:not-allowed; opacity:0.6; }
+        .lab-card.disabled:hover { border-color:#3E3E3E; transform:none; }
+        .lab-card h3 { margin-top:0; color:#FFD700; font-size:1.2em; }
+        .lab-card p { color:var(--muted); margin-bottom:10px; line-height:1.4; }
+        .lab-meta { display:flex; justify-content:space-between; align-items:center; margin-top:15px; }
+        .lab-status { padding:4px 8px; border-radius:4px; font-size:0.8em; font-weight:600; }
+        .lab-status.ready { background:#FF9800; color:white; }
+        .lab-status.active { background:#4CAF50; color:white; }
+        .lab-status.completed { background:#2196F3; color:white; }
+        .lab-status.unknown { background:#9E9E9E; color:white; }
+        .lab-date { color:var(--muted); font-size:0.9em; }
+        
+        /* 콘텐츠 목록 스타일 */
+        .content-section { margin-bottom:30px; }
+        .content-section h2 { color:#4CAF50; margin-bottom:15px; }
+        .content-layout { display:flex; gap:20px; }
+        .content-sidebar { width:300px; flex-shrink:0; }
+        .content-main { flex:1; }
+        .content-list { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; max-height:600px; overflow-y:auto; }
+        .content-item { padding:15px; border-bottom:1px solid #3E3E3E; cursor:pointer; transition:all 0.3s ease; }
+        .content-item:hover { background:#3E3E3E; }
+        .content-item.active { background:#4CAF50; color:white; }
+        .content-item.active h4 { color:white; }
+        .content-item.disabled { cursor:not-allowed; opacity:0.5; }
+        .content-item.disabled:hover { background:transparent; }
+        .content-item h4 { margin:0 0 5px 0; color:#4CAF50; font-size:1em; }
+        .content-item p { margin:0; color:var(--muted); font-size:0.9em; line-height:1.3; }
+        .content-item .content-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+        .content-type { padding:2px 6px; border-radius:3px; font-size:0.7em; font-weight:600; }
+        .content-type.text { background:#2196F3; color:white; }
+        .content-type.video { background:#FF9800; color:white; }
+        .content-type.file { background:#9C27B0; color:white; }
+        .content-date { color:var(--muted); font-size:0.8em; }
+        
+        /* 마크다운 콘텐츠 영역 */
+        .content-viewer { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; padding:20px; min-height:600px; }
+        .content-viewer h1, .content-viewer h2, .content-viewer h3, .content-viewer h4, .content-viewer h5, .content-viewer h6 { color:#4CAF50; margin-top:20px; margin-bottom:10px; }
+        .content-viewer h1:first-child, .content-viewer h2:first-child, .content-viewer h3:first-child { margin-top:0; }
+        .content-viewer p { line-height:1.6; margin-bottom:15px; }
+        .content-viewer code { background:#3E3E3E; padding:2px 4px; border-radius:3px; font-family:monospace; }
+        .content-viewer pre { background:#3E3E3E; padding:15px; border-radius:5px; overflow-x:auto; margin:15px 0; }
+        .content-viewer pre code { background:none; padding:0; }
+        .content-viewer blockquote { border-left:4px solid #4CAF50; padding-left:15px; margin:15px 0; color:var(--muted); }
+        .content-viewer ul, .content-viewer ol { padding-left:20px; margin:15px 0; }
+        .content-viewer li { margin-bottom:5px; }
+        .content-viewer table { width:100%; border-collapse:collapse; margin:15px 0; }
+        .content-viewer th, .content-viewer td { border:1px solid #3E3E3E; padding:8px; text-align:left; }
+        .content-viewer th { background:#3E3E3E; color:#4CAF50; }
+        .content-viewer a { color:#2196F3; text-decoration:none; }
+        .content-viewer a:hover { text-decoration:underline; }
+        .content-viewer img { max-width:100%; height:auto; border-radius:5px; margin:10px 0; }
+        
+        /* 마크다운 콘텐츠 전용 스타일 */
+        .markdown-content { 
+            font-size: 1.1em; 
+            line-height: 1.7; 
+            color: var(--text); 
+            max-width: 100%;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #4CAF50;
+        }
+        .markdown-content h1 { font-size: 2em; border-bottom: 1px solid #3E3E3E; padding-bottom: 0.3em; }
+        .markdown-content h2 { font-size: 1.5em; border-bottom: 1px solid #3E3E3E; padding-bottom: 0.3em; }
+        .markdown-content h3 { font-size: 1.25em; }
+        .markdown-content p { margin-bottom: 16px; }
+        .markdown-content ul, .markdown-content ol { padding-left: 2em; margin-bottom: 16px; }
+        .markdown-content li { margin-bottom: 0.25em; }
+        .markdown-content blockquote { 
+            padding: 0 1em; 
+            color: var(--muted); 
+            border-left: 0.25em solid #4CAF50; 
+            margin: 0 0 16px 0;
+        }
+        .markdown-content pre { 
+            background: #3E3E3E; 
+            padding: 16px; 
+            border-radius: 6px; 
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        .markdown-content code { 
+            background: #3E3E3E; 
+            padding: 0.2em 0.4em; 
+            border-radius: 3px; 
+            font-size: 85%;
+            font-family: 'Courier New', monospace;
+        }
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .markdown-content table th,
+        .markdown-content table td {
+            padding: 6px 13px;
+            border: 1px solid #3E3E3E;
+        }
+        .markdown-content table th {
+            background-color: #3E3E3E;
+            font-weight: 600;
+            color: #4CAF50;
+        }
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        .markdown-content a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 마크다운 파서 설정
+        marked.setOptions({
+            breaks: true,  // 줄바꿈을 <br>로 변환
+            gfm: true,     // GitHub Flavored Markdown 지원
+            sanitize: false // HTML 태그 허용 (XSS 방지는 서버에서 처리)
+        });
+    </script>
+</head>
+<body>
+    <div class="header">
+        <div class="welcome">Training Center에 오신 것을 환영합니다!</div>
+        <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+    
+    <!-- 랩 목록 -->
+    <div class="labs-section">
+        <h2>랩 목록</h2>
+        <div id="trainingInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:4px; border-left:4px solid #FFD700;">
+            <p style="margin:0; color:var(--muted);">트레이닝 정보를 불러오는 중...</p>
+        </div>
+        <div id="labsList" class="labs-container">
+            <p style="text-align:center; color:var(--muted);">랩 목록을 불러오는 중...</p>
+        </div>
+    </div>
+
+    <!-- 콘텐츠 목록 -->
+    <div id="contentSection" class="content-section" style="display:none;">
+        <h2>콘텐츠 목록</h2>
+        <div id="selectedLabInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:4px; border-left:4px solid #4CAF50;">
+            <p style="margin:0; color:var(--muted);">선택된 랩 정보</p>
+        </div>
+        <div class="content-layout">
+            <div class="content-sidebar">
+                <div id="contentList" class="content-list">
+                    <p style="text-align:center; color:var(--muted); padding:20px;">콘텐츠를 선택하세요</p>
+                </div>
+            </div>
+            <div class="content-main">
+                <div id="contentViewer" class="content-viewer">
+                    <p style="text-align:center; color:var(--muted); margin-top:50px;">왼쪽에서 콘텐츠를 선택하세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 로그인 정보 가져오기 (세션에서)
+        function getLoginInfo() {
+            const loginInfo = sessionStorage.getItem('loginInfo');
+            return loginInfo ? JSON.parse(loginInfo) : null;
+        }
+        
+        // 권한 체크 함수
+        function checkUserPermission() {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/';
+                return false;
+            }
+            
+            // 관리자인 경우 관리자 포털로 리다이렉트
+            if (loginInfo.role >= 100) {
+                window.location.href = '/admin';
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 로그아웃
+        function logout() {
+            sessionStorage.removeItem('loginInfo');
+            window.location.href = '/';
+        }
+        
+        // 랩 상태 텍스트 변환
+        function getLabStatusText(status) {
+            const statusMap = {
+                10: '준비중',
+                20: '실행중',
+                30: '완료'
+            };
+            return statusMap[status] || '알 수 없음';
+        }
+        
+        // 랩 상태 CSS 클래스 변환
+        function getLabStatusClass(status) {
+            const statusMap = {
+                10: 'ready',
+                20: 'active',
+                30: 'completed'
+            };
+            return statusMap[status] || 'unknown';
+        }
+        
+        // 트레이닝 상태 텍스트 변환
+        function getTrainingStatusText(status) {
+            const statusMap = {
+                10: '준비중',
+                20: '실행중',
+                30: '완료'
+            };
+            return statusMap[status] || '알 수 없음';
+        }
+        
+
+        
+        // 랩 목록 로드
+        async function loadLabs() {
+            try {
+                const loginInfo = getLoginInfo();
+                if (!loginInfo) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const response = await fetch(`/api/portal-labs?training_key=${loginInfo.training_key}`);
+                if (!response.ok) {
+                    throw new Error('랩 목록을 불러올 수 없습니다.');
+                }
+                
+                const data = await response.json();
+                const labsContainer = document.getElementById('labsList');
+                const trainingInfoContainer = document.getElementById('trainingInfo');
+                
+                // 트레이닝 정보 표시
+                if (data.training_name) {
+                    const statusText = getTrainingStatusText(data.training_status);
+                    trainingInfoContainer.innerHTML = `
+                        <p style="margin:0; color:var(--text); font-weight:600;">${data.training_name}</p>
+                        <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9em;">상태: ${statusText}</p>
+                    `;
+                }
+                
+                if (data.message) {
+                    labsContainer.innerHTML = `<p style="text-align:center; color:var(--muted);">${data.message}</p>`;
+                    return;
+                }
+                
+                if (data.labs.length === 0) {
+                    labsContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">진행중인 랩이 없습니다.</p>';
+                    return;
+                }
+                
+                let labsHTML = '';
+                data.labs.forEach(lab => {
+                    const statusClass = getLabStatusClass(lab.lab_status);
+                    const statusText = getLabStatusText(lab.lab_status);
+                    const isReady = lab.lab_status === 10;
+                    const isActive = lab.lab_status === 20;
+                    
+                    // 준비중이면 선택 불가능, 실행중이면 선택 가능
+                    const cardClass = isReady ? 'lab-card disabled' : 'lab-card';
+                    const onClick = isActive ? `onclick="openLab(${lab.lab_id})"` : '';
+                    
+                    labsHTML += `
+                        <div class="${cardClass}" ${onClick}>
+                            <h3>${lab.lab_name}</h3>
+                            <p>${lab.lab_content || '설명이 없습니다.'}</p>
+                            <div class="lab-meta">
+                                <span class="lab-status ${statusClass}">${statusText}</span>
+                                <span class="lab-date">${lab.create_date}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                labsContainer.innerHTML = labsHTML;
+                
+            } catch (error) {
+                console.error('랩 목록 로드 실패:', error);
+                document.getElementById('labsList').innerHTML = 
+                    '<p style="text-align:center; color:#FF6B6B;">랩 목록을 불러오는데 실패했습니다.</p>';
+                document.getElementById('trainingInfo').innerHTML = 
+                    '<p style="margin:0; color:#FF6B6B;">트레이닝 정보를 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        // 랩 열기
+        function openLab(labId) {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // 선택된 랩 정보 저장
+            window.selectedLabId = labId;
+            
+            // 콘텐츠 섹션 표시
+            document.getElementById('contentSection').style.display = 'block';
+            
+            // 콘텐츠 목록 로드
+            loadContents(labId);
+        }
+        
+        // 콘텐츠 목록 로드
+        async function loadContents(labId) {
+            try {
+                const loginInfo = getLoginInfo();
+                if (!loginInfo) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const response = await fetch(`/api/admin/lab_contents?training_key=${loginInfo.training_key}&lab_id=${labId}`);
+                if (!response.ok) {
+                    throw new Error('콘텐츠 목록을 불러올 수 없습니다.');
+                }
+                
+                const contents = await response.json();
+                const contentContainer = document.getElementById('contentList');
+                const selectedLabInfoContainer = document.getElementById('selectedLabInfo');
+                
+                // 선택된 랩 정보 표시
+                const labCards = document.querySelectorAll('.lab-card');
+                let selectedLabName = '';
+                labCards.forEach(card => {
+                    // onclick 속성이 있는지 확인하고 해당 랩 ID가 포함되어 있는지 확인
+                    const onclickAttr = card.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes(`openLab(${labId})`)) {
+                        const labName = card.querySelector('h3').textContent;
+                        selectedLabName = labName;
+                    }
+                });
+                
+                selectedLabInfoContainer.innerHTML = `
+                    <p style="margin:0; color:var(--text); font-weight:600;">${selectedLabName}</p>
+                    <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9em;">콘텐츠 수: ${contents.length}개</p>
+                `;
+                
+                if (contents.length === 0) {
+                    contentContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">이 랩에는 콘텐츠가 없습니다.</p>';
+                    return;
+                }
+                
+                // view_number로 정렬
+                contents.sort((a, b) => a.view_number - b.view_number);
+                
+                let contentsHTML = '';
+                contents.forEach((content, index) => {
+                    const isActive = content.lab_content_status === 1;
+                    const isFirst = index === 0 && isActive;
+                    
+                    // 활성 상태가 아니면 비활성화된 스타일 적용
+                    const itemClass = isActive ? 'content-item' : 'content-item disabled';
+                    const onClick = isActive ? `onclick="openContent(${content.content_id}, this)"` : '';
+                    
+                    contentsHTML += `
+                        <div class="${itemClass}" ${onClick}>
+                            <h4>${content.lab_content_subject || '제목 없음'}</h4>
+                            <div class="content-meta">
+                                <span class="content-date">${content.lab_content_create_date}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                contentContainer.innerHTML = contentsHTML;
+                
+                // 첫 번째 활성 콘텐츠 자동 로드
+                if (contents.length > 0) {
+                    const firstActiveContent = contents.find(content => content.lab_content_status === 1);
+                    if (firstActiveContent) {
+                        const firstActiveElement = contentContainer.querySelector('.content-item:not(.disabled)');
+                        if (firstActiveElement) {
+                            openContent(firstActiveContent.content_id, firstActiveElement);
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('콘텐츠 목록 로드 실패:', error);
+                document.getElementById('contentList').innerHTML = 
+                    '<p style="text-align:center; color:#FF6B6B;">콘텐츠 목록을 불러오는데 실패했습니다.</p>';
+                document.getElementById('selectedLabInfo').innerHTML = 
+                    '<p style="margin:0; color:#FF6B6B;">랩 정보를 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        // 콘텐츠 타입에 따른 CSS 클래스 반환
+        function getContentTypeClass(type) {
+            switch(type) {
+                case 'text': return 'text';
+                case 'video': return 'video';
+                case 'file': return 'file';
+                default: return 'text';
+            }
+        }
+        
+        // 콘텐츠 타입에 따른 텍스트 반환
+        function getContentTypeText(type) {
+            switch(type) {
+                case 'text': return '텍스트';
+                case 'video': return '비디오';
+                case 'file': return '파일';
+                default: return '텍스트';
+            }
+        }
+        
+        // 콘텐츠 열기
+        async function openContent(contentId, element) {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // 활성 상태 업데이트
+            document.querySelectorAll('.content-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (element) {
+                element.classList.add('active');
+            }
+            
+            // 콘텐츠 조회 로그 기록
+            try {
+                await fetch('/api/portal/log_content_view', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        training_key: loginInfo.training_key,
+                        member_id: loginInfo.member_id,
+                        lab_id: window.selectedLabId,
+                        content_id: contentId
+                    })
+                });
+            } catch (error) {
+                console.error('콘텐츠 조회 로그 기록 실패:', error);
+            }
+            
+            // 콘텐츠 로드
+            loadContentDetail(contentId);
+        }
+        
+        // 콘텐츠 상세 로드
+        async function loadContentDetail(contentId) {
+            try {
+                const loginInfo = getLoginInfo();
+                if (!loginInfo) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const response = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${loginInfo.training_key}&lab_id=${window.selectedLabId}`);
+                if (!response.ok) {
+                    throw new Error('콘텐츠를 불러올 수 없습니다.');
+                }
+                
+                const content = await response.json();
+                const contentViewer = document.getElementById('contentViewer');
+                
+                            // 콘텐츠 타입에 따라 다르게 처리
+            const contentText = content.lab_content || '(내용 없음)';
+            
+            // 디버깅을 위한 콘텐츠 타입 로그
+            console.log('Content type:', content.lab_content_type);
+            console.log('Content text:', contentText);
+            console.log('Marked library available:', typeof marked !== 'undefined');
+            
+            if (content.lab_content_type === 0) {
+                // 타입 0: URL 기반 마크다운 처리
+                if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                    try {
+                        const markdownResponse = await fetch(`/api/proxy-markdown?url=${encodeURIComponent(contentText)}`);
+                        if (markdownResponse.ok) {
+                            const markdownText = await markdownResponse.text();
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                <div class="markdown-content">${marked.parse(markdownText)}</div>
+                            `;
+                        } else {
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러올 수 없습니다.</p>
+                            `;
+                        }
+                    } catch (e) {
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러오는 중 오류 발생.</p>
+                        `;
+                    }
+                } else {
+                    // URL이 아니지만 마크다운 텍스트인 경우 자동으로 파싱
+                    try {
+                        const parsedMarkdown = marked.parse(contentText);
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div class="markdown-content">${parsedMarkdown}</div>
+                        `;
+                        console.log('Auto-detected markdown content and parsed successfully');
+                    } catch (error) {
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <p style="color:#FF6B6B;">유효하지 않은 마크다운 URL입니다.</p>
+                        `;
+                    }
+                }
+            } else if (content.lab_content_type === 2) {
+                // 타입 2: Text(Markdown) 처리 - 직접 입력된 마크다운 텍스트
+                try {
+                    const parsedMarkdown = marked.parse(contentText);
+                    contentViewer.innerHTML = `
+                        <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                        <div class="markdown-content">${parsedMarkdown}</div>
+                    `;
+                    console.log('Markdown parsed successfully');
+                } catch (error) {
+                    console.error('Markdown parsing error:', error);
+                    contentViewer.innerHTML = `
+                        <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                        <div class="markdown-content">
+                            <p style="color:#FF6B6B;">마크다운 파싱 중 오류가 발생했습니다.</p>
+                            <pre style="background: #3E3E3E; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
+                        </div>
+                    `;
+                }
+                } else if (content.lab_content_type === 1) {
+                    // 타입 1: 웹페이지 링크 버튼
+                    if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div style="text-align: center; padding: 40px 20px;">
+                                <div style="margin-bottom: 20px;">
+                                    <p style="font-size: 1.1em; color: var(--muted); margin-bottom: 10px;">이 콘텐츠는 외부 웹페이지입니다.</p>
+                                    <p style="color: var(--muted); margin-bottom: 30px;">아래 버튼을 클릭하여 웹페이지를 확인하세요.</p>
+                                </div>
+                                <a href="${contentText}" target="_blank" style="
+                                    display: inline-block;
+                                    background: #4CAF50;
+                                    color: white;
+                                    padding: 15px 30px;
+                                    border-radius: 8px;
+                                    text-decoration: none;
+                                    font-weight: 600;
+                                    font-size: 1.1em;
+                                    transition: background-color 0.3s ease;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                " onmouseover="this.style.background='#45a049'" onmouseout="this.style.background='#4CAF50'">
+                                    🌐 웹페이지 열기
+                                </a>
+                                <div style="margin-top: 20px; font-size: 0.9em; color: var(--muted);">
+                                    <p>링크: <a href="${contentText}" target="_blank" style="color: #2196F3; text-decoration: underline;">${contentText}</a></p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <p style="color:#FF6B6B;">웹페이지 URL이 아닙니다.</p>
+                        `;
+                    }
+                } else {
+                    // 기타 타입: 마크다운 텍스트인지 확인하여 자동 파싱
+                    try {
+                        const parsedMarkdown = marked.parse(contentText);
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div class="markdown-content">${parsedMarkdown}</div>
+                        `;
+                        console.log('Auto-detected markdown content for unknown type and parsed successfully');
+                    } catch (error) {
+                        // 마크다운 파싱 실패 시 기본 텍스트 처리
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <pre style="background: #3E3E3E; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
+                        `;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('콘텐츠 상세 로드 실패:', error);
+                document.getElementById('contentViewer').innerHTML = `
+                    <p style="text-align:center; color:#FF6B6B;">콘텐츠를 불러오는데 실패했습니다.</p>
+                `;
+            }
+        }
+        
+
+        
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', function() {
+            // 권한 체크
+            if (!checkUserPermission()) {
+                return;
+            }
+            
+            const loginInfo = getLoginInfo();
+            
+            // 환영 메시지 업데이트
+            document.querySelector('.welcome').textContent = 
+                `${loginInfo.member_name}님, Training Center에 오신 것을 환영합니다!`;
+            
+            loadLabs();
+        });
+    </script>
+</body>
+</html>

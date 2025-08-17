@@ -3,217 +3,486 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 페이지</title>
+    <title>HTC 8월 일정관리</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .error {
-            color: red;
-            margin-top: 5px;
-        }
+        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
+        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        .controls { display:flex; justify-content:space-between; gap:10px; margin-bottom:12px; }
+        select { background: var(--panel); color:var(--text); border:1px solid #3E3E3E; padding:6px 8px; border-radius:4px; }
+        .schedule-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:0.9em; }
+        .schedule-table th, .schedule-table td { border:1px solid #3E3E3E; padding:10px; text-align:left; }
+        .schedule-table th { background: var(--accent); color:var(--text); font-weight:600; }
+        .schedule-table td { background: var(--panel); color:var(--text); }
+        .schedule-table tr:hover td { background: #2a2d35; }
+        .status-working { color:#FFD700; font-weight:600; }
+        .status-working td { color:#FFD700; font-weight:600; }
+        .status-planned { color:var(--text); }
+        .status-planned td { color:var(--text); }
+        .status-cancelled { color:#FF6B6B; text-decoration:line-through; }
+        .status-cancelled td { color:#FF6B6B; text-decoration:line-through; }
+        
+        /* 탭 스타일 */
+        .tab-container { display:flex; margin-bottom:20px; border-bottom:1px solid #3E3E3E; }
+        .tab-button { background:var(--panel); color:var(--text); border:none; padding:12px 24px; cursor:pointer; border-radius:4px 4px 0 0; margin-right:4px; }
+        .tab-button:hover { background:#2a2d35; }
+        .tab-button.active { background:var(--accent); color:var(--text); }
+        
+        /* 탭 콘텐츠 */
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+        
+        /* 로그인 폼 스타일 */
+        .login-container { max-width:400px; margin:40px auto; padding:30px; background:var(--panel); border-radius:8px; border:1px solid #3E3E3E; }
+        .login-form { display:flex; flex-direction:column; gap:20px; }
+        .form-group { display:flex; flex-direction:column; gap:8px; }
+        .form-group label { color:var(--text); font-weight:600; }
+        .form-group input { background:var(--bg); color:var(--text); border:1px solid #3E3E3E; padding:12px; border-radius:4px; font-size:14px; }
+        .form-group input:focus { outline:none; border-color:#FFD700; }
+        .login-button { background:#FFD700; color:#000; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
+        .login-button:hover { background:#FFED4E; }
+        .register-button { background:#1565C0; color:white; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
+        .register-button:hover { background:#1976D2; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>로그인</h1>
-        
-        <!-- 로그인 섹션 -->
-        <div class="section">
-            <h2>로그인</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="loginTrainingKey">트레이닝 키</label>
-                    <input type="text" id="loginTrainingKey" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginUsername">아이디</label>
-                    <input type="text" id="loginUsername" required>
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">비밀번호</label>
-                    <input type="password" id="loginPassword" required>
-                </div>
-                <button type="submit">로그인</button>
-                <div id="loginError" class="error"></div>
-            </form>
-            <div style="margin-top:10px;">
-                <a href="/register">회원가입</a>
+    <h1>HTC 8월 일정관리</h1>
+    
+    <!-- 탭 네비게이션 -->
+    <div class="tab-container">
+        <button class="tab-button active" onclick="showTab('schedule')">일정관리</button>
+        <button class="tab-button" onclick="showTab('training')">Training Center</button>
+    </div>
+    
+    <!-- 일정관리 탭 -->
+    <div id="schedule-tab" class="tab-content active">
+        <div class="controls">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="yearSelect"></select>
+                <select id="monthSelect"></select>
             </div>
         </div>
-
-        <!-- 회원가입 섹션 (초기에는 숨김) -->
-        <div class="section" id="registerSection" style="display:none;">
-            <h2>회원 가입</h2>
-            <form id="registerForm">
+        
+        <div id="scheduleList"></div>
+    </div>
+    
+    <!-- Training Center 탭 -->
+    <div id="training-tab" class="tab-content">
+        <div class="login-container">
+            <h2>Training Center 로그인</h2>
+            <form id="loginForm" class="login-form">
+                                 <div class="form-group">
+                     <label for="trainingKey">트레이닝 키 (관리자는 비워둘 수 있음)</label>
+                     <input type="text" id="trainingKey" name="trainingKey" placeholder="트레이닝 키를 입력하세요 (관리자는 비워둘 수 있음)">
+                 </div>
                 <div class="form-group">
-                    <label>아이디</label>
-                    <span id="registerUserId" style="font-weight:bold;"></span>
+                    <label for="username">아이디</label>
+                    <input type="text" id="username" name="username" required placeholder="아이디를 입력하세요">
                 </div>
                 <div class="form-group">
-                    <label for="registerName">이름</label>
-                    <input type="text" id="registerName" required>
+                    <label for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" required placeholder="비밀번호를 입력하세요">
                 </div>
-                <div class="form-group">
-                    <label for="registerPassword">비밀번호</label>
-                    <input type="password" id="registerPassword" required>
-                </div>
-                <button type="submit">회원 가입</button>
-                <div id="registerError" class="error"></div>
+                <button type="submit" class="login-button">로그인</button>
             </form>
-            <div id="registerResult" style="margin-top:15px;"></div>
+            <div id="loginMessage" style="margin-top:15px; text-align:center; color:var(--muted);"></div>
+            <div style="margin-top:20px; text-align:center;">
+                <button type="button" class="register-button" onclick="showRegisterForm()">회원가입</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 회원가입 모달 -->
+    <div id="registerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:0 8px 32px rgba(0,0,0,0.3); position:relative; border:1px solid #3E3E3E;">
+            <h2 id="registerModalTitle" style="margin-bottom:24px; color:#FFD700; text-align:center; font-size:1.5em;">회원가입</h2>
+            
+            <!-- 트레이닝 키 확인 단계 -->
+            <div id="trainingKeyStep">
+                <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">트레이닝 키</label>
+                    <input type="text" id="registerTrainingKey" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="트레이닝 키를 입력하세요">
+                </div>
+                <div style="margin-top:20px; text-align:center;">
+                    <button type="button" class="login-button" onclick="checkTrainingKey()" style="min-width:100px; margin-right:10px;">확인</button>
+                    <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px;">취소</button>
+                </div>
+            </div>
+
+            <!-- 회원가입 폼 단계 -->
+            <div id="registerFormStep" style="display:none;">
+                <form id="registerForm">
+                    <div class="form-group" style="margin-bottom:18px;">
+                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">이름</label>
+                        <input type="text" id="registerName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="이름을 입력하세요">
+                    </div>
+                    <div class="form-group" style="margin-bottom:18px;">
+                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호</label>
+                        <input type="password" id="registerPassword" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 입력하세요">
+                    </div>
+                    <div class="form-group" style="margin-bottom:24px;">
+                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호 확인</label>
+                        <input type="password" id="registerPasswordConfirm" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 다시 입력하세요">
+                    </div>
+                    <div style="margin-top:20px; text-align:center;">
+                        <button type="submit" class="login-button" style="min-width:100px; margin-right:10px;">가입하기</button>
+                        <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px;">취소</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 가입 완료 단계 -->
+            <div id="registerCompleteStep" style="display:none;">
+                <div style="text-align:center; margin-bottom:24px;">
+                    <h3 style="color:#4CAF50; margin-bottom:16px;">🎉 회원가입이 완료되었습니다!</h3>
+                    <p style="color:var(--text); margin-bottom:8px;">이름: <span id="completeName" style="font-weight:600; color:#FFD700;"></span></p>
+                    <p style="color:var(--text); margin-bottom:16px;">아이디: <span id="completeId" style="font-weight:600; color:#FFD700;"></span></p>
+                    <p style="color:var(--muted); font-size:14px;">위의 아이디로 로그인해주세요.</p>
+                </div>
+                <div style="text-align:center;">
+                    <button type="button" class="login-button" onclick="closeRegisterModal()" style="min-width:100px;">확인</button>
+                </div>
+            </div>
+
+            <div id="registerMessage" style="margin-top:15px; text-align:center; color:var(--muted);"></div>
         </div>
     </div>
 
     <script>
-        // 로그인 폼 제출 처리
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        // 탭 전환 함수
+        function showTab(tabName) {
+            // 모든 탭 버튼에서 active 클래스 제거
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // 모든 탭 콘텐츠에서 active 클래스 제거
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 선택된 탭 버튼에 active 클래스 추가
+            event.target.classList.add('active');
+            
+            // 선택된 탭 콘텐츠에 active 클래스 추가
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+        
+        function initializeSelects(){
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            
+            // 2025년 8월로 고정
+            const opt = document.createElement('option'); 
+            opt.value=2025; 
+            opt.textContent='2025년'; 
+            opt.selected=true; 
+            yearSelect.appendChild(opt);
+            
+            const monthOpt = document.createElement('option'); 
+            monthOpt.value=8; 
+            monthOpt.textContent='8월'; 
+            monthOpt.selected=true; 
+            monthSelect.appendChild(monthOpt);
+        }
+
+        function parseEventDate(event){
+            try{
+                // year 컬럼이 datetime 타입이므로 직접 사용
+                if(event.year){
+                    return new Date(event.year);
+                }
+                if(event.start_datetime){
+                    return new Date(event.start_datetime.replace(' ', 'T'));
+                }
+            }catch(e){ console.warn('parseEventDate error', e); }
+            return null;
+        }
+
+        function formatTime(seconds) {
+            if (!seconds || seconds === '') return '';
+            
+            // 숫자인 경우 초 단위로 처리
+            if (typeof seconds === 'number' || !isNaN(parseInt(seconds))) {
+                const totalSeconds = parseInt(seconds);
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+            
+            // 이미 시간 형식인 경우 그대로 반환
+            return seconds;
+        }
+
+        async function loadSchedule(){
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            
+            const resp = await fetch(`/api/events?year=${year}&month=${month}`);
+            let events = await resp.json();
+
+            // 공개 항목만 필터링하고 Done 상태 제외
+            events = events.filter(ev => (ev.is_public == 1 || ev.is_public === true || ev.is_public === '1') && ev.status !== 'Done');
+            
+            // 날짜 순으로 정렬
+            events.sort((a,b)=> (parseEventDate(a)||0) - (parseEventDate(b)||0));
+
+            const scheduleContainer = document.getElementById('scheduleList');
+            
+            if(events.length === 0) {
+                scheduleContainer.innerHTML = '<p style="text-align:center; color:var(--muted); margin-top:40px;">해당 월의 일정이 없습니다.</p>';
+                return;
+            }
+
+            let table = `
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>업무</th>
+                            <th>고객</th>
+                            <th>상태</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            events.forEach(ev=>{
+                const dt = parseEventDate(ev);
+                const dateStr = dt ? dt.toLocaleDateString('ko-KR', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
+                
+                const title = ev.job_title || '';
+                const client = ev.client || '';
+                
+                let statusClass = '';
+                let statusText = ev.status || '';
+                if(ev.status === 'Done') statusClass = 'status-done';
+                else if(ev.status === 'Working') statusClass = 'status-working';
+                else if(ev.status === 'Planned') statusClass = 'status-planned';
+                else if(ev.status === 'Cancelled') statusClass = 'status-cancelled';
+
+                table += `
+                    <tr class="${statusClass}">
+                        <td>${dateStr}</td>
+                        <td>${title}</td>
+                        <td>${client}</td>
+                        <td>${statusText}</td>
+                    </tr>
+                `;
+            });
+
+            table += '</tbody></table>';
+            scheduleContainer.innerHTML = table;
+        }
+
+        // 로그인 폼 제출 이벤트
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const trainingKey = document.getElementById('loginTrainingKey').value;
-            const username = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-            const errorDiv = document.getElementById('loginError');
-            errorDiv.textContent = '';
+            
+            const trainingKey = document.getElementById('trainingKey').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('loginMessage');
+            
+                         if (!username || !password) {
+                 messageDiv.textContent = '아이디와 비밀번호를 입력해주세요.';
+                 messageDiv.style.color = '#FF6B6B';
+                 return;
+             }
+            
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ training_key: trainingKey, username, password }),
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    document.cookie = "session_id=1; path=/";
-                    // 로그인 성공 시 정보 저장
-                    localStorage.setItem("member_id", username);
-                    localStorage.setItem("training_key", trainingKey);
-                    // role이 100 이상인 경우 관리자 페이지로, 그렇지 않은 경우 일반 포털로 이동
-                    if (data.role >= 100) {
-                        window.location.href = '/admin';
-                    } else {
-                        window.location.href = '/portal';
-                    }
-                } else {
-                    errorDiv.textContent = data.detail;
-                }
-            } catch (error) {
-                errorDiv.textContent = '서버 오류가 발생했습니다.';
-            }
-        });
-
-        // 트레이닝 키 폼 제출 처리
-        document.getElementById('trainingKeyForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const trainingKey = document.getElementById('trainingKey').value;
-            const errorDiv = document.getElementById('trainingKeyError');
-            errorDiv.textContent = '';
-            try {
-                const response = await fetch('http://localhost:8000/api/check-training-key', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ training_key: trainingKey })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    // 다음 회원 번호 받아오기
-                    const nextRes = await fetch('http://localhost:8000/api/next-member-key', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ training_key: trainingKey })
-                    });
-                    const nextData = await nextRes.json();
-                    if (nextRes.ok) {
-                        document.getElementById('registerUserId').textContent = 'labuser' + nextData.next_member_key;
-                        document.getElementById('registerSection').style.display = '';
-                        document.getElementById('trainingKeySection').style.display = 'none';
-                        document.getElementById('registerForm').dataset.trainingKey = trainingKey;
-                        document.getElementById('registerForm').dataset.memberKey = nextData.next_member_key;
-                    } else {
-                        errorDiv.textContent = nextData.detail;
-                    }
-                } else {
-                    errorDiv.textContent = data.detail;
-                }
-            } catch (error) {
-                errorDiv.textContent = '서버 오류가 발생했습니다.';
-            }
-        });
-
-        // 회원가입 폼 제출 처리
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const trainingKey = e.target.dataset.trainingKey;
-            const memberKey = e.target.dataset.memberKey;
-            const memberId = document.getElementById('registerUserId').textContent;
-            const memberName = document.getElementById('registerName').value;
-            const password = document.getElementById('registerPassword').value;
-            const errorDiv = document.getElementById('registerError');
-            const resultDiv = document.getElementById('registerResult');
-            errorDiv.textContent = '';
-            resultDiv.textContent = '';
-            try {
-                const response = await fetch('http://localhost:8000/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({
                         training_key: trainingKey,
-                        member_key: memberKey,
-                        member_id: memberId,
-                        member_name: memberName,
-                        member_password: password
+                        username: username,
+                        password: password
                     })
                 });
-                const data = await response.json();
+                
+                const result = await response.json();
+                
                 if (response.ok) {
-                    resultDiv.innerHTML = `<b>회원가입 성공!</b><br>아이디: ${data.member_id}`;
+                    // 로그인 성공
+                    const role = result.role;
+                    
+                    // role 값에 따라 다른 메시지와 이동 경로 설정
+                    if (role >= 100) {
+                        // 관리자 (role >= 100)
+                        messageDiv.textContent = '로그인 성공! 관리자 포털로 이동합니다...';
+                        messageDiv.style.color = '#4CAF50';
+                        
+                        // 로그인 정보를 세션에 저장
+                        sessionStorage.setItem('loginInfo', JSON.stringify({
+                            training_key: result.training_key || trainingKey,
+                            member_id: username,
+                            member_name: username, // 실제로는 서버에서 이름을 가져와야 함
+                            role: role
+                        }));
+                        
+                        // 잠시 후 관리자 포털로 이동
+                        setTimeout(() => {
+                            window.location.href = '/admin';
+                        }, 1000);
+                    } else {
+                        // 일반 사용자 (role < 100)
+                        messageDiv.textContent = '로그인 성공! 포털로 이동합니다...';
+                        messageDiv.style.color = '#4CAF50';
+                        
+                        // 로그인 정보를 세션에 저장
+                        sessionStorage.setItem('loginInfo', JSON.stringify({
+                            training_key: result.training_key || trainingKey,
+                            member_id: username,
+                            member_name: username, // 실제로는 서버에서 이름을 가져와야 함
+                            role: role
+                        }));
+                        
+                        // 잠시 후 일반 포털로 이동
+                        setTimeout(() => {
+                            window.location.href = '/training-portal';
+                        }, 1000);
+                    }
+                    
                 } else {
-                    errorDiv.textContent = data.detail;
+                    // 로그인 실패
+                    messageDiv.textContent = result.detail || '로그인에 실패했습니다.';
+                    messageDiv.style.color = '#FF6B6B';
                 }
+                
             } catch (error) {
-                errorDiv.textContent = '서버 오류가 발생했습니다.';
+                console.error('로그인 오류:', error);
+                messageDiv.textContent = '로그인 중 오류가 발생했습니다.';
+                messageDiv.style.color = '#FF6B6B';
             }
+        });
+        
+        // 회원가입 모달 관련 함수들
+        function showRegisterForm() {
+            document.getElementById('registerModal').style.display = 'flex';
+            resetRegisterModal();
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').style.display = 'none';
+            resetRegisterModal();
+        }
+
+        function resetRegisterModal() {
+            document.getElementById('trainingKeyStep').style.display = 'block';
+            document.getElementById('registerFormStep').style.display = 'none';
+            document.getElementById('registerCompleteStep').style.display = 'none';
+            document.getElementById('registerTrainingKey').value = '';
+            document.getElementById('registerName').value = '';
+            document.getElementById('registerPassword').value = '';
+            document.getElementById('registerPasswordConfirm').value = '';
+            document.getElementById('registerMessage').textContent = '';
+            document.getElementById('registerMessage').style.color = 'var(--muted)';
+        }
+
+        // 트레이닝 키 확인
+        async function checkTrainingKey() {
+            const trainingKey = document.getElementById('registerTrainingKey').value;
+            const messageDiv = document.getElementById('registerMessage');
+            
+            if (!trainingKey) {
+                messageDiv.textContent = '트레이닝 키를 입력해주세요.';
+                messageDiv.style.color = '#FF6B6B';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/check-training-key', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        training_key: trainingKey
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 트레이닝 키가 유효하면 회원가입 폼 표시
+                    document.getElementById('trainingKeyStep').style.display = 'none';
+                    document.getElementById('registerFormStep').style.display = 'block';
+                    messageDiv.textContent = '';
+                } else {
+                    messageDiv.textContent = result.detail || '유효하지 않은 트레이닝 키입니다.';
+                    messageDiv.style.color = '#FF6B6B';
+                }
+                
+            } catch (error) {
+                console.error('트레이닝 키 확인 오류:', error);
+                messageDiv.textContent = '트레이닝 키 확인 중 오류가 발생했습니다.';
+                messageDiv.style.color = '#FF6B6B';
+            }
+        }
+
+        // 회원가입 폼 제출
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const trainingKey = document.getElementById('registerTrainingKey').value;
+            const name = document.getElementById('registerName').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            const messageDiv = document.getElementById('registerMessage');
+            
+            if (!name || !password || !passwordConfirm) {
+                messageDiv.textContent = '모든 필드를 입력해주세요.';
+                messageDiv.style.color = '#FF6B6B';
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                messageDiv.textContent = '비밀번호가 일치하지 않습니다.';
+                messageDiv.style.color = '#FF6B6B';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        training_key: trainingKey,
+                        name: name,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // 회원가입 성공
+                    document.getElementById('registerFormStep').style.display = 'none';
+                    document.getElementById('registerCompleteStep').style.display = 'block';
+                    document.getElementById('completeName').textContent = result.name;
+                    document.getElementById('completeId').textContent = result.member_id;
+                    messageDiv.textContent = '';
+                } else {
+                    messageDiv.textContent = result.detail || '회원가입에 실패했습니다.';
+                    messageDiv.style.color = '#FF6B6B';
+                }
+                
+            } catch (error) {
+                console.error('회원가입 오류:', error);
+                messageDiv.textContent = '회원가입 중 오류가 발생했습니다.';
+                messageDiv.style.color = '#FF6B6B';
+            }
+        });
+
+        // 페이지 로드 시 실행
+        document.addEventListener('DOMContentLoaded', ()=>{
+            initializeSelects();
+            loadSchedule();
         });
     </script>
 </body>
-</html> 
+</html>

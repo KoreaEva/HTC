@@ -2,84 +2,99 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>사용자 분석</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            padding: 20px;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #eee;
-        }
-        .header h1 {
-            margin: 0;
-            color: #333;
-            font-size: 24px;
-        }
+        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
+        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .welcome { font-size:1.5em; font-weight:600; color:#FFD700; }
         .button {
-            background: #007bff;
+            background-color: #1565C0;
             color: white;
+            padding: 10px 20px;
             border: none;
-            padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
             text-decoration: none;
             display: inline-block;
+            margin: 5px;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
         .button:hover {
-            background: #0056b3;
+            background-color: #1976D2;
+            transform: translateY(-1px);
         }
+        
+        /* 섹션 스타일 */
+        .analytics-section { 
+            margin-bottom:30px; 
+            padding:20px; 
+            background:var(--panel); 
+            border:1px solid #3E3E3E; 
+            border-radius:8px; 
+        }
+        .analytics-section h2 { 
+            color:#FFD700; 
+            margin-bottom:15px; 
+            font-size:1.3em;
+        }
+        
+        /* 테이블 스타일 */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
         }
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #3E3E3E;
         }
         th {
-            background: #f8f9fa;
+            background-color: var(--accent);
+            color: #FFD700;
             font-weight: 600;
-            color: #333;
         }
         tr:hover {
-            background: #f8f9fa;
+            background-color: #3E3E3E;
         }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* 랩 링크 스타일 */
+        .lab-link {
+            color: #66BB6A;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .lab-link:hover {
+            text-decoration: underline;
+        }
+        
         #chartContainer {
             margin-top: 40px;
-            border: 1px solid #eee;
+            border: 1px solid #3E3E3E;
             padding: 20px;
             border-radius: 8px;
-            background: #fafbfc;
-            min-height: 400px; /* 차트 영역 최소 높이 */
+            background: var(--panel);
+            min-height: 400px;
             display: flex;
             justify-content: center;
             align-items: center;
             font-size: 1.2em;
-            color: #777;
+            color: var(--muted);
         }
         .chart-title {
             text-align: center;
             margin-bottom: 20px;
-            color: #333;
+            color: #FFD700;
         }
         canvas {
             max-width: 100%;
@@ -89,12 +104,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>사용자 분석</h1>
-            <button class="button" onclick="window.location.href='/admin'">뒤로가기</button>
-        </div>
-
+    <div class="header">
+        <div class="welcome">사용자 분석</div>
+        <button class="button" onclick="window.location.href='/admin'">뒤로가기</button>
+    </div>
+    
+    <div class="analytics-section">
         <h2>랩별 사용자 통계</h2>
         <table id="labUserCountsTable">
             <thead>
@@ -122,8 +137,21 @@
         // 랩별 사용자 수 불러오기
         async function loadLabUserCounts() {
             try {
-                // training_key는 세션이나 다른 방식으로 가져와야 합니다. 여기서는 예시로 하드코딩
-                const trainingKey = '2025060701'; // 실제 training_key로 대체 필요
+                // 세션에서 로그인 정보 가져오기
+                const loginInfo = sessionStorage.getItem('loginInfo');
+                if (!loginInfo) {
+                    alert('로그인이 필요합니다.');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const userInfo = JSON.parse(loginInfo);
+                const trainingKey = userInfo.training_key;
+                
+                if (!trainingKey) {
+                    alert('트레이닝 키 정보가 없습니다.');
+                    return;
+                }
 
                 const response = await fetch(`/api/admin/lab_user_counts?training_key=${trainingKey}`);
                 if (!response.ok) {
@@ -142,7 +170,7 @@
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${lab.lab_id}</td>
-                        <td><a href="#" onclick="displayUserContentProgress(${lab.lab_id}, '${trainingKey}', '${lab.lab_name}')" style="color:#007bff; text-decoration:underline;">${lab.lab_name}</a></td>
+                        <td><a href="#" onclick="displayUserContentProgress(${lab.lab_id}, '${trainingKey}', '${lab.lab_name}')" class="lab-link">${lab.lab_name}</a></td>
                         <td>${lab.user_count}</td>
                         <td>
                             <button class="button" onclick="displayUserContentProgress(${lab.lab_id}, '${trainingKey}', '${lab.lab_name}')">진도 보기</button>
@@ -264,8 +292,31 @@
             return text;
         }
 
-        // 페이지 로드 시 랩별 사용자 수 불러오기
-        document.addEventListener('DOMContentLoaded', loadLabUserCounts);
+        // 권한 체크 함수
+        function checkAdminPermission() {
+            const loginInfo = sessionStorage.getItem('loginInfo');
+            if (!loginInfo) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/';
+                return false;
+            }
+            
+            const userInfo = JSON.parse(loginInfo);
+            if (userInfo.role < 100) {
+                alert('관리자 권한이 필요합니다.');
+                window.location.href = '/training-portal';
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 페이지 로드 시 권한 체크 및 랩별 사용자 수 불러오기
+        document.addEventListener('DOMContentLoaded', function() {
+            if (checkAdminPermission()) {
+                loadLabUserCounts();
+            }
+        });
     </script>
 </body>
 </html> 

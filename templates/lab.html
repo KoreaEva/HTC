@@ -169,8 +169,7 @@
                     <select id="labStatus" required>
                         <option value="10">준비중</option>
                         <option value="20">실행중</option>
-                        <option value="30">종료</option>
-                        <option value="40">보류</option>
+                        <option value="30">완료</option>
                     </select>
                 </div>
                 <div class="form-actions">
@@ -220,8 +219,7 @@
             const statusMap = {
                 10: '준비중',
                 20: '실행중',
-                30: '종료',
-                40: '보류'
+                30: '완료'
             };
             return statusMap[status] || '알 수 없음';
         }
