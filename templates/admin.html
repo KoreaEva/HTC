@@ -115,7 +115,7 @@
     
     <div class="admin-section">
         <h2>사용자 관리</h2>
-        <button class="button primary" onclick="window.location.href='/admin/user_analytics'">사용자 분석</button>
+        <p style="color: var(--muted); margin: 0;">사용자 관리는 과정별로 확인할 수 있습니다.</p>
     </div>
 
     <div class="admin-section">
@@ -234,7 +234,14 @@
                     const row = document.createElement('tr');
                     const statusClass = getStatusClass(course.training_status);
                     row.innerHTML = `
-                        <td>${course.training_key}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span>${course.training_key}</span>
+                                <button onclick="copyTrainingKey('${course.training_key}')" style="background: none; border: none; cursor: pointer; padding: 2px;" title="과정 키 복사">
+                                    📋
+                                </button>
+                            </div>
+                        </td>
                         <td><a href="#" onclick="goLabPage('${course.training_key}')" class="course-link">${course.course_name}</a></td>
                         <td>${course.course_content || ''}</td>
                         <td>${course.max_member || ''}</td>
@@ -249,6 +256,23 @@
                 });
             } catch (error) {
                 console.error('코스 목록을 불러오는데 실패했습니다:', error);
+            }
+        }
+
+        // 과정 키 복사 함수
+        async function copyTrainingKey(trainingKey) {
+            try {
+                await navigator.clipboard.writeText(trainingKey);
+                alert('과정 키가 클립보드에 복사되었습니다!');
+            } catch (err) {
+                // 클립보드 API가 지원되지 않는 경우 대체 방법 사용
+                const textArea = document.createElement('textarea');
+                textArea.value = trainingKey;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('과정 키가 클립보드에 복사되었습니다!');
             }
         }
 

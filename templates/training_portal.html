@@ -30,6 +30,7 @@
         .lab-status.ready { background:#FF9800; color:white; }
         .lab-status.active { background:#4CAF50; color:white; }
         .lab-status.completed { background:#2196F3; color:white; }
+        .lab-status.disabled { background:#9E9E9E; color:white; }
         .lab-status.unknown { background:#9E9E9E; color:white; }
         .lab-date { color:var(--muted); font-size:0.9em; }
         
@@ -227,9 +228,8 @@
         // 랩 상태 텍스트 변환
         function getLabStatusText(status) {
             const statusMap = {
-                10: '준비중',
-                20: '실행중',
-                30: '완료'
+                20: '활성화',
+                10: '비활성화'
             };
             return statusMap[status] || '알 수 없음';
         }
@@ -237,9 +237,8 @@
         // 랩 상태 CSS 클래스 변환
         function getLabStatusClass(status) {
             const statusMap = {
-                10: 'ready',
                 20: 'active',
-                30: 'completed'
+                10: 'disabled'
             };
             return statusMap[status] || 'unknown';
         }
@@ -259,24 +258,39 @@
         // 랩 목록 로드
         async function loadLabs() {
             try {
+                console.log('=== loadLabs 함수 시작 ===');
                 const loginInfo = getLoginInfo();
                 if (!loginInfo) {
+                    console.log('로그인 정보가 없음 - 홈으로 리다이렉트');
                     window.location.href = '/';
                     return;
                 }
                 
+                console.log('로그인 정보:', loginInfo);
+                console.log('요청할 training_key:', loginInfo.training_key);
+                
                 const response = await fetch(`/api/portal-labs?training_key=${loginInfo.training_key}`);
+                console.log('API 응답 상태:', response.status, response.statusText);
+                
                 if (!response.ok) {
                     throw new Error('랩 목록을 불러올 수 없습니다.');
                 }
                 
                 const data = await response.json();
+                console.log('API에서 받은 전체 데이터:', data);
+                console.log('랩 목록:', data.labs);
+                
                 const labsContainer = document.getElementById('labsList');
                 const trainingInfoContainer = document.getElementById('trainingInfo');
                 
                 // 트레이닝 정보 표시
                 if (data.training_name) {
                     const statusText = getTrainingStatusText(data.training_status);
+                    console.log('트레이닝 정보:', {
+                        name: data.training_name,
+                        status: data.training_status,
+                        statusText: statusText
+                    });
                     trainingInfoContainer.innerHTML = `
                         <p style="margin:0; color:var(--text); font-weight:600;">${data.training_name}</p>
                         <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9em;">상태: ${statusText}</p>
@@ -284,24 +298,42 @@
                 }
                 
                 if (data.message) {
+                    console.log('메시지가 있음:', data.message);
                     labsContainer.innerHTML = `<p style="text-align:center; color:var(--muted);">${data.message}</p>`;
                     return;
                 }
                 
                 if (data.labs.length === 0) {
+                    console.log('랩 목록이 비어있음');
                     labsContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">진행중인 랩이 없습니다.</p>';
                     return;
                 }
                 
+                console.log(`총 ${data.labs.length}개의 랩을 처리합니다.`);
+                
                 let labsHTML = '';
-                data.labs.forEach(lab => {
-                    const statusClass = getLabStatusClass(lab.lab_status);
-                    const statusText = getLabStatusText(lab.lab_status);
-                    const isReady = lab.lab_status === 10;
-                    const isActive = lab.lab_status === 20;
+                data.labs.forEach((lab, index) => {
+                    console.log(`=== 랩 ${index + 1} 처리 ===`);
+                    console.log('전체 랩 객체:', lab);
+                    console.log('lab_status 값:', lab.lab_status, '타입:', typeof lab.lab_status);
                     
-                    // 준비중이면 선택 불가능, 실행중이면 선택 가능
-                    const cardClass = isReady ? 'lab-card disabled' : 'lab-card';
+                    // 상태 값을 숫자로 변환 (1: 활성화, 0: 비활성화)
+                    const labStatus = parseInt(lab.lab_status) || 0;
+                    console.log('변환된 labStatus:', labStatus, '타입:', typeof labStatus);
+                    
+                    const statusClass = getLabStatusClass(labStatus);
+                    const statusText = getLabStatusText(labStatus);
+                    const isActive = labStatus === 20;
+                    
+                    console.log('최종 결과:', {
+                        statusClass: statusClass,
+                        statusText: statusText,
+                        isActive: isActive
+                    });
+                    console.log(`=== 랩 ${index + 1} 처리 완료 ===`);
+                    
+                    // 활성화된 랩만 선택 가능, 비활성화된 랩은 선택 불가능
+                    const cardClass = isActive ? 'lab-card' : 'lab-card disabled';
                     const onClick = isActive ? `onclick="openLab(${lab.lab_id})"` : '';
                     
                     labsHTML += `
@@ -316,9 +348,12 @@
                     `;
                 });
                 
+                console.log('생성된 HTML:', labsHTML);
                 labsContainer.innerHTML = labsHTML;
+                console.log('=== loadLabs 함수 완료 ===');
                 
             } catch (error) {
+                console.error('=== loadLabs 오류 ===');
                 console.error('랩 목록 로드 실패:', error);
                 document.getElementById('labsList').innerHTML = 
                     '<p style="text-align:center; color:#FF6B6B;">랩 목록을 불러오는데 실패했습니다.</p>';
@@ -328,7 +363,7 @@
         }
         
         // 랩 열기
-        function openLab(labId) {
+        async function openLab(labId) {
             const loginInfo = getLoginInfo();
             if (!loginInfo) {
                 window.location.href = '/';
@@ -337,6 +372,32 @@
             
             // 선택된 랩 정보 저장
             window.selectedLabId = labId;
+            
+            // 랩 조회 로그 기록 (첫 번째 콘텐츠로 기록)
+            try {
+                // 해당 랩의 첫 번째 콘텐츠 ID를 가져와서 로그 기록
+                const response = await fetch(`/api/admin/lab_contents?training_key=${loginInfo.training_key}&lab_id=${labId}`);
+                if (response.ok) {
+                    const contents = await response.json();
+                    if (contents.length > 0) {
+                        // 첫 번째 콘텐츠로 랩 조회 로그 기록
+                        await fetch('/api/portal/log_content_view', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                training_key: loginInfo.training_key,
+                                member_id: loginInfo.member_id,
+                                lab_id: labId,
+                                content_id: contents[0].content_id
+                            })
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('랩 조회 로그 기록 실패:', error);
+            }
             
             // 콘텐츠 섹션 표시
             document.getElementById('contentSection').style.display = 'block';

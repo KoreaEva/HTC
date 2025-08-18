@@ -48,9 +48,41 @@
         .button.danger {
             background: #dc3545;
         }
-        .button.danger:hover {
-            background: #c82333;
+                 .button.danger:hover {
+             background: #c82333;
+         }
+         .button.success {
+             background: #28a745;
+         }
+         .button.success:hover {
+             background: #218838;
+         }
+         .button.secondary {
+             background: #6c757d;
+         }
+         .button.secondary:hover {
+             background: #5a6268;
+         }
+        .refresh-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
+        .refresh-icon {
+            transition: transform 0.5s ease;
+        }
+        .refresh-icon.rotating {
+            transform: rotate(360deg);
+        }
+        /* 토글 스위치 */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cfd4da; transition: .2s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #fff; transition: .2s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #2196F3; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        /* 비활성화 행 */
+        tr.inactive-row { opacity: 0.5; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -133,21 +165,59 @@
             <h1 id="courseTitle">랩 관리</h1>
             <button class="button" onclick="showAddLabModal()">랩 추가</button>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>랩 ID</th>
-                    <th>랩명</th>
-                    <th>콘텐츠 수</th>
-                    <th>랩 상태</th>
-                    <th>생성일</th>
-                    <th>관리</th>
-                </tr>
-            </thead>
-            <tbody id="labList">
-                <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
-            </tbody>
-        </table>
+        
+        <!-- 랩 목록 섹션 -->
+        <div style="margin-bottom: 30px;">
+            <h2 style="color: #333; margin-bottom: 15px;">랩 목록</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>랩 ID</th>
+                        <th>랩명</th>
+                        <th>콘텐츠 수</th>
+                        <th>생성일</th>
+                        <th>관리</th>
+                        <th>랩 상태</th>
+                    </tr>
+                </thead>
+                <tbody id="labList">
+                    <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 사용자 목록 섹션 -->
+        <div>
+                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                 <h2 style="color: #333; margin: 0;">사용자 목록</h2>
+                 <div style="display: flex; align-items: center; gap: 15px;">
+                     <div style="display: flex; align-items: center; gap: 8px;">
+                         <span style="font-size: 14px; color: #666;">자동 새로고침</span>
+                         <label class="switch" title="자동 새로고침">
+                             <input type="checkbox" id="autoRefreshToggle" onchange="toggleAutoRefresh()">
+                             <span class="slider"></span>
+                         </label>
+                     </div>
+                     <button class="button refresh-button" onclick="loadUsers()" style="background: #28a745;">
+                         <span id="refreshIcon" class="refresh-icon">🔄</span> 새로고침
+                     </button>
+                 </div>
+             </div>
+            <table>
+                                 <thead>
+                     <tr>
+                         <th>사용자 ID</th>
+                         <th>사용자명</th>
+                         <th>마지막 본 콘텐츠</th>
+                         <th>가입일</th>
+                         <th>관리</th>
+                     </tr>
+                 </thead>
+                <tbody id="userList">
+                    <!-- 사용자 목록이 여기에 동적으로 추가됩니다 -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- 랩 추가/수정 모달 -->
@@ -164,14 +234,13 @@
                     <label for="labContent">랩 내용:</label>
                     <textarea id="labContent" rows="4"></textarea>
                 </div>
-                <div class="form-group">
-                    <label for="labStatus">랩 상태:</label>
-                    <select id="labStatus" required>
-                        <option value="10">준비중</option>
-                        <option value="20">실행중</option>
-                        <option value="30">완료</option>
-                    </select>
-                </div>
+                                 <div class="form-group">
+                     <label for="labStatus">랩 상태:</label>
+                     <select id="labStatus" required>
+                         <option value="20">활성화</option>
+                         <option value="10">비활성화</option>
+                     </select>
+                 </div>
                 <div class="form-actions">
                     <button type="submit" class="button">저장</button>
                     <button type="button" class="button" onclick="closeModal('labModal')">취소</button>
@@ -214,18 +283,14 @@
                 document.getElementById('courseTitle').textContent = `[${data.course_name}] 랩 관리`;
             }
         }
-        // 랩 상태 텍스트 변환
-        function getLabStatusText(status) {
-            const statusMap = {
-                10: '준비중',
-                20: '실행중',
-                30: '완료'
-            };
-            return statusMap[status] || '알 수 없음';
-        }
+                 // 랩 상태 텍스트 변환
+         function getLabStatusText(status) {
+             return status == 20 ? '활성화' : '비활성화';
+         }
         // 랩 목록 로드
         async function loadLabs() {
             try {
+                console.log('Loading labs for training_key:', trainingKey);
                 const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
                 if (!res.ok) {
                     // HTTP 오류 응답의 경우 상태 코드와 텍스트를 함께 출력
@@ -233,25 +298,36 @@
                     throw new Error(`랩 목록을 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
                 }
                 const labs = await res.json();
+                console.log('Loaded labs from API:', labs);
+                
                 const tbody = document.getElementById('labList');
                 tbody.innerHTML = '';
                 if (labs.length === 0) {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = '<td colspan="7" style="text-align:center;">랩이 없습니다.</td>';
+                    tr.innerHTML = '<td colspan="6" style="text-align:center;">랩이 없습니다.</td>';
                     tbody.appendChild(tr);
                     return;
                 }
                 labs.forEach(lab => {
+                    console.log('Processing lab:', lab);
                     const tr = document.createElement('tr');
+                    if (lab.lab_status != 20) {
+                        tr.classList.add('inactive-row');
+                    }
                     tr.innerHTML = `
                         <td>${lab.lab_id}</td>
                         <td><a href="/admin/lab_content?training_key=${lab.training_key}&lab_id=${lab.lab_id}">${lab.lab_name}</a></td>
                         <td>${lab.content_count}</td>
-                        <td>${getLabStatusText(lab.lab_status)}</td>
                         <td>${lab.create_date}</td>
                         <td>
-                            <button class="button" onclick="editLab(${lab.lab_id})">수정</button>
+                            <button class="button" onclick="editLab(${lab.lab_id})" data-lab-id="${lab.lab_id}" data-lab-name="${lab.lab_name}">수정</button>
                             <button class="button danger" onclick="deleteLab(${lab.lab_id})">삭제</button>
+                        </td>
+                        <td>
+                            <label class="switch" title="${getLabStatusText(lab.lab_status)}">
+                                <input type="checkbox" ${lab.lab_status == 20 ? 'checked' : ''} onchange="toggleLabStatus(${lab.lab_id}, this)">
+                                <span class="slider"></span>
+                            </label>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -263,66 +339,155 @@
         }
         // 랩 추가/수정 모달 열기
         function showAddLabModal() {
+            // 모달 폼 초기화
             document.getElementById('modalTitle').textContent = '랩 추가';
             document.getElementById('labId').value = '';
             document.getElementById('labName').value = '';
             document.getElementById('labContent').value = '';
-            document.getElementById('labStatus').value = 10;
+                             document.getElementById('labStatus').value = 20;
+            
+            // 모달 표시
             document.getElementById('labModal').style.display = 'flex';
         }
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            // 모달이 닫힐 때 폼 초기화
+            if (modalId === 'labModal') {
+                document.getElementById('labForm').reset();
+                document.getElementById('labId').value = '';
+            }
         }
         // 랩 수정 모달 열기
         async function editLab(labId) {
-            const res = await fetch(`/api/admin/labs/${labId}`);
-            if (res.ok) {
+            try {
+                console.log('=== 랩 수정 시작 ===');
+                console.log('요청된 lab_id:', labId);
+                console.log('현재 training_key:', trainingKey);
+                
+                const res = await fetch(`/api/admin/labs/${labId}`);
+                console.log('API 응답 상태:', res.status, res.statusText);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('API 오류 응답:', errorText);
+                    throw new Error(`랩 정보를 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
+                }
+                
                 const lab = await res.json();
+                console.log('서버에서 받은 랩 데이터:', lab);
+                
+                // 모달 폼 초기화
                 document.getElementById('modalTitle').textContent = '랩 수정';
-                document.getElementById('labId').value = lab.lab_id;
-                document.getElementById('labName').value = lab.lab_name;
+                document.getElementById('labId').value = lab.lab_id || '';
+                document.getElementById('labName').value = lab.lab_name || '';
                 document.getElementById('labContent').value = lab.lab_content || '';
-                document.getElementById('labStatus').value = lab.lab_status;
+                                 document.getElementById('labStatus').value = lab.lab_status || 1;
+                
+                console.log('모달 폼에 설정된 값들:');
+                console.log('- lab_id:', document.getElementById('labId').value);
+                console.log('- lab_name:', document.getElementById('labName').value);
+                console.log('- lab_status:', document.getElementById('labStatus').value);
+                
+                // 모달 표시
                 document.getElementById('labModal').style.display = 'flex';
+                console.log('=== 랩 수정 모달 열기 완료 ===');
+            } catch (error) {
+                console.error('Error loading lab data:', error);
+                alert(`랩 정보를 불러오는데 실패했습니다: ${error.message}`);
             }
         }
-        // 랩 삭제
-        async function deleteLab(labId) {
-            if (confirm('정말로 이 랩을 삭제하시겠습니까?')) {
-                const res = await fetch(`/api/admin/labs/${labId}`, { method: 'DELETE' });
-                if (res.ok) loadLabs();
-                else alert('랩 삭제에 실패했습니다.');
-            }
-        }
+                 // 랩 상태 토글 (토글 스위치)
+         async function toggleLabStatus(labId, checkboxEl) {
+             const newStatus = checkboxEl.checked ? 20 : 10;
+             const rowEl = checkboxEl.closest('tr');
+             // 즉시 시각적 반영
+             if (newStatus === 20) {
+                 rowEl.classList.remove('inactive-row');
+             } else {
+                 rowEl.classList.add('inactive-row');
+             }
+             try {
+                 const payload = { training_key: trainingKey, lab_status: newStatus };
+                 const res = await fetch(`/api/admin/labs/${labId}`, {
+                     method: 'PUT',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify(payload)
+                 });
+                 if (!res.ok) {
+                     const errorText = await res.text();
+                     // 실패 시 원래 상태로 롤백
+                     checkboxEl.checked = !checkboxEl.checked;
+                     if (checkboxEl.checked) rowEl.classList.remove('inactive-row'); else rowEl.classList.add('inactive-row');
+                     alert(`상태 변경에 실패했습니다: ${errorText}`);
+                 }
+             } catch (error) {
+                 // 오류 시 원래 상태로 롤백
+                 checkboxEl.checked = !checkboxEl.checked;
+                 if (checkboxEl.checked) rowEl.classList.remove('inactive-row'); else rowEl.classList.add('inactive-row');
+                 console.error('Error toggling lab status:', error);
+                 alert(`상태 변경 중 오류가 발생했습니다: ${error.message}`);
+             }
+         }
+         
+         // 랩 삭제
+         async function deleteLab(labId) {
+             if (confirm('정말로 이 랩을 삭제하시겠습니까?')) {
+                 const res = await fetch(`/api/admin/labs/${labId}`, { method: 'DELETE' });
+                 if (res.ok) loadLabs();
+                 else alert('랩 삭제에 실패했습니다.');
+             }
+         }
         // 랩 추가/수정 폼 제출
         document.getElementById('labForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const labId = document.getElementById('labId').value;
-            const labName = document.getElementById('labName').value;
-            const labContent = document.getElementById('labContent').value;
-            const labStatus = document.getElementById('labStatus').value;
-            const payload = {
-                training_key: trainingKey,
-                lab_name: labName,
-                lab_content: labContent,
-                lab_status: parseInt(labStatus)
-            };
-            let url = '/api/admin/labs';
-            let method = 'POST';
-            if (labId) {
-                url += `/${labId}`;
-                method = 'PUT';
-            }
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                closeModal('labModal');
-                loadLabs();
-            } else {
-                alert('저장에 실패했습니다.');
+            try {
+                const labId = document.getElementById('labId').value;
+                const labName = document.getElementById('labName').value.trim();
+                const labContent = document.getElementById('labContent').value.trim();
+                const labStatus = parseInt(document.getElementById('labStatus').value);
+                
+                console.log('Form submission - labId:', labId, 'labName:', labName, 'labStatus:', labStatus);
+                
+                // 유효성 검사
+                if (!labName) {
+                    alert('랩명을 입력해주세요.');
+                    return;
+                }
+                
+                const payload = {
+                    training_key: trainingKey,
+                    lab_name: labName,
+                    lab_content: labContent,
+                    lab_status: labStatus
+                };
+                
+                let url = '/api/admin/labs';
+                let method = 'POST';
+                if (labId && labId.trim() !== '') {
+                    url += `/${labId}`;
+                    method = 'PUT';
+                }
+                
+                console.log('Submitting to:', url, 'with method:', method, 'payload:', payload);
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                                 if (res.ok) {
+                     console.log('Lab saved successfully');
+                     closeModal('labModal');
+                     loadLabs();
+                 } else {
+                    const errorText = await res.text();
+                    console.error('Save failed:', res.status, errorText);
+                    alert(`저장에 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
+                }
+            } catch (error) {
+                console.error('Error saving lab:', error);
+                alert(`저장 중 오류가 발생했습니다: ${error.message}`);
             }
         });
         // 콘텐츠 이동 모달 열기
@@ -370,9 +535,120 @@
                 alert('콘텐츠 이동 중 오류가 발생했습니다.');
             }
         };
-        // 페이지 로드시
-        loadCourseTitle();
-        loadLabs();
+        // 사용자 목록 로드
+        async function loadUsers() {
+            try {
+                // 새로고침 아이콘 회전 애니메이션
+                const refreshIcon = document.getElementById('refreshIcon');
+                refreshIcon.classList.add('rotating');
+                
+                const response = await fetch(`/api/admin/users/course/${trainingKey}`);
+                if (!response.ok) {
+                    throw new Error('사용자 목록을 불러오는데 실패했습니다.');
+                }
+                const users = await response.json();
+                const tbody = document.getElementById('userList');
+                tbody.innerHTML = '';
+                
+                if (users.length === 0) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td colspan="5" style="text-align:center;">등록된 사용자가 없습니다.</td>';
+                    tbody.appendChild(tr);
+                    return;
+                }
+                
+                                 users.forEach(user => {
+                     const tr = document.createElement('tr');
+                     const lastContent = user.last_content || '콘텐츠를 본 기록이 없습니다';
+                     tr.innerHTML = `
+                         <td>${user.member_id}</td>
+                         <td>${user.member_name}</td>
+                         <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lastContent}">${lastContent}</td>
+                         <td>${user.create_date}</td>
+                         <td>
+                             <button class="button danger" onclick="deleteUser('${user.member_id}')">삭제</button>
+                         </td>
+                     `;
+                     tbody.appendChild(tr);
+                 });
+                
+                // 새로고침 아이콘 애니메이션 완료
+                setTimeout(() => {
+                    refreshIcon.classList.remove('rotating');
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                alert(`사용자 목록을 불러오는데 실패했습니다: ${error.message}`);
+            }
+        }
+        
+        // 사용자 삭제
+        async function deleteUser(userId) {
+            if (confirm('정말로 이 사용자를 삭제하시겠습니까?')) {
+                try {
+                    const response = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        loadUsers(); // 사용자 목록 새로고침
+                    } else {
+                        alert('사용자 삭제에 실패했습니다.');
+                    }
+                } catch (error) {
+                    alert('사용자 삭제 중 오류가 발생했습니다.');
+                }
+            }
+        }
+        
+                 // 자동 새로고침 관련 변수
+         let autoRefreshInterval = null;
+         
+         // 자동 새로고침 토글 함수
+         function toggleAutoRefresh() {
+             const toggle = document.getElementById('autoRefreshToggle');
+             
+             if (toggle.checked) {
+                 // 자동 새로고침 시작
+                 startAutoRefresh();
+             } else {
+                 // 자동 새로고침 중지
+                 stopAutoRefresh();
+             }
+         }
+         
+         // 자동 새로고침 시작
+         function startAutoRefresh() {
+             // 기존 인터벌이 있다면 제거
+             if (autoRefreshInterval) {
+                 clearInterval(autoRefreshInterval);
+             }
+             
+             // 5초마다 사용자 목록 새로고침
+             autoRefreshInterval = setInterval(() => {
+                 console.log('자동 새로고침 실행');
+                 loadUsers();
+             }, 5000);
+             
+             console.log('자동 새로고침이 시작되었습니다. (5초 간격)');
+         }
+         
+         // 자동 새로고침 중지
+         function stopAutoRefresh() {
+             if (autoRefreshInterval) {
+                 clearInterval(autoRefreshInterval);
+                 autoRefreshInterval = null;
+                 console.log('자동 새로고침이 중지되었습니다.');
+             }
+         }
+         
+         // 페이지 로드시
+         loadCourseTitle();
+         loadLabs();
+         loadUsers();
+         
+         // 페이지를 벗어날 때 자동 새로고침 정리
+         window.addEventListener('beforeunload', function() {
+             stopAutoRefresh();
+         });
     </script>
 </body>
 </html> 

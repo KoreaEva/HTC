@@ -405,9 +405,7 @@ async def lab_page():
 async def lab_content_page():
     return FileResponse("templates/lab_content.html")
 
-@app.get("/admin/user_analytics")
-async def user_analytics_page():
-    return FileResponse("templates/user_analytics.html")
+
 
 @app.get("/portal/lab_content")
 async def portal_lab_content_page():
@@ -421,6 +419,60 @@ async def get_users():
             cursor.execute("SELECT member_id, member_name, role, create_date FROM training_member ORDER BY create_date DESC")
             result = cursor.fetchall()
             users = [{"member_id": row['member_id'], "member_name": row['member_name'], "role": row['role'], "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else ''} for row in result]
+        return users
+    finally:
+        conn.close()
+
+@app.get("/api/admin/users/course/{training_key}")
+async def get_users_by_course(training_key: str):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 사용자 정보와 마지막으로 본 콘텐츠 정보를 함께 조회
+            cursor.execute("""
+                SELECT 
+                    tm.member_id, 
+                    tm.member_name, 
+                    tm.role, 
+                    tm.create_date,
+                    tll.lab_id,
+                    tll.content_id,
+                    tlc.lab_content_subject,
+                    tl.lab_name,
+                    tll.create_date as last_view_date
+                FROM training_member tm
+                LEFT JOIN (
+                    SELECT 
+                        member_key, 
+                        lab_id, 
+                        content_id, 
+                        create_date,
+                        ROW_NUMBER() OVER (PARTITION BY member_key ORDER BY create_date DESC) as rn
+                    FROM training_lab_log 
+                    WHERE training_key = %s
+                ) tll ON tm.member_key = tll.member_key AND tll.rn = 1
+                LEFT JOIN training_lab_contents tlc ON tll.lab_id = tlc.lab_id AND tll.content_id = tlc.content_id AND tlc.training_key = %s
+                LEFT JOIN training_lab tl ON tll.lab_id = tl.lab_id AND tl.training_key = %s
+                WHERE tm.training_key = %s 
+                ORDER BY tm.create_date DESC
+            """, (training_key, training_key, training_key, training_key))
+            result = cursor.fetchall()
+            
+            users = []
+            for row in result:
+                last_content_info = ""
+                if row['lab_id'] and row['content_id']:
+                    last_content_info = f"{row['lab_name']} - {row['lab_content_subject']}"
+                    if row['last_view_date']:
+                        last_content_info += f" ({row['last_view_date'].strftime('%Y-%m-%d %H:%M')})"
+                
+                users.append({
+                    "member_id": row['member_id'], 
+                    "member_name": row['member_name'], 
+                    "role": row['role'], 
+                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                    "last_content": last_content_info
+                })
         return users
     finally:
         conn.close()
@@ -550,8 +602,21 @@ async def delete_course(training_key: str):
     finally:
         conn.close()
 
+@app.get("/api/debug/labs")
+async def debug_labs():
+    """디버깅용: 모든 랩 데이터 조회"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM training_lab ORDER BY lab_id")
+            result = cursor.fetchall()
+            return {"all_labs": result}
+    finally:
+        conn.close()
+
 @app.get("/api/admin/labs")
 async def get_labs(training_key: str = Query(...)):
+    print(f"[DEBUG] Getting labs for training_key: {training_key}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
@@ -572,6 +637,8 @@ async def get_labs(training_key: str = Query(...)):
             '''
             cursor.execute(sql, (training_key,))
             result = cursor.fetchall()
+            print(f"[DEBUG] Raw lab data from database: {result}")
+            
             labs = []
             for row in result:
                 lab_dict = {
@@ -584,6 +651,7 @@ async def get_labs(training_key: str = Query(...)):
                     "content_count": int(row['content_count'])
                 }
                 labs.append(lab_dict)
+            print(f"[DEBUG] Processed labs data: {labs}")
             return labs
     except Exception as e:
         print(f"Error in get_labs: {e}")
@@ -593,13 +661,22 @@ async def get_labs(training_key: str = Query(...)):
 
 @app.get("/api/admin/labs/{lab_id}")
 async def get_lab(lab_id: int):
+    print(f"[DEBUG] Getting lab with ID: {lab_id}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 먼저 해당 training_key의 모든 랩을 조회해서 디버깅
+            cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, create_date FROM training_lab ORDER BY lab_id")
+            all_labs = cursor.fetchall()
+            print(f"[DEBUG] All labs in database: {all_labs}")
+            
+            # 특정 lab_id 조회
             cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, create_date FROM training_lab WHERE lab_id = %s", (lab_id,))
             result = cursor.fetchone()
             if not result:
-                raise HTTPException(status_code=404, detail="Lab not found")
+                print(f"[DEBUG] Lab not found with ID: {lab_id}")
+                raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
+            
             lab = {
                 "lab_id": result['lab_id'],
                 "training_key": result['training_key'],
@@ -608,18 +685,29 @@ async def get_lab(lab_id: int):
                 "lab_status": result['lab_status'],
                 "create_date": result['create_date'].strftime('%Y-%m-%d %H:%M') if result['create_date'] else ''
             }
+            print(f"[DEBUG] Returning lab data: {lab}")
             return lab
+    except Exception as e:
+        print(f"[ERROR] Error getting lab {lab_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"랩 정보를 불러오는데 실패했습니다: {str(e)}")
     finally:
         conn.close()
 
 @app.post("/api/admin/labs")
 async def add_lab(data: dict = Body(...)):
+    print(f"[DEBUG] add_lab called: training_key={data.get('training_key')}, lab_name={data.get('lab_name')}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 해당 training_key에서 가장 큰 lab_id 조회
             cursor.execute("SELECT MAX(lab_id) as max_lab_id FROM training_lab WHERE training_key = %s", (data.get("training_key"),))
             result = cursor.fetchone()
-            next_lab_id = 1 if not result or result['max_lab_id'] is None else int(result['max_lab_id']) + 1
+            current_max_id = result['max_lab_id'] if result and result['max_lab_id'] is not None else 0
+            next_lab_id = current_max_id + 1
+            
+            print(f"[DEBUG] Current max lab_id for training_key {data.get('training_key')}: {current_max_id}")
+            print(f"[DEBUG] Next lab_id will be: {next_lab_id}")
+            
             now = datetime.now()
             try:
                 cursor.execute(
@@ -629,35 +717,61 @@ async def add_lab(data: dict = Body(...)):
                         data.get("training_key"),
                         data.get("lab_name"),
                         data.get("lab_content"),
-                        data.get("lab_status"),
+                        data.get("lab_status", 20),  # 기본값을 활성화(20)로 설정
                         now
                     )
                 )
+                print(f"[DEBUG] Lab added successfully with lab_id: {next_lab_id}")
             except Exception as e:
+                print(f"[ERROR] Lab insertion failed: {e}")
                 raise HTTPException(status_code=500, detail=f"랩 추가 실패: {str(e)}")
-        return {"message": "랩이 추가되었습니다."}
+        return {"message": "랩이 추가되었습니다.", "lab_id": next_lab_id}
     finally:
         conn.close()
 
 @app.put("/api/admin/labs/{lab_id}")
 async def update_lab(lab_id: int, data: dict = Body(...)):
-    print(f"update_lab called: lab_id={lab_id}, data={data}")
+    print(f"[DEBUG] update_lab called: lab_id={lab_id}, data={data}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 먼저 해당 랩이 존재하는지 확인
+            cursor.execute("SELECT 1 FROM training_lab WHERE lab_id = %s", (lab_id,))
+            lab_exists = cursor.fetchone()
+            if not lab_exists:
+                raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
+            
             try:
-                cursor.execute(
-                    "UPDATE training_lab SET lab_name=%s, lab_content=%s, lab_status=%s WHERE lab_id=%s AND training_key=%s",
-                    (
-                        data.get("lab_name"),
-                        data.get("lab_content"),
-                        data.get("lab_status"),
-                        lab_id,
-                        data.get("training_key")
+                # 상태만 업데이트하는 경우
+                if "lab_status" in data and len(data) == 2:  # lab_status와 training_key만 있는 경우
+                    cursor.execute(
+                        "UPDATE training_lab SET lab_status=%s WHERE lab_id=%s AND training_key=%s",
+                        (
+                            data.get("lab_status"),
+                            lab_id,
+                            data.get("training_key")
+                        )
                     )
-                )
+                else:
+                    # 전체 업데이트 (랩명, 내용, 상태 모두)
+                    cursor.execute(
+                        "UPDATE training_lab SET lab_name=%s, lab_content=%s, lab_status=%s WHERE lab_id=%s AND training_key=%s",
+                        (
+                            data.get("lab_name"),
+                            data.get("lab_content"),
+                            data.get("lab_status"),
+                            lab_id,
+                            data.get("training_key")
+                        )
+                    )
+                
+                # 업데이트된 행 수 확인
+                if cursor.rowcount == 0:
+                    raise HTTPException(status_code=400, detail="랩을 수정할 수 없습니다. training_key가 일치하지 않을 수 있습니다.")
+                
+                print(f"[DEBUG] Lab update successful for lab_id={lab_id}, rows affected: {cursor.rowcount}")
             except Exception as e:
-                print(f"랩 수정 실패: {e}")
+                print(f"[ERROR] 랩 수정 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"랩 수정 실패: {str(e)}")
         return {"message": "랩이 수정되었습니다."}
     finally:
@@ -750,8 +864,12 @@ async def portal_labs(request: Request):
                     ORDER BY lab_id ASC
                 """, (training_key,))
                 labs_result = cursor.fetchall()
+                
+                print(f"[DEBUG] portal_labs - 조회된 랩 개수: {len(labs_result)}")
+                
                 lab_list = []
                 for r in labs_result:
+                    print(f"[DEBUG] 랩 데이터: lab_id={r['lab_id']}, lab_name={r['lab_name']}, lab_status={r['lab_status']} (타입: {type(r['lab_status'])})")
                     lab_list.append({
                         "lab_id": r['lab_id'],
                         "lab_name": r['lab_name'],
@@ -759,6 +877,8 @@ async def portal_labs(request: Request):
                         "lab_status": r['lab_status'],
                         "create_date": r['create_date'].strftime('%Y-%m-%d %H:%M') if r['create_date'] else ''
                     })
+                
+                print(f"[DEBUG] 최종 반환할 lab_list: {lab_list}")
             except Exception as e:
                 print(f"[ERROR] 랩 목록 조회 실패: {e}")
                 lab_list = []
