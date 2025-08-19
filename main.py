@@ -511,6 +511,29 @@ async def get_courses():
     finally:
         conn.close()
 
+@app.get("/api/active-courses")
+async def get_active_courses():
+    """활성화된 과정 목록을 반환하는 API"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status FROM training WHERE training_status = 20 ORDER BY create_date DESC")
+            result = cursor.fetchall()
+            courses = [
+                {
+                    "training_key": row['training_key'],
+                    "course_name": row['course_name'],
+                    "course_content": row['course_content'],
+                    "max_member": row['max_member'],
+                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                    "training_status": row['training_status']
+                }
+                for row in result
+            ]
+        return courses
+    finally:
+        conn.close()
+
 @app.get("/api/admin/courses/{training_key}")
 async def get_course(training_key: str):
     conn = get_mysql_conn()
@@ -553,7 +576,7 @@ async def add_course(data: dict = Body(...)):
                     (
                         training_key,
                         data.get("course_name"),
-                        data.get("course_content"),
+                        "",  # course_content를 빈 문자열로 설정
                         data.get("max_member"),
                         now,
                         data.get("training_status")
@@ -576,7 +599,7 @@ async def update_course(training_key: str, data: dict = Body(...)):
                     "UPDATE training SET course_name=%s, course_content=%s, max_member=%s, training_status=%s WHERE training_key=%s",
                     (
                         data.get("course_name"),
-                        data.get("course_content"),
+                        "",  # course_content를 빈 문자열로 설정
                         int(data.get("max_member")),
                         data.get("training_status"),
                         training_key

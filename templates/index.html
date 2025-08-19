@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTC 8월 일정관리</title>
+    <title>Hello AI HTC</title>
     <style>
         :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
         body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
@@ -42,27 +42,61 @@
         .login-button:hover { background:#FFED4E; }
         .register-button { background:#1565C0; color:white; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
         .register-button:hover { background:#1976D2; }
+        
+        /* 과정 목록 스타일 */
+        .course-card {
+            background: var(--panel);
+            border: 1px solid #3E3E3E;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .course-card:hover {
+            background: #2a2d35;
+            border-color: #FFD700;
+            transform: translateY(-2px);
+        }
+        .course-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #FFD700;
+            margin-bottom: 10px;
+        }
+        .course-content {
+            color: var(--text);
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .course-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--muted);
+            font-size: 0.9em;
+        }
+        .course-status {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
     </style>
 </head>
 <body>
-    <h1>HTC 8월 일정관리</h1>
+    <h1>Hello AI HTC</h1>
     
     <!-- 탭 네비게이션 -->
     <div class="tab-container">
-        <button class="tab-button active" onclick="showTab('schedule')">일정관리</button>
+        <button class="tab-button active" onclick="showTab('courses')">활성화된 과정</button>
         <button class="tab-button" onclick="showTab('training')">Training Center</button>
     </div>
     
-    <!-- 일정관리 탭 -->
-    <div id="schedule-tab" class="tab-content active">
-        <div class="controls">
-            <div style="display:flex; gap:8px; align-items:center;">
-                <select id="yearSelect"></select>
-                <select id="monthSelect"></select>
-            </div>
-        </div>
-        
-        <div id="scheduleList"></div>
+    <!-- 활성화된 과정 탭 -->
+    <div id="courses-tab" class="tab-content active">
+        <div id="coursesList"></div>
     </div>
     
     <!-- Training Center 탭 -->
@@ -339,9 +373,9 @@
                             role: role
                         }));
                         
-                        // 잠시 후 일반 포털로 이동
+                        // 잠시 후 선택된 과정의 포털로 이동
                         setTimeout(() => {
-                            window.location.href = '/training-portal';
+                            window.location.href = `/training-portal?training_key=${result.training_key || trainingKey}`;
                         }, 1000);
                     }
                     
@@ -478,10 +512,53 @@
             }
         });
 
+        // 과정 목록 로드 함수
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/active-courses');
+                const courses = await response.json();
+                
+                const coursesContainer = document.getElementById('coursesList');
+                
+                if (courses.length === 0) {
+                    coursesContainer.innerHTML = '<p style="text-align:center; color:var(--muted); margin-top:40px;">현재 활성화된 과정이 없습니다.</p>';
+                    return;
+                }
+                
+                let coursesHTML = '';
+                courses.forEach(course => {
+                    coursesHTML += `
+                        <div class="course-card" onclick="selectCourse('${course.training_key}')">
+                            <div class="course-title">${course.course_name}</div>
+                            <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
+                            <div class="course-info">
+                                <span>최대 인원: ${course.max_member}명</span>
+                                <span class="course-status">활성</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                coursesContainer.innerHTML = coursesHTML;
+            } catch (error) {
+                console.error('과정 목록 로드 오류:', error);
+                document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록을 불러오는 중 오류가 발생했습니다.</p>';
+            }
+        }
+        
+        // 과정 선택 함수
+        function selectCourse(trainingKey) {
+            // 선택된 과정의 training_key를 저장하고 로그인 탭으로 이동
+            sessionStorage.setItem('selectedTrainingKey', trainingKey);
+            showTab('training');
+            
+            // 트레이닝 키 입력 필드에 자동으로 설정하지 않음
+            // document.getElementById('trainingKey').value = trainingKey;
+        }
+        
         // 페이지 로드 시 실행
         document.addEventListener('DOMContentLoaded', ()=>{
-            initializeSelects();
-            loadSchedule();
+            loadCourses();
         });
     </script>
 </body>
