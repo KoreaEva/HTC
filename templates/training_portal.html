@@ -8,6 +8,27 @@
         :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
         body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
         
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .labs-container { grid-template-columns: 1fr; }
+            .content-layout { flex-direction: column; }
+            .content-sidebar { width: 100%; margin-bottom: 20px; }
+            .content-viewer { min-height: 400px; padding: 15px; }
+            .lab-card { padding: 15px; }
+            .content-item { padding: 12px; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .header h1 { font-size: 1.3em; }
+            .welcome { font-size: 1.2em; }
+            .lab-card { padding: 12px; }
+            .content-item { padding: 10px; }
+            .content-viewer { padding: 12px; min-height: 300px; }
+        }
+        
         .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
         .welcome { font-size:1.5em; font-weight:600; }
         .logout-btn { background:#FF6B6B; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; }

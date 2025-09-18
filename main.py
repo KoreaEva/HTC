@@ -48,7 +48,7 @@ def get_mysql_conn():
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True,
             connect_timeout=30,
-            ssl={'ssl': {}}
+            ssl={'ssl_disabled': False}
         )
         print(f"[DEBUG] MySQL 연결 성공!")
         return conn
@@ -494,7 +494,7 @@ async def get_courses():
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status FROM training ORDER BY create_date DESC")
+            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status, is_public FROM training ORDER BY create_date DESC")
             result = cursor.fetchall()
             courses = [
                 {
@@ -503,7 +503,8 @@ async def get_courses():
                     "course_content": row['course_content'],
                     "max_member": row['max_member'],
                     "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
-                    "training_status": row['training_status']
+                    "training_status": row['training_status'],
+                    "is_public": row['is_public'] if 'is_public' in row else 0
                 }
                 for row in result
             ]
@@ -517,7 +518,7 @@ async def get_active_courses():
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status FROM training WHERE training_status = 20 ORDER BY create_date DESC")
+            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status, is_public FROM training WHERE training_status = 20 ORDER BY create_date DESC")
             result = cursor.fetchall()
             courses = [
                 {
@@ -526,7 +527,8 @@ async def get_active_courses():
                     "course_content": row['course_content'],
                     "max_member": row['max_member'],
                     "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
-                    "training_status": row['training_status']
+                    "training_status": row['training_status'],
+                    "is_public": row['is_public'] if 'is_public' in row else 0
                 }
                 for row in result
             ]
@@ -539,7 +541,7 @@ async def get_course(training_key: str):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status FROM training WHERE training_key = %s", (training_key,))
+            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status, is_public FROM training WHERE training_key = %s", (training_key,))
             row = cursor.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="과정을 찾을 수 없습니다.")
@@ -549,7 +551,8 @@ async def get_course(training_key: str):
                 "course_content": row['course_content'],
                 "max_member": row['max_member'],
                 "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
-                "training_status": row['training_status']
+                "training_status": row['training_status'],
+                "is_public": row['is_public'] if 'is_public' in row else 0
             }
     finally:
         conn.close()
@@ -572,14 +575,15 @@ async def add_course(data: dict = Body(...)):
                 raise HTTPException(status_code=500, detail="오늘은 더 이상 코스를 생성할 수 없습니다.")
             try:
                 cursor.execute(
-                    "INSERT INTO training (training_key, course_name, course_content, max_member, create_date, training_status) VALUES (%s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO training (training_key, course_name, course_content, max_member, create_date, training_status, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (
                         training_key,
                         data.get("course_name"),
                         "",  # course_content를 빈 문자열로 설정
                         data.get("max_member"),
                         now,
-                        data.get("training_status")
+                        data.get("training_status"),
+                        data.get("is_public", 0)  # 기본값을 비공개(0)로 설정
                     )
                 )
             except Exception as e:
@@ -596,14 +600,26 @@ async def update_course(training_key: str, data: dict = Body(...)):
         with conn.cursor() as cursor:
             try:
                 cursor.execute(
-                    "UPDATE training SET course_name=%s, course_content=%s, max_member=%s, training_status=%s WHERE training_key=%s",
+                    "UPDATE training SET course_name=%s, course_content=%s, max_member=%s, training_status=%s, is_public=%s WHERE training_key=%s",
                     (
                         data.get("course_name"),
                         "",  # course_content를 빈 문자열로 설정
                         int(data.get("max_member")),
                         data.get("training_status"),
+                        data.get("is_public", 0),
                         training_key
                     )
+                )
+                
+                # 과정의 공개 상태가 변경되면 해당 과정의 모든 랩과 콘텐츠의 공개 상태도 업데이트
+                is_public = data.get("is_public", 0)
+                cursor.execute(
+                    "UPDATE training_lab SET is_public=%s WHERE training_key=%s",
+                    (is_public, training_key)
+                )
+                cursor.execute(
+                    "UPDATE training_lab_contents SET is_public=%s WHERE training_key=%s",
+                    (is_public, training_key)
                 )
             except Exception as e:
                 print(f"코스 수정 실패: {e}")
@@ -622,6 +638,135 @@ async def delete_course(training_key: str):
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"코스 삭제 실패: {str(e)}")
         return {"message": "코스가 삭제되었습니다."}
+    finally:
+        conn.close()
+
+@app.post("/api/admin/courses/{source_training_key}/copy")
+async def copy_course(source_training_key: str, data: dict = Body(...)):
+    """기존 과정을 복사하여 새로운 과정을 생성하는 API"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 원본 과정 정보 조회
+            cursor.execute("SELECT * FROM training WHERE training_key = %s", (source_training_key,))
+            source_course = cursor.fetchone()
+            if not source_course:
+                raise HTTPException(status_code=404, detail="복사할 과정을 찾을 수 없습니다.")
+            
+            # 2. 새로운 training_key 생성
+            now = datetime.now()
+            date_str = now.strftime('%Y%m%d')
+            new_training_key = None
+            
+            # 일련번호 01~99까지 시도
+            for seq in range(1, 100):
+                candidate_key = f"{date_str}{seq:02d}"
+                cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (candidate_key,))
+                exists = cursor.fetchone()
+                if not exists:
+                    new_training_key = candidate_key
+                    break
+            
+            if not new_training_key:
+                raise HTTPException(status_code=500, detail="오늘은 더 이상 코스를 생성할 수 없습니다.")
+            
+            # 3. 새로운 과정 생성
+            new_course_name = data.get("new_course_name", f"{source_course['course_name']} (복사본)")
+            new_max_member = data.get("max_member", source_course['max_member'])
+            new_training_status = data.get("training_status", 10)  # 기본값: 준비중
+            new_is_public = data.get("is_public", 0)  # 기본값: 비공개
+            
+            cursor.execute(
+                "INSERT INTO training (training_key, course_name, course_content, max_member, create_date, training_status, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (
+                    new_training_key,
+                    new_course_name,
+                    source_course['course_content'],
+                    new_max_member,
+                    now,
+                    new_training_status,
+                    new_is_public
+                )
+            )
+            
+            # 4. 원본 과정의 랩들 복사
+            cursor.execute("SELECT * FROM training_lab WHERE training_key = %s ORDER BY lab_id", (source_training_key,))
+            source_labs = cursor.fetchall()
+            
+            lab_id_mapping = {}  # 원본 lab_id -> 새 lab_id 매핑
+            
+            for source_lab in source_labs:
+                # 새로운 lab_id 생성 (해당 training_key에서 가장 큰 lab_id + 1)
+                cursor.execute("SELECT MAX(lab_id) as max_lab_id FROM training_lab WHERE training_key = %s", (new_training_key,))
+                result = cursor.fetchone()
+                new_lab_id = 1 if not result or result['max_lab_id'] is None else int(result['max_lab_id']) + 1
+                
+                # 랩 복사
+                cursor.execute(
+                    "INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (
+                        new_lab_id,
+                        new_training_key,
+                        source_lab['lab_name'],
+                        source_lab['lab_content'],
+                        source_lab['lab_status'],
+                        new_is_public,  # 새 과정의 공개 여부에 따라 설정
+                        now
+                    )
+                )
+                
+                # lab_id 매핑 저장
+                lab_id_mapping[source_lab['lab_id']] = new_lab_id
+            
+            # 5. 원본 과정의 랩 콘텐츠들 복사
+            for source_lab in source_labs:
+                source_lab_id = source_lab['lab_id']
+                new_lab_id = lab_id_mapping[source_lab_id]
+                
+                cursor.execute("SELECT * FROM training_lab_contents WHERE training_key = %s AND lab_id = %s ORDER BY content_id", (source_training_key, source_lab_id))
+                source_contents = cursor.fetchall()
+                
+                for source_content in source_contents:
+                    # 새로운 content_id 생성
+                    cursor.execute("SELECT MAX(content_id) as max_content_id FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (new_training_key, new_lab_id))
+                    result = cursor.fetchone()
+                    new_content_id = 1 if not result or result['max_content_id'] is None else int(result['max_content_id']) + 1
+                    
+                    # 콘텐츠 복사
+                    cursor.execute(
+                        "INSERT INTO training_lab_contents (training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        (
+                            new_training_key,
+                            new_lab_id,
+                            new_content_id,
+                            source_content['view_number'],
+                            source_content['lab_content_subject'],
+                            source_content['lab_content'],
+                            source_content['lab_content_type'],
+                            source_content['lab_content_status'],
+                            now,
+                            new_is_public  # 새 과정의 공개 여부에 따라 설정
+                        )
+                    )
+            
+            # 총 콘텐츠 개수 계산
+            total_contents = 0
+            for source_lab in source_labs:
+                cursor.execute("SELECT COUNT(*) as count FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (source_training_key, source_lab['lab_id']))
+                result = cursor.fetchone()
+                total_contents += result['count'] if result else 0
+            
+            return {
+                "message": "과정이 성공적으로 복사되었습니다.",
+                "new_training_key": new_training_key,
+                "new_course_name": new_course_name,
+                "copied_labs": len(source_labs),
+                "total_contents": total_contents
+            }
+            
+    except Exception as e:
+        print(f"[ERROR] 과정 복사 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"과정 복사 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -650,6 +795,7 @@ async def get_labs(training_key: str = Query(...)):
                     l.lab_name,
                     l.lab_content,
                     l.lab_status,
+                    l.is_public,
                     l.create_date,
                     (SELECT COUNT(*) FROM training_lab_contents
                      WHERE training_key = l.training_key
@@ -670,6 +816,7 @@ async def get_labs(training_key: str = Query(...)):
                     "lab_name": row['lab_name'],
                     "lab_content": row['lab_content'],
                     "lab_status": row['lab_status'],
+                    "is_public": row['is_public'] if 'is_public' in row else 0,
                     "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
                     "content_count": int(row['content_count'])
                 }
@@ -683,21 +830,16 @@ async def get_labs(training_key: str = Query(...)):
         conn.close()
 
 @app.get("/api/admin/labs/{lab_id}")
-async def get_lab(lab_id: int):
-    print(f"[DEBUG] Getting lab with ID: {lab_id}")
+async def get_lab(lab_id: int, training_key: str = Query(...)):
+    print(f"[DEBUG] Getting lab with ID: {lab_id}, training_key: {training_key}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            # 먼저 해당 training_key의 모든 랩을 조회해서 디버깅
-            cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, create_date FROM training_lab ORDER BY lab_id")
-            all_labs = cursor.fetchall()
-            print(f"[DEBUG] All labs in database: {all_labs}")
-            
-            # 특정 lab_id 조회
-            cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, create_date FROM training_lab WHERE lab_id = %s", (lab_id,))
+            # 특정 training_key와 lab_id로 조회
+            cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date FROM training_lab WHERE lab_id = %s AND training_key = %s", (lab_id, training_key))
             result = cursor.fetchone()
             if not result:
-                print(f"[DEBUG] Lab not found with ID: {lab_id}")
+                print(f"[DEBUG] Lab not found with ID: {lab_id} and training_key: {training_key}")
                 raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
             
             lab = {
@@ -706,6 +848,7 @@ async def get_lab(lab_id: int):
                 "lab_name": result['lab_name'],
                 "lab_content": result['lab_content'],
                 "lab_status": result['lab_status'],
+                "is_public": result['is_public'] if 'is_public' in result else 0,
                 "create_date": result['create_date'].strftime('%Y-%m-%d %H:%M') if result['create_date'] else ''
             }
             print(f"[DEBUG] Returning lab data: {lab}")
@@ -731,16 +874,22 @@ async def add_lab(data: dict = Body(...)):
             print(f"[DEBUG] Current max lab_id for training_key {data.get('training_key')}: {current_max_id}")
             print(f"[DEBUG] Next lab_id will be: {next_lab_id}")
             
+            # 해당 과정이 공개 과정인지 확인하여 is_public 값 결정
+            cursor.execute("SELECT is_public FROM training WHERE training_key = %s", (data.get("training_key"),))
+            training_result = cursor.fetchone()
+            is_public = training_result['is_public'] if training_result else 0
+            
             now = datetime.now()
             try:
                 cursor.execute(
-                    "INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, create_date) VALUES (%s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (
                         next_lab_id,
                         data.get("training_key"),
                         data.get("lab_name"),
                         data.get("lab_content"),
                         data.get("lab_status", 20),  # 기본값을 활성화(20)로 설정
+                        is_public,  # 과정이 공개이면 랩도 공개로 설정
                         now
                     )
                 )
@@ -776,13 +925,14 @@ async def update_lab(lab_id: int, data: dict = Body(...)):
                         )
                     )
                 else:
-                    # 전체 업데이트 (랩명, 내용, 상태 모두)
+                    # 전체 업데이트 (랩명, 내용, 상태, 공개여부 모두)
                     cursor.execute(
-                        "UPDATE training_lab SET lab_name=%s, lab_content=%s, lab_status=%s WHERE lab_id=%s AND training_key=%s",
+                        "UPDATE training_lab SET lab_name=%s, lab_content=%s, lab_status=%s, is_public=%s WHERE lab_id=%s AND training_key=%s",
                         (
                             data.get("lab_name"),
                             data.get("lab_content"),
                             data.get("lab_status"),
+                            data.get("is_public", 0),
                             lab_id,
                             data.get("training_key")
                         )
@@ -1093,9 +1243,14 @@ async def add_lab_content(data: dict = Body(...)):
             next_view_number = 1 if not result_view_number or result_view_number['max_view_number'] is None else int(result_view_number['max_view_number']) + 1
 
             now = datetime.now()
+            # 해당 랩이 공개 랩인지 확인하여 is_public 값 결정
+            cursor.execute("SELECT is_public FROM training_lab WHERE training_key = %s AND lab_id = %s", (data.get("training_key"), data.get("lab_id")))
+            lab_result = cursor.fetchone()
+            is_public = lab_result['is_public'] if lab_result else 0
+            
             try:
                 cursor.execute(
-                    "INSERT INTO training_lab_contents (training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO training_lab_contents (training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         data.get("training_key"),
                         data.get("lab_id"),
@@ -1105,7 +1260,8 @@ async def add_lab_content(data: dict = Body(...)):
                         data.get("lab_content"),
                         data.get("lab_content_type"),
                         data.get("lab_content_status"),
-                        now
+                        now,
+                        is_public
                     )
                 )
             except Exception as e:
@@ -1175,24 +1331,48 @@ async def update_lab_content_status(
         conn.close()
 
 @app.put("/api/admin/lab_contents/{content_id}/move")
-async def move_lab_content(content_id: int, request: MoveContentRequest, training_key: str = Query(...)):
-    print(f"move_lab_content called: content_id={content_id}, training_key={training_key}, new_lab_id={request.new_lab_id}")
-    new_lab_id = request.new_lab_id
+async def move_lab_content(
+    content_id: int, 
+    training_key: str = Query(...),
+    lab_id: int = Query(...),
+    data: dict = Body(...)
+):
+    new_lab_id = data.get("new_lab_id")
+    if not new_lab_id:
+        raise HTTPException(status_code=400, detail="new_lab_id가 필요합니다.")
+    
+    print(f"move_lab_content called: content_id={content_id}, training_key={training_key}, current_lab_id={lab_id}, new_lab_id={new_lab_id}")
+    
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
             # 1. 현재 콘텐츠 정보 조회
-            cursor.execute("SELECT training_key, lab_id FROM training_lab_contents WHERE content_id = %s AND training_key = %s", (content_id, training_key))
+            cursor.execute("SELECT training_key, lab_id FROM training_lab_contents WHERE content_id = %s AND training_key = %s AND lab_id = %s", (content_id, training_key, lab_id))
             result = cursor.fetchone()
             if not result:
                 raise HTTPException(status_code=404, detail="콘텐츠를 찾을 수 없습니다.")
+            
             # 2. 새로운 랩이 같은 과정에 속하는지 확인
             cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s AND lab_id = %s", (training_key, new_lab_id))
             result2 = cursor.fetchone()
             if not result2 or result2['cnt'] == 0:
                 raise HTTPException(status_code=400, detail="해당 랩이 과정에 존재하지 않습니다.")
-            # 3. 콘텐츠 이동
-            cursor.execute("UPDATE training_lab_contents SET lab_id = %s WHERE content_id = %s AND training_key = %s", (new_lab_id, content_id, training_key))
+            
+            # 3. 같은 랩으로 이동하려는 경우 체크
+            if int(new_lab_id) == int(lab_id):
+                return {"message": "이미 해당 랩에 있는 콘텐츠입니다."}
+            
+            # 4. 새로운 랩에서의 view_number 계산
+            cursor.execute("SELECT MAX(view_number) as max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (training_key, new_lab_id))
+            result_view = cursor.fetchone()
+            next_view_number = 1 if not result_view or result_view['max_view_number'] is None else int(result_view['max_view_number']) + 1
+            
+            # 5. 콘텐츠 이동 (lab_id와 view_number 업데이트)
+            cursor.execute("UPDATE training_lab_contents SET lab_id = %s, view_number = %s WHERE content_id = %s AND training_key = %s AND lab_id = %s", (new_lab_id, next_view_number, content_id, training_key, lab_id))
+            
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="콘텐츠 이동에 실패했습니다.")
+            
             return {"message": "콘텐츠가 성공적으로 이동되었습니다."}
     except Exception as e:
         print(f"콘텐츠 이동 중 오류 발생: {str(e)}")
@@ -1263,5 +1443,149 @@ async def proxy_markdown(url: str):
     except Exception as e:
         return HTMLResponse(content=f"URL에서 마크다운을 불러올 수 없습니다.\n{e}", status_code=400)
 
+@app.get("/public-training-portal")
+async def public_training_portal():
+    return FileResponse("templates/public_training_portal.html")
+
+@app.get("/api/public-labs")
+async def get_public_labs(training_key: str = Query(...)):
+    """로그인 없이 접근 가능한 공개 랩 목록을 반환하는 API"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 먼저 해당 트레이닝이 존재하고 공개 상태인지 확인
+            cursor.execute("""
+                SELECT training_status, course_name, is_public
+                FROM training 
+                WHERE training_key = %s
+            """, (training_key,))
+            training_result = cursor.fetchone()
+            
+            if not training_result:
+                return {"labs": [], "message": "트레이닝을 찾을 수 없습니다."}
+            
+            # 공개 트레이닝인지 확인 (is_public = 1)
+            if not training_result.get('is_public'):
+                return {"labs": [], "message": "이 트레이닝은 공개되지 않았습니다."}
+            
+            # 공개 랩 목록 조회 (lab_status = 20이고 is_public = 1인 랩만)
+            try:
+                cursor.execute("""
+                    SELECT lab_id, lab_name, lab_content, lab_status, create_date, is_public
+                    FROM training_lab 
+                    WHERE training_key = %s AND lab_status = 20 AND is_public = 1
+                    ORDER BY lab_id ASC
+                """, (training_key,))
+                labs_result = cursor.fetchall()
+                
+                print(f"[DEBUG] public_labs - 조회된 공개 랩 개수: {len(labs_result)}")
+                
+                lab_list = []
+                for r in labs_result:
+                    print(f"[DEBUG] 공개 랩 데이터: lab_id={r['lab_id']}, lab_name={r['lab_name']}, lab_status={r['lab_status']}")
+                    lab_list.append({
+                        "lab_id": r['lab_id'],
+                        "lab_name": r['lab_name'],
+                        "lab_content": r['lab_content'],
+                        "lab_status": r['lab_status'],
+                        "create_date": r['create_date'].strftime('%Y-%m-%d %H:%M') if r['create_date'] else '',
+                        "is_public": r['is_public']
+                    })
+                
+                print(f"[DEBUG] 최종 반환할 공개 lab_list: {lab_list}")
+            except Exception as e:
+                print(f"[ERROR] 공개 랩 목록 조회 실패: {e}")
+                lab_list = []
+            
+        return {
+            "labs": lab_list, 
+            "training_name": training_result['course_name'],
+            "training_status": training_result['training_status'],
+            "is_public": training_result['is_public']
+        }
+    except Exception as e:
+        print(f"[ERROR] public_labs 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/public-lab-contents")
+async def get_public_lab_contents(training_key: str = Query(...), lab_id: int = Query(...)):
+    """로그인 없이 접근 가능한 공개 랩의 콘텐츠 목록을 반환하는 API"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 해당 랩이 공개 랩인지 확인
+            cursor.execute("""
+                SELECT 1 FROM training_lab 
+                WHERE training_key = %s AND lab_id = %s AND lab_status = 20 AND is_public = 1
+            """, (training_key, lab_id))
+            
+            if not cursor.fetchone():
+                raise HTTPException(status_code=403, detail="접근할 수 없는 랩입니다.")
+            
+            # 공개 랩의 모든 활성화된 콘텐츠 조회 (lab_content_status = 1인 콘텐츠만)
+            cursor.execute("""
+                SELECT content_id, view_number, lab_content_subject, lab_content, 
+                       lab_content_type, lab_content_status, lab_content_create_date
+                FROM training_lab_contents 
+                WHERE training_key = %s AND lab_id = %s AND lab_content_status = 1
+                ORDER BY view_number ASC
+            """, (training_key, lab_id))
+            
+            result = cursor.fetchall()
+            contents = [
+                {
+                    "content_id": row['content_id'],
+                    "view_number": row['view_number'],
+                    "lab_content_subject": row['lab_content_subject'],
+                    "lab_content": row['lab_content'],
+                    "lab_content_type": row['lab_content_type'],
+                    "lab_content_status": row['lab_content_status'],
+                    "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+                }
+                for row in result
+            ]
+            return contents
+    except Exception as e:
+        print(f"[ERROR] 공개 랩 콘텐츠 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"콘텐츠 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/public-lab-content/{content_id}")
+async def get_public_lab_content(content_id: int, training_key: str = Query(...), lab_id: int = Query(...)):
+    """로그인 없이 접근 가능한 공개 랩의 특정 콘텐츠를 반환하는 API"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 해당 콘텐츠가 공개 랩의 활성화된 콘텐츠인지 확인
+            cursor.execute("""
+                SELECT content_id, view_number, lab_content_subject, lab_content, 
+                       lab_content_type, lab_content_status, lab_content_create_date
+                FROM training_lab_contents 
+                WHERE training_key = %s AND lab_id = %s AND content_id = %s 
+                      AND lab_content_status = 1
+            """, (training_key, lab_id, content_id))
+            
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="콘텐츠를 찾을 수 없거나 접근할 수 없습니다.")
+            
+            return {
+                "content_id": row['content_id'],
+                "view_number": row['view_number'],
+                "lab_content_subject": row['lab_content_subject'],
+                "lab_content": row['lab_content'],
+                "lab_content_type": row['lab_content_type'],
+                "lab_content_status": row['lab_content_status'],
+                "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+            }
+    except Exception as e:
+        print(f"[ERROR] 공개 랩 콘텐츠 상세 조회 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"콘텐츠 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

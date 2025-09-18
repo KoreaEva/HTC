@@ -10,6 +10,29 @@
             margin: 0;
             padding: 20px;
         }
+        
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .header h1 { font-size: 20px; }
+            table { font-size: 0.9em; }
+            th, td { padding: 8px 6px; }
+            .button { padding: 6px 12px; font-size: 13px; }
+            .modal-content { width: 95%; padding: 15px; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .container { padding: 10px; }
+            .header h1 { font-size: 18px; }
+            table { font-size: 0.8em; }
+            th, td { padding: 6px 4px; }
+            .button { padding: 5px 10px; font-size: 12px; }
+            .modal-content { width: 98%; padding: 12px; }
+        }
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -268,6 +291,7 @@
                         <option value="0">URL 기반 마크다운</option>
                         <option value="1">웹페이지</option>
                         <option value="2">Text(Markdown)</option>
+                        <option value="3">프롬프트</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -345,7 +369,7 @@
 
         async function fetchLabDetails() {
             try {
-                const response = await fetch(`/api/admin/labs/${currentLabId}`);
+                const response = await fetch(`/api/admin/labs/${currentLabId}?training_key=${currentTrainingKey}`);
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(getErrorMessage(errorData) || '랩 정보를 불러오는데 실패했습니다.');
@@ -470,6 +494,10 @@
                 label.innerText = '내용 (마크다운 텍스트)';
                 textarea.placeholder = '마크다운 코드를 직접 입력하세요. (예: # 제목\n\n내용...)';
                 textarea.rows = 15; // 마크다운 텍스트는 더 많은 줄 필요
+            } else if (type === '3') { // 프롬프트
+                label.innerText = '내용 (프롬프트)';
+                textarea.placeholder = 'ChatGPT 등 AI 도구에 사용할 프롬프트를 입력하세요. (예: 다음 Python 코드를 리뷰해주세요...)';
+                textarea.rows = 15; // 프롬프트는 충분한 줄 필요
             }
         }
 
@@ -630,12 +658,9 @@
                 alert('이동할 랩을 선택해주세요.');
                 return;
             }
-            if (!confirm('정말로 이 콘텐츠를 선택한 랩으로 이동하시겠습니까?')) {
-                return;
-            }
 
             try {
-                const response = await fetch(`/api/admin/lab_contents/${currentContentToMoveId}/move`, {
+                const response = await fetch(`/api/admin/lab_contents/${currentContentToMoveId}/move?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json'
@@ -694,7 +719,7 @@
 
         // 돌아가기 버튼 함수
         function goBackToLabList() {
-            window.location.href = `/admin/lab?training_key=${trainingKey}`;
+            window.location.href = `/admin/lab?training_key=${currentTrainingKey}`;
         }
 
     </script>

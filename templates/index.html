@@ -7,6 +7,28 @@
     <style>
         :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
         body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .controls { flex-direction: column; gap: 8px; }
+            .controls select { width: 100%; }
+            .schedule-table { font-size: 0.8em; }
+            .schedule-table th, .schedule-table td { padding: 6px 4px; }
+            .tab-button { padding: 8px 16px; font-size: 0.9em; }
+            .login-container { margin: 20px auto; padding: 20px; }
+            .course-card { padding: 15px; }
+            .course-info { flex-direction: column; align-items: flex-start; gap: 8px; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .schedule-table { font-size: 0.7em; }
+            .schedule-table th, .schedule-table td { padding: 4px 2px; }
+            .tab-button { padding: 6px 12px; font-size: 0.8em; }
+            .course-card { padding: 12px; }
+        }
+        
         .controls { display:flex; justify-content:space-between; gap:10px; margin-bottom:12px; }
         select { background: var(--panel); color:var(--text); border:1px solid #3E3E3E; padding:6px 8px; border-radius:4px; }
         .schedule-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:0.9em; }
@@ -82,6 +104,48 @@
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 0.8em;
+        }
+        
+        /* 공개 과정 카드 스타일 */
+        .public-course-card {
+            background: linear-gradient(135deg, var(--panel), #2a2d35);
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .public-course-card::before {
+            content: '🔓';
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5em;
+            opacity: 0.8;
+        }
+        .public-course-card:hover {
+            background: linear-gradient(135deg, #2a2d35, var(--panel));
+            border-color: #FFD700;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+        }
+        .public-course-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+        .public-course-badge {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+            display: inline-block;
         }
     </style>
 </head>
@@ -527,16 +591,33 @@
                 
                 let coursesHTML = '';
                 courses.forEach(course => {
-                    coursesHTML += `
-                        <div class="course-card" onclick="selectCourse('${course.training_key}')">
-                            <div class="course-title">${course.course_name}</div>
-                            <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
-                            <div class="course-info">
-                                <span>최대 인원: ${course.max_member}명</span>
-                                <span class="course-status">활성</span>
+                    // 공개 과정인지 확인 (is_public 필드가 있으면 공개 과정)
+                    if (course.is_public) {
+                        // 공개 과정 - 로그인 없이 접근 가능
+                        coursesHTML += `
+                            <div class="public-course-card" onclick="openPublicCourse('${course.training_key}')">
+                                <div class="public-course-badge">🔓 공개 과정</div>
+                                <div class="public-course-title">${course.course_name}</div>
+                                <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
+                                <div class="course-info">
+                                    <span>최대 인원: ${course.max_member}명</span>
+                                    <span style="background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">무료 학습</span>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        // 일반 과정 - 로그인 필요
+                        coursesHTML += `
+                            <div class="course-card" onclick="selectCourse('${course.training_key}')">
+                                <div class="course-title">${course.course_name}</div>
+                                <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
+                                <div class="course-info">
+                                    <span>최대 인원: ${course.max_member}명</span>
+                                    <span class="course-status">활성</span>
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
                 
                 coursesContainer.innerHTML = coursesHTML;
@@ -554,6 +635,12 @@
             
             // 트레이닝 키 입력 필드에 자동으로 설정하지 않음
             // document.getElementById('trainingKey').value = trainingKey;
+        }
+        
+        // 공개 과정 열기 함수
+        function openPublicCourse(trainingKey) {
+            // 공개 과정은 로그인 없이 바로 포털로 이동
+            window.location.href = `/public-training-portal?training_key=${trainingKey}`;
         }
         
         // 페이지 로드 시 실행

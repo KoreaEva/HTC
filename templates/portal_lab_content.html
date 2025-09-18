@@ -10,6 +10,24 @@
             margin: 0; /* 기본 마진 제거 */
             padding: 0;
         }
+        
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            .container { flex-direction: column; margin: 10px auto; }
+            .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid #eee; padding: 20px; }
+            .main-content { padding: 20px; }
+            .breadcrumbs { padding: 15px 20px; }
+            .markdown-body { font-size: 1em; }
+        }
+        
+        @media (max-width: 480px) {
+            .container { margin: 5px auto; }
+            .sidebar { padding: 15px; }
+            .main-content { padding: 15px; }
+            .breadcrumbs { padding: 10px 15px; }
+            .markdown-body { font-size: 0.95em; }
+        }
+        
         .breadcrumbs {
             padding: 15px 40px;
             background: #fff;
@@ -188,7 +206,7 @@
                 }
 
                 // Fetch lab name
-                const labRes = await fetch(`/api/admin/labs/${labId}`);
+                const labRes = await fetch(`/api/admin/labs/${labId}?training_key=${trainingKey}`);
                 let labName = '알 수 없는 랩';
                 if (labRes.ok) {
                     const labData = await labRes.json();

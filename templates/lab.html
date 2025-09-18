@@ -10,6 +10,27 @@
             margin: 0;
             padding: 20px;
         }
+        
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 15px; }
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .header h1 { font-size: 20px; }
+            table { font-size: 0.9em; }
+            th, td { padding: 8px 6px; }
+            .button { padding: 6px 12px; font-size: 13px; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .container { padding: 10px; }
+            .header h1 { font-size: 18px; }
+            table { font-size: 0.8em; }
+            th, td { padding: 6px 4px; }
+            .button { padding: 5px 10px; font-size: 12px; }
+        }
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -83,6 +104,7 @@
         input:checked + .slider:before { transform: translateX(20px); }
         /* 비활성화 행 */
         tr.inactive-row { opacity: 0.5; }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -234,13 +256,14 @@
                     <label for="labContent">랩 내용:</label>
                     <textarea id="labContent" rows="4"></textarea>
                 </div>
-                                 <div class="form-group">
-                     <label for="labStatus">랩 상태:</label>
-                     <select id="labStatus" required>
-                         <option value="20">활성화</option>
-                         <option value="10">비활성화</option>
-                     </select>
-                 </div>
+                                                 <div class="form-group">
+                    <label for="labStatus">랩 상태:</label>
+                    <select id="labStatus" required>
+                        <option value="20">활성화</option>
+                        <option value="10">비활성화</option>
+                    </select>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="button">저장</button>
                     <button type="button" class="button" onclick="closeModal('labModal')">취소</button>
@@ -314,6 +337,8 @@
                     if (lab.lab_status != 20) {
                         tr.classList.add('inactive-row');
                     }
+
+                    
                     tr.innerHTML = `
                         <td>${lab.lab_id}</td>
                         <td><a href="/admin/lab_content?training_key=${lab.training_key}&lab_id=${lab.lab_id}">${lab.lab_name}</a></td>
@@ -344,7 +369,8 @@
             document.getElementById('labId').value = '';
             document.getElementById('labName').value = '';
             document.getElementById('labContent').value = '';
-                             document.getElementById('labStatus').value = 20;
+            document.getElementById('labStatus').value = 20;
+
             
             // 모달 표시
             document.getElementById('labModal').style.display = 'flex';
@@ -364,7 +390,7 @@
                 console.log('요청된 lab_id:', labId);
                 console.log('현재 training_key:', trainingKey);
                 
-                const res = await fetch(`/api/admin/labs/${labId}`);
+                const res = await fetch(`/api/admin/labs/${labId}?training_key=${trainingKey}`);
                 console.log('API 응답 상태:', res.status, res.statusText);
                 
                 if (!res.ok) {
@@ -381,7 +407,8 @@
                 document.getElementById('labId').value = lab.lab_id || '';
                 document.getElementById('labName').value = lab.lab_name || '';
                 document.getElementById('labContent').value = lab.lab_content || '';
-                                 document.getElementById('labStatus').value = lab.lab_status || 1;
+                document.getElementById('labStatus').value = lab.lab_status || 20;
+
                 
                 console.log('모달 폼에 설정된 값들:');
                 console.log('- lab_id:', document.getElementById('labId').value);
@@ -445,6 +472,7 @@
                 const labName = document.getElementById('labName').value.trim();
                 const labContent = document.getElementById('labContent').value.trim();
                 const labStatus = parseInt(document.getElementById('labStatus').value);
+
                 
                 console.log('Form submission - labId:', labId, 'labName:', labName, 'labStatus:', labStatus);
                 

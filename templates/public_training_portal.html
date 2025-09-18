@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Training Center Portal</title>
+    <style>
+        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
+        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        
+        /* 모바일 반응형 스타일 */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .labs-container { grid-template-columns: 1fr; }
+            .content-layout { flex-direction: column; }
+            .content-sidebar { width: 100%; margin-bottom: 20px; }
+            .content-viewer { min-height: 400px; padding: 15px; }
+            .lab-card { padding: 15px; }
+            .content-item { padding: 12px; }
+            .welcome { font-size: 1.3em; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 5px; }
+            .header h1 { font-size: 1.3em; }
+            .welcome { font-size: 1.2em; }
+            .lab-card { padding: 12px; }
+            .content-item { padding: 10px; }
+            .content-viewer { padding: 12px; min-height: 300px; }
+        }
+        
+        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .welcome { font-size:1.5em; font-weight:600; }
+        .home-btn { background:#4CAF50; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; }
+        .home-btn:hover { background:#45a049; }
+        
+        /* 랩 목록 스타일 */
+        .labs-section { margin-bottom:30px; }
+        .labs-section h2 { color:#FFD700; margin-bottom:15px; }
+        .labs-container { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:15px; }
+        .lab-card { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; padding:20px; cursor:pointer; transition:all 0.3s ease; }
+        .lab-card:hover { border-color:#FFD700; transform:translateY(-2px); }
+        .lab-card h3 { margin-top:0; color:#FFD700; font-size:1.2em; }
+        .lab-card p { color:var(--muted); margin-bottom:10px; line-height:1.4; }
+        .lab-meta { display:flex; justify-content:space-between; align-items:center; margin-top:15px; }
+        .lab-status { padding:4px 8px; border-radius:4px; font-size:0.8em; font-weight:600; background:#4CAF50; color:white; }
+        .lab-date { color:var(--muted); font-size:0.9em; }
+        
+        /* 콘텐츠 목록 스타일 */
+        .content-section { margin-bottom:30px; }
+        .content-section h2 { color:#4CAF50; margin-bottom:15px; }
+        .content-layout { display:flex; gap:20px; }
+        .content-sidebar { width:300px; flex-shrink:0; }
+        .content-main { flex:1; }
+        .content-list { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; max-height:600px; overflow-y:auto; }
+        .content-item { padding:15px; border-bottom:1px solid #3E3E3E; cursor:pointer; transition:all 0.3s ease; }
+        .content-item:hover { background:#3E3E3E; }
+        .content-item.active { background:#4CAF50; color:white; }
+        .content-item.active h4 { color:white; }
+        .content-item h4 { margin:0 0 5px 0; color:#4CAF50; font-size:1em; }
+        .content-item p { margin:0; color:var(--muted); font-size:0.9em; line-height:1.3; }
+        .content-item .content-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; }
+        .content-date { color:var(--muted); font-size:0.8em; }
+        
+        /* 마크다운 콘텐츠 영역 */
+        .content-viewer { background:var(--panel); border:1px solid #3E3E3E; border-radius:8px; padding:20px; min-height:600px; }
+        .content-viewer h1, .content-viewer h2, .content-viewer h3, .content-viewer h4, .content-viewer h5, .content-viewer h6 { color:#4CAF50; margin-top:20px; margin-bottom:10px; }
+        .content-viewer h1:first-child, .content-viewer h2:first-child, .content-viewer h3:first-child { margin-top:0; }
+        .content-viewer p { line-height:1.6; margin-bottom:15px; }
+        .content-viewer code { background:#3E3E3E; padding:2px 4px; border-radius:3px; font-family:monospace; }
+        .content-viewer pre { background:#3E3E3E; padding:15px; border-radius:5px; overflow-x:auto; margin:15px 0; }
+        .content-viewer pre code { background:none; padding:0; }
+        .content-viewer blockquote { border-left:4px solid #4CAF50; padding-left:15px; margin:15px 0; color:var(--muted); }
+        .content-viewer ul, .content-viewer ol { padding-left:20px; margin:15px 0; }
+        .content-viewer li { margin-bottom:5px; }
+        .content-viewer table { width:100%; border-collapse:collapse; margin:15px 0; }
+        .content-viewer th, .content-viewer td { border:1px solid #3E3E3E; padding:8px; text-align:left; }
+        .content-viewer th { background:#3E3E3E; color:#4CAF50; }
+        .content-viewer a { color:#2196F3; text-decoration:none; }
+        .content-viewer a:hover { text-decoration:underline; }
+        .content-viewer img { max-width:100%; height:auto; border-radius:5px; margin:10px 0; }
+        
+        /* 마크다운 콘텐츠 전용 스타일 */
+        .markdown-content { 
+            font-size: 1.1em; 
+            line-height: 1.7; 
+            color: var(--text); 
+            max-width: 100%;
+        }
+        .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #4CAF50;
+        }
+        .markdown-content h1 { font-size: 2em; border-bottom: 1px solid #3E3E3E; padding-bottom: 0.3em; }
+        .markdown-content h2 { font-size: 1.5em; border-bottom: 1px solid #3E3E3E; padding-bottom: 0.3em; }
+        .markdown-content h3 { font-size: 1.25em; }
+        .markdown-content p { margin-bottom: 16px; }
+        .markdown-content ul, .markdown-content ol { padding-left: 2em; margin-bottom: 16px; }
+        .markdown-content li { margin-bottom: 0.25em; }
+        .markdown-content blockquote { 
+            padding: 0 1em; 
+            color: var(--muted); 
+            border-left: 0.25em solid #4CAF50; 
+            margin: 0 0 16px 0;
+        }
+        .markdown-content pre { 
+            background: #3E3E3E; 
+            padding: 16px; 
+            border-radius: 6px; 
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        .markdown-content code { 
+            background: #3E3E3E; 
+            padding: 0.2em 0.4em; 
+            border-radius: 3px; 
+            font-size: 85%;
+            font-family: 'Courier New', monospace;
+        }
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .markdown-content table th,
+        .markdown-content table td {
+            padding: 6px 13px;
+            border: 1px solid #3E3E3E;
+        }
+        .markdown-content table th {
+            background-color: #3E3E3E;
+            font-weight: 600;
+            color: #4CAF50;
+        }
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        .markdown-content a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        // 마크다운 파서 설정
+        marked.setOptions({
+            breaks: true,  // 줄바꿈을 <br>로 변환
+            gfm: true,     // GitHub Flavored Markdown 지원
+            sanitize: false // HTML 태그 허용 (XSS 방지는 서버에서 처리)
+        });
+    </script>
+</head>
+<body>
+    <div class="header">
+        <div class="welcome">Public Training Center에 오신 것을 환영합니다!</div>
+        <button class="home-btn" onclick="goHome()">홈으로</button>
+    </div>
+    
+
+    
+    <!-- 랩 목록 -->
+    <div class="labs-section">
+        <div id="trainingInfo" style="margin-bottom:20px; padding:15px; background:var(--panel); border-radius:8px; border-left:4px solid #FFD700;">
+            <h2 style="margin:0 0 10px 0; color:#FFD700; font-size:1.5em;">과정 정보</h2>
+            <p style="margin:0; color:var(--muted);">트레이닝 정보를 불러오는 중...</p>
+        </div>
+        <div id="labsList" class="labs-container">
+            <p style="text-align:center; color:var(--muted);">랩 목록을 불러오는 중...</p>
+        </div>
+    </div>
+
+         <!-- 콘텐츠 목록 -->
+     <div id="contentSection" class="content-section" style="display:none;">
+         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+             <h2 style="margin: 0;">콘텐츠 목록</h2>
+             <button id="refreshContentBtn" onclick="refreshContent()" style="
+                 display: inline-flex;
+                 align-items: center;
+                 gap: 8px;
+                 background: #4CAF50;
+                 color: white;
+                 border: none;
+                 padding: 8px 16px;
+                 border-radius: 6px;
+                 cursor: pointer;
+                 font-weight: 500;
+                 font-size: 0.9em;
+                 transition: all 0.3s ease;
+                 box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+             " onmouseover="this.style.background='#45a049'; this.style.transform='translateY(-1px)'" 
+                onmouseout="this.style.background='#4CAF50'; this.style.transform='translateY(0)'">
+                 <span style="font-size: 1.1em;">🔄</span>
+                 새로고침
+             </button>
+         </div>
+         <div id="selectedLabInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:4px; border-left:4px solid #4CAF50;">
+             <p style="margin:0; color:var(--muted);">선택된 랩 정보</p>
+         </div>
+        <div class="content-layout">
+            <div class="content-sidebar">
+                <div id="contentList" class="content-list">
+                    <p style="text-align:center; color:var(--muted); padding:20px;">콘텐츠를 선택하세요</p>
+                </div>
+            </div>
+            <div class="content-main">
+                <div id="contentViewer" class="content-viewer">
+                    <p style="text-align:center; color:var(--muted); margin-top:50px;">왼쪽에서 콘텐츠를 선택하세요</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL에서 training_key 파라미터 가져오기
+        function getTrainingKeyFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('training_key');
+        }
+        
+        // 홈으로 이동
+        function goHome() {
+            window.location.href = '/';
+        }
+        
+        // 랩 목록 로드
+        async function loadLabs() {
+            try {
+                console.log('=== loadLabs 함수 시작 ===');
+                const trainingKey = getTrainingKeyFromURL();
+                
+                if (!trainingKey) {
+                    console.log('training_key가 없음 - 홈으로 리다이렉트');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                console.log('요청할 training_key:', trainingKey);
+                
+                const response = await fetch(`/api/public-labs?training_key=${trainingKey}`);
+                console.log('API 응답 상태:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error('랩 목록을 불러올 수 없습니다.');
+                }
+                
+                const data = await response.json();
+                console.log('API에서 받은 전체 데이터:', data);
+                console.log('랩 목록:', data.labs);
+                
+                const labsContainer = document.getElementById('labsList');
+                const trainingInfoContainer = document.getElementById('trainingInfo');
+                
+                // 트레이닝 정보 표시
+                if (data.training_name) {
+                    console.log('트레이닝 정보:', {
+                        name: data.training_name,
+                        status: data.training_status,
+                        is_public: data.is_public
+                    });
+                    trainingInfoContainer.innerHTML = `
+                        <h2 style="margin:0 0 10px 0; color:#FFD700; font-size:1.5em;">${data.training_name}</h2>
+                        <p style="margin:0; color:var(--muted); font-size:0.9em;">공개 과정 - 자유롭게 학습하세요!</p>
+                    `;
+                }
+                
+                if (data.message) {
+                    console.log('메시지가 있음:', data.message);
+                    labsContainer.innerHTML = `<p style="text-align:center; color:var(--muted);">${data.message}</p>`;
+                    return;
+                }
+                
+                if (data.labs.length === 0) {
+                    console.log('랩 목록이 비어있음');
+                    labsContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">진행중인 공개 랩이 없습니다.</p>';
+                    return;
+                }
+                
+                console.log(`총 ${data.labs.length}개의 공개 랩을 처리합니다.`);
+                
+                let labsHTML = '';
+                data.labs.forEach((lab, index) => {
+                    console.log(`=== 공개 랩 ${index + 1} 처리 ===`);
+                    console.log('전체 랩 객체:', lab);
+                    
+                    labsHTML += `
+                        <div class="lab-card" onclick="openLab(${lab.lab_id})">
+                            <h3>${lab.lab_name}</h3>
+                            <p>${lab.lab_content || '설명이 없습니다.'}</p>
+                            <div class="lab-meta">
+                                <span class="lab-status">공개</span>
+                                <span class="lab-date">${lab.create_date}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                console.log('생성된 HTML:', labsHTML);
+                labsContainer.innerHTML = labsHTML;
+                console.log('=== loadLabs 함수 완료 ===');
+                
+            } catch (error) {
+                console.error('=== loadLabs 오류 ===');
+                console.error('랩 목록 로드 실패:', error);
+                document.getElementById('labsList').innerHTML = 
+                    '<p style="text-align:center; color:#FF6B6B;">랩 목록을 불러오는데 실패했습니다.</p>';
+                document.getElementById('trainingInfo').innerHTML = 
+                    '<p style="margin:0; color:#FF6B6B;">트레이닝 정보를 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        // 랩 열기
+        async function openLab(labId) {
+            const trainingKey = getTrainingKeyFromURL();
+            if (!trainingKey) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // 선택된 랩 정보 저장
+            window.selectedLabId = labId;
+            
+            // 콘텐츠 섹션 표시
+            document.getElementById('contentSection').style.display = 'block';
+            
+            // 콘텐츠 목록 로드
+            loadContents(labId);
+        }
+        
+        // 콘텐츠 목록 로드
+        async function loadContents(labId) {
+            try {
+                const trainingKey = getTrainingKeyFromURL();
+                if (!trainingKey) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const response = await fetch(`/api/public-lab-contents?training_key=${trainingKey}&lab_id=${labId}`);
+                if (!response.ok) {
+                    throw new Error('콘텐츠 목록을 불러올 수 없습니다.');
+                }
+                
+                const contents = await response.json();
+                const contentContainer = document.getElementById('contentList');
+                const selectedLabInfoContainer = document.getElementById('selectedLabInfo');
+                
+                // 선택된 랩 정보 표시
+                const labCards = document.querySelectorAll('.lab-card');
+                let selectedLabName = '';
+                labCards.forEach(card => {
+                    const onclickAttr = card.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes(`openLab(${labId})`)) {
+                        const labName = card.querySelector('h3').textContent;
+                        selectedLabName = labName;
+                    }
+                });
+                
+                selectedLabInfoContainer.innerHTML = `
+                    <p style="margin:0; color:var(--text); font-weight:600;">${selectedLabName}</p>
+                    <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9em;">콘텐츠 수: ${contents.length}개</p>
+                `;
+                
+                if (contents.length === 0) {
+                    contentContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">이 랩에는 콘텐츠가 없습니다.</p>';
+                    return;
+                }
+                
+                // view_number로 정렬
+                contents.sort((a, b) => a.view_number - b.view_number);
+                
+                let contentsHTML = '';
+                contents.forEach((content, index) => {
+                    const isFirst = index === 0;
+                    
+                                     contentsHTML += `
+                     <div class="content-item" onclick="openContent(${content.content_id}, this)" data-content-id="${content.content_id}">
+                         <h4>${content.lab_content_subject || '제목 없음'}</h4>
+                         <div class="content-meta">
+                             <span class="content-date">${content.lab_content_create_date}</span>
+                         </div>
+                     </div>
+                 `;
+                });
+                
+                contentContainer.innerHTML = contentsHTML;
+                
+                // 첫 번째 콘텐츠 자동 로드
+                if (contents.length > 0) {
+                    const firstContent = contents[0];
+                    const firstElement = contentContainer.querySelector('.content-item');
+                    if (firstElement) {
+                        openContent(firstContent.content_id, firstElement);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('콘텐츠 목록 로드 실패:', error);
+                document.getElementById('contentList').innerHTML = 
+                    '<p style="text-align:center; color:#FF6B6B;">콘텐츠 목록을 불러오는데 실패했습니다.</p>';
+                document.getElementById('selectedLabInfo').innerHTML = 
+                    '<p style="margin:0; color:#FF6B6B;">랩 정보를 불러오는데 실패했습니다.</p>';
+            }
+        }
+        
+        // 콘텐츠 열기
+        async function openContent(contentId, element) {
+            const trainingKey = getTrainingKeyFromURL();
+            if (!trainingKey) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // 활성 상태 업데이트
+            document.querySelectorAll('.content-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (element) {
+                element.classList.add('active');
+            }
+            
+            // 콘텐츠 로드
+            loadContentDetail(contentId);
+        }
+        
+        // 콘텐츠 상세 로드
+        async function loadContentDetail(contentId) {
+            try {
+                const trainingKey = getTrainingKeyFromURL();
+                if (!trainingKey) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                const response = await fetch(`/api/public-lab-content/${contentId}?training_key=${trainingKey}&lab_id=${window.selectedLabId}`);
+                if (!response.ok) {
+                    throw new Error('콘텐츠를 불러올 수 없습니다.');
+                }
+                
+                const content = await response.json();
+                const contentViewer = document.getElementById('contentViewer');
+                
+                // 콘텐츠 타입에 따라 다르게 처리
+                const contentText = content.lab_content || '(내용 없음)';
+                
+                // 디버깅을 위한 콘텐츠 타입 로그
+                console.log('Content type:', content.lab_content_type);
+                console.log('Content text:', contentText);
+                console.log('Marked library available:', typeof marked !== 'undefined');
+                
+                if (content.lab_content_type === 0) {
+                    // 타입 0: URL 기반 마크다운 처리
+                    if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                        try {
+                            const markdownResponse = await fetch(`/api/proxy-markdown?url=${encodeURIComponent(contentText)}`);
+                            if (markdownResponse.ok) {
+                                const markdownText = await markdownResponse.text();
+                                contentViewer.innerHTML = `
+                                    <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                    <div class="markdown-content">${marked.parse(markdownText)}</div>
+                                `;
+                            } else {
+                                contentViewer.innerHTML = `
+                                    <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                    <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러올 수 없습니다.</p>
+                                `;
+                            }
+                        } catch (e) {
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러오는 중 오류 발생.</p>
+                            `;
+                        }
+                    } else {
+                        // URL이 아니지만 마크다운 텍스트인 경우 자동으로 파싱
+                        try {
+                            const parsedMarkdown = marked.parse(contentText);
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                <div class="markdown-content">${parsedMarkdown}</div>
+                            `;
+                            console.log('Auto-detected markdown content and parsed successfully');
+                        } catch (error) {
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                                <p style="color:#FF6B6B;">유효하지 않은 마크다운 URL입니다.</p>
+                            `;
+                        }
+                    }
+                } else if (content.lab_content_type === 2) {
+                    // 타입 2: Text(Markdown) 처리 - 직접 입력된 마크다운 텍스트
+                    try {
+                        const parsedMarkdown = marked.parse(contentText);
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div class="markdown-content">${parsedMarkdown}</div>
+                        `;
+                        console.log('Markdown parsed successfully');
+                    } catch (error) {
+                        console.error('Markdown parsing error:', error);
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div class="markdown-content">
+                                <p style="color:#FF6B6B;">마크다운 파싱 중 오류가 발생했습니다.</p>
+                                <pre style="background: #3E3E3E; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
+                            </div>
+                        `;
+                    }
+                                 } else if (content.lab_content_type === 1) {
+                     // 타입 1: 웹페이지 링크 버튼
+                     if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
+                         contentViewer.innerHTML = `
+                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                             <div style="text-align: center; padding: 40px 20px;">
+                                 <div style="margin-bottom: 20px;">
+                                     <p style="font-size: 1.1em; color: var(--muted); margin-bottom: 10px;">이 콘텐츠는 외부 웹페이지입니다.</p>
+                                     <p style="color: var(--muted); margin-bottom: 30px;">아래 버튼을 클릭하여 웹페이지를 확인하세요.</p>
+                                 </div>
+                                 <a href="${contentText}" target="_blank" style="
+                                     display: inline-block;
+                                     background: #4CAF50;
+                                     color: white;
+                                     padding: 15px 30px;
+                                     border-radius: 8px;
+                                     text-decoration: none;
+                                     font-weight: 600;
+                                     font-size: 1.1em;
+                                     transition: background-color 0.3s ease;
+                                     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                 " onmouseover="this.style.background='#45a049'" onmouseout="this.style.background='#4CAF50'">
+                                     🌐 웹페이지 열기
+                                 </a>
+                                 <div style="margin-top: 20px; font-size: 0.9em; color: var(--muted);">
+                                     <p>링크: <a href="${contentText}" target="_blank" style="color: #2196F3; text-decoration: underline;">${contentText}</a></p>
+                                 </div>
+                             </div>
+                         `;
+                     } else {
+                         contentViewer.innerHTML = `
+                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                             <p style="color:#FF6B6B;">웹페이지 URL이 아닙니다.</p>
+                         `;
+                     }
+                 } else if (content.lab_content_type === 3) {
+                     // 타입 3: 프롬프트 처리 - 별도 복사 버튼과 함께 표시
+                     try {
+                         const parsedMarkdown = marked.parse(contentText);
+                         contentViewer.innerHTML = `
+                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #FF6B6B;">
+                                 <h1 style="margin: 0; color: #FF6B6B;">${content.lab_content_subject || '제목 없음'}</h1>
+                                 <div style="display: flex; align-items: center; gap: 15px;">
+                                     <button id="copyPromptBtn" onclick="copyPromptContent()" style="
+                                         display: inline-flex;
+                                         align-items: center;
+                                         gap: 8px;
+                                         background: #FF6B6B;
+                                         color: white;
+                                         border: none;
+                                         padding: 12px 20px;
+                                         border-radius: 8px;
+                                         cursor: pointer;
+                                         font-weight: 600;
+                                         font-size: 0.95em;
+                                         transition: all 0.3s ease;
+                                         box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
+                                     " onmouseover="this.style.background='#FF5252'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 107, 107, 0.4)'" 
+                                        onmouseout="this.style.background='#FF6B6B'; this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 8px rgba(255, 107, 107, 0.3)'">
+                                         <span style="font-size: 1.2em;">📋</span>
+                                         프롬프트 복사
+                                     </button>
+                                     <span id="copyStatus" style="
+                                         padding: 8px 12px;
+                                         border-radius: 6px;
+                                         font-size: 0.9em;
+                                         font-weight: 500;
+                                         min-width: 120px;
+                                         text-align: center;
+                                         opacity: 0;
+                                         transition: opacity 0.3s ease;
+                                     "></span>
+                                 </div>
+                             </div>
+                             <div class="markdown-content" style="
+                                 background: rgba(255, 107, 107, 0.05);
+                                 border: 1px solid rgba(255, 107, 107, 0.2);
+                                 border-radius: 8px;
+                                 padding: 20px;
+                                 position: relative;
+                             ">
+                                 <div style="
+                                     position: absolute;
+                                     top: -10px;
+                                     left: 20px;
+                                     background: var(--bg);
+                                     padding: 0 10px;
+                                     color: #FF6B6B;
+                                     font-size: 0.8em;
+                                     font-weight: 600;
+                                     text-transform: uppercase;
+                                     letter-spacing: 0.5px;
+                                 ">프롬프트 콘텐츠</div>
+                                 ${parsedMarkdown}
+                             </div>
+                         `;
+                         console.log('Prompt content displayed with enhanced copy button');
+                     } catch (error) {
+                         console.error('Prompt content parsing error:', error);
+                         contentViewer.innerHTML = `
+                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #FF6B6B;">
+                                 <h1 style="margin: 0; color: #FF6B6B;">${content.lab_content_subject || '제목 없음'}</h1>
+                                 <div style="display: flex; align-items: center; gap: 15px;">
+                                     <button id="copyPromptBtn" onclick="copyPromptContent()" style="
+                                         display: inline-flex;
+                                         align-items: center;
+                                         gap: 8px;
+                                         background: #FF6B6B;
+                                         color: white;
+                                         border: none;
+                                         padding: 12px 20px;
+                                         border-radius: 8px;
+                                         cursor: pointer;
+                                         font-weight: 600;
+                                         font-size: 0.95em;
+                                         transition: all 0.3s ease;
+                                         box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
+                                     " onmouseover="this.style.background='#FF5252'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 107, 107, 0.4)'" 
+                                        onmouseout="this.style.background='#FF6B6B'; this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 8px rgba(255, 107, 107, 0.3)'">
+                                         <span style="font-size: 1.2em;">📋</span>
+                                         프롬프트 복사
+                                     </button>
+                                     <span id="copyStatus" style="
+                                         padding: 8px 12px;
+                                         border-radius: 6px;
+                                         font-size: 0.9em;
+                                         font-weight: 500;
+                                         min-width: 120px;
+                                         text-align: center;
+                                         opacity: 0;
+                                         transition: opacity 0.3s ease;
+                                     "></span>
+                                 </div>
+                             </div>
+                             <div class="markdown-content" style="
+                                 background: rgba(255, 107, 107, 0.05);
+                                 border: 1px solid rgba(255, 107, 107, 0.2);
+                                 border-radius: 8px;
+                                 padding: 20px;
+                                 position: relative;
+                             ">
+                                 <div style="
+                                     position: absolute;
+                                     top: -10px;
+                                     left: 20px;
+                                     background: var(--bg);
+                                     padding: 0 10px;
+                                     color: #FF6B6B;
+                                     font-size: 0.8em;
+                                     font-weight: 600;
+                                     text-transform: uppercase;
+                                     letter-spacing: 0.5px;
+                                 ">프롬프트 콘텐츠</div>
+                                 <p style="color:#FF6B6B;">프롬프트 파싱 중 오류가 발생했습니다.</p>
+                                 <pre style="background: #3E3E3E; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
+                             </div>
+                         `;
+                     }
+                } else {
+                    // 기타 타입: 마크다운 텍스트인지 확인하여 자동 파싱
+                    try {
+                        const parsedMarkdown = marked.parse(contentText);
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <div class="markdown-content">${parsedMarkdown}</div>
+                        `;
+                        console.log('Auto-detected markdown content for unknown type and parsed successfully');
+                    } catch (error) {
+                        // 마크다운 파싱 실패 시 기본 텍스트 처리
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                            <pre style="background: #3E3E3E; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
+                        `;
+                    }
+                }
+                
+            } catch (error) {
+                console.error('콘텐츠 상세 로드 실패:', error);
+                document.getElementById('contentViewer').innerHTML = `
+                    <p style="text-align:center; color:#FF6B6B;">콘텐츠를 불러오는데 실패했습니다.</p>
+                `;
+            }
+        }
+        
+                 // 프롬프트 콘텐츠 복사 함수
+         async function copyPromptContent() {
+             try {
+                 const contentViewer = document.getElementById('contentViewer');
+                 const markdownContent = contentViewer.querySelector('.markdown-content');
+                 
+                 if (!markdownContent) {
+                     console.error('마크다운 콘텐츠를 찾을 수 없습니다.');
+                     return;
+                 }
+                 
+                 // "프롬프트 콘텐츠" 라벨을 제외하고 실제 내용만 추출
+                 // 라벨은 position: absolute로 되어 있어서 실제 콘텐츠와 분리되어 있음
+                 const actualContent = markdownContent.cloneNode(true);
+                 
+                 // 라벨 요소 제거 (position: absolute로 되어 있는 요소들)
+                 const labels = actualContent.querySelectorAll('[style*="position: absolute"]');
+                 labels.forEach(label => label.remove());
+                 
+                 // HTML 태그를 제거하고 순수 텍스트 추출
+                 const tempDiv = document.createElement('div');
+                 tempDiv.innerHTML = actualContent.innerHTML;
+                 const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                 
+                 // 복사 버튼 비활성화 및 로딩 상태 표시
+                 const copyBtn = document.getElementById('copyPromptBtn');
+                 const originalText = copyBtn.innerHTML;
+                 copyBtn.innerHTML = '<span style="font-size: 1.2em;">⏳</span> 복사 중...';
+                 copyBtn.disabled = true;
+                 copyBtn.style.background = '#888';
+                 copyBtn.style.cursor = 'not-allowed';
+                 
+                 // 클립보드에 복사
+                 await navigator.clipboard.writeText(plainText);
+                 
+                 // 복사 성공 상태 표시
+                 copyBtn.innerHTML = '<span style="font-size: 1.2em;">✅</span> 복사 완료!';
+                 copyBtn.style.background = '#4CAF50';
+                 
+                 // 복사 상태 메시지 표시
+                 const copyStatus = document.getElementById('copyStatus');
+                 if (copyStatus) {
+                     copyStatus.textContent = '프롬프트가 클립보드에 복사되었습니다!';
+                     copyStatus.style.color = '#4CAF50';
+                     copyStatus.style.background = 'rgba(76, 175, 80, 0.1)';
+                     copyStatus.style.border = '1px solid rgba(76, 175, 80, 0.3)';
+                     copyStatus.style.opacity = '1';
+                 }
+                 
+                 console.log('프롬프트가 클립보드에 복사되었습니다. (라벨 제외)');
+                 
+                 // 3초 후 원래 상태로 복원
+                 setTimeout(() => {
+                     copyBtn.innerHTML = originalText;
+                     copyBtn.disabled = false;
+                     copyBtn.style.background = '#FF6B6B';
+                     copyBtn.style.cursor = 'pointer';
+                     
+                     if (copyStatus) {
+                         copyStatus.style.opacity = '0';
+                     }
+                 }, 3000);
+                 
+             } catch (error) {
+                 console.error('프롬프트 복사 실패:', error);
+                 
+                 // 폴백: 구식 복사 방법 사용
+                 try {
+                     const contentViewer = document.getElementById('contentViewer');
+                     const markdownContent = contentViewer.querySelector('.markdown-content');
+                     
+                     if (markdownContent) {
+                         // "프롬프트 콘텐츠" 라벨을 제외하고 실제 내용만 추출
+                         const actualContent = markdownContent.cloneNode(true);
+                         
+                         // 라벨 요소 제거 (position: absolute로 되어 있는 요소들)
+                         const labels = actualContent.querySelectorAll('[style*="position: absolute"]');
+                         labels.forEach(label => label.remove());
+                         
+                         const tempDiv = document.createElement('div');
+                         tempDiv.innerHTML = actualContent.innerHTML;
+                         const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                         
+                         const textArea = document.createElement('textarea');
+                         textArea.value = plainText;
+                         document.body.appendChild(textArea);
+                         textArea.select();
+                         document.execCommand('copy');
+                         document.body.removeChild(textArea);
+                         
+                         // 복사 성공 상태 표시
+                         const copyBtn = document.getElementById('copyPromptBtn');
+                         const originalText = copyBtn.innerHTML;
+                         copyBtn.innerHTML = '<span style="font-size: 1.2em;">✅</span> 복사 완료!';
+                         copyBtn.style.background = '#4CAF50';
+                         
+                         // 복사 상태 메시지 표시
+                         const copyStatus = document.getElementById('copyStatus');
+                         if (copyStatus) {
+                             copyStatus.textContent = '프롬프트가 클립보드에 복사되었습니다! (구식 방법)';
+                             copyStatus.style.color = '#4CAF50';
+                             copyStatus.style.background = 'rgba(76, 175, 80, 0.1)';
+                             copyStatus.style.border = '1px solid rgba(76, 175, 80, 0.3)';
+                             copyStatus.style.opacity = '1';
+                         }
+                         
+                         console.log('프롬프트가 클립보드에 복사되었습니다. (구식 방법, 라벨 제외)');
+                         
+                         // 3초 후 원래 상태로 복원
+                         setTimeout(() => {
+                             copyBtn.innerHTML = originalText;
+                             copyBtn.style.background = '#FF6B6B';
+                             
+                             if (copyStatus) {
+                                 copyStatus.style.opacity = '0';
+                             }
+                         }, 3000);
+                     }
+                 } catch (fallbackError) {
+                     console.error('구식 복사 방법도 실패:', fallbackError);
+                     
+                     // 복사 실패 상태 표시
+                     const copyBtn = document.getElementById('copyPromptBtn');
+                     const originalText = copyBtn.innerHTML;
+                     copyBtn.innerHTML = '<span style="font-size: 1.2em;">❌</span> 복사 실패';
+                     copyBtn.style.background = '#FF6B6B';
+                     
+                     // 복사 상태 메시지 표시
+                     const copyStatus = document.getElementById('copyStatus');
+                     if (copyStatus) {
+                         copyStatus.textContent = '복사에 실패했습니다. 다시 시도해주세요.';
+                         copyStatus.style.color = '#FF6B6B';
+                         copyStatus.style.background = 'rgba(255, 107, 107, 0.1)';
+                         copyStatus.style.border = '1px solid rgba(255, 107, 107, 0.3)';
+                         copyStatus.style.opacity = '1';
+                     }
+                     
+                     // 3초 후 원래 상태로 복원
+                     setTimeout(() => {
+                         copyBtn.innerHTML = originalText;
+                         copyBtn.style.background = '#FF6B6B';
+                         
+                         if (copyStatus) {
+                             copyStatus.style.opacity = '0';
+                         }
+                     }, 3000);
+                 }
+             }
+         }
+        
+                 // 콘텐츠 새로고침 함수
+         async function refreshContent() {
+             try {
+                 const refreshBtn = document.getElementById('refreshContentBtn');
+                 const originalText = refreshBtn.innerHTML;
+                 
+                 // 버튼 비활성화 및 로딩 상태 표시
+                 refreshBtn.innerHTML = '<span style="font-size: 1.1em;">⏳</span> 새로고침 중...';
+                 refreshBtn.disabled = true;
+                 refreshBtn.style.background = '#888';
+                 refreshBtn.style.cursor = 'not-allowed';
+                 
+                 // 현재 선택된 랩이 있다면 콘텐츠 목록 새로고침
+                 if (window.selectedLabId) {
+                     await loadContents(window.selectedLabId);
+                     
+                     // 현재 선택된 콘텐츠가 있다면 다시 로드
+                     const activeContent = document.querySelector('.content-item.active');
+                     if (activeContent) {
+                         const contentId = activeContent.dataset.contentId;
+                         if (contentId) {
+                             await loadContentDetail(contentId);
+                         }
+                     }
+                 }
+                 
+                 // 성공 상태 표시
+                 refreshBtn.innerHTML = '<span style="font-size: 1.1em;">✅</span> 완료!';
+                 refreshBtn.style.background = '#4CAF50';
+                 
+                 // 2초 후 원래 상태로 복원
+                 setTimeout(() => {
+                     refreshBtn.innerHTML = originalText;
+                     refreshBtn.disabled = false;
+                     refreshBtn.style.background = '#4CAF50';
+                     refreshBtn.style.cursor = 'pointer';
+                 }, 2000);
+                 
+                 console.log('콘텐츠 목록이 새로고침되었습니다.');
+                 
+             } catch (error) {
+                 console.error('콘텐츠 새로고침 실패:', error);
+                 
+                 // 오류 상태 표시
+                 const refreshBtn = document.getElementById('refreshContentBtn');
+                 refreshBtn.innerHTML = '<span style="font-size: 1.1em;">❌</span> 실패';
+                 refreshBtn.style.background = '#FF6B6B';
+                 
+                 // 2초 후 원래 상태로 복원
+                 setTimeout(() => {
+                     refreshBtn.innerHTML = '<span style="font-size: 1.1em;">🔄</span> 새로고침';
+                     refreshBtn.style.background = '#4CAF50';
+                     refreshBtn.style.cursor = 'pointer';
+                 }, 2000);
+             }
+         }
+         
+         // 페이지 로드 시 실행
+         document.addEventListener('DOMContentLoaded', function() {
+             const trainingKey = getTrainingKeyFromURL();
+             
+             if (!trainingKey) {
+                 alert('트레이닝 키가 필요합니다.');
+                 window.location.href = '/';
+                 return;
+             }
+             
+             loadLabs();
+         });
+    </script>
+</body>
+</html>
