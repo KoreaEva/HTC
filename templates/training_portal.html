@@ -197,7 +197,28 @@
 
     <!-- 콘텐츠 목록 -->
     <div id="contentSection" class="content-section" style="display:none;">
-        <h2>콘텐츠 목록</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0;">콘텐츠 목록</h2>
+            <button id="refreshContentBtn" onclick="refreshContent()" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: #4CAF50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+                font-size: 0.9em;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+            " onmouseover="this.style.background='#45a049'; this.style.transform='translateY(-1px)'" 
+               onmouseout="this.style.background='#4CAF50'; this.style.transform='translateY(0)'">
+                <span style="font-size: 1.1em;">🔄</span>
+                새로고침
+            </button>
+        </div>
         <div id="selectedLabInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:4px; border-left:4px solid #4CAF50;">
             <p style="margin:0; color:var(--muted);">선택된 랩 정보</p>
         </div>
@@ -480,7 +501,7 @@
                     const onClick = isActive ? `onclick="openContent(${content.content_id}, this)"` : '';
                     
                     contentsHTML += `
-                        <div class="${itemClass}" ${onClick}>
+                        <div class="${itemClass}" ${onClick} data-content-id="${content.content_id}">
                             <h4>${content.lab_content_subject || '제목 없음'}</h4>
                             <div class="content-meta">
                                 <span class="content-date">${content.lab_content_create_date}</span>
@@ -713,6 +734,63 @@
             }
         }
         
+        // 콘텐츠 새로고침 함수
+        async function refreshContent() {
+            try {
+                const refreshBtn = document.getElementById('refreshContentBtn');
+                const originalText = refreshBtn.innerHTML;
+                
+                // 버튼 비활성화 및 로딩 상태 표시
+                refreshBtn.innerHTML = '<span style="font-size: 1.1em;">⏳</span> 새로고침 중...';
+                refreshBtn.disabled = true;
+                refreshBtn.style.background = '#888';
+                refreshBtn.style.cursor = 'not-allowed';
+                
+                // 현재 선택된 랩이 있다면 콘텐츠 목록 새로고침
+                if (window.selectedLabId) {
+                    await loadContents(window.selectedLabId);
+                    
+                    // 현재 선택된 콘텐츠가 있다면 다시 로드
+                    const activeContent = document.querySelector('.content-item.active');
+                    if (activeContent) {
+                        const contentId = activeContent.dataset.contentId;
+                        if (contentId) {
+                            await loadContentDetail(contentId);
+                        }
+                    }
+                }
+                
+                // 성공 상태 표시
+                refreshBtn.innerHTML = '<span style="font-size: 1.1em;">✅</span> 완료!';
+                refreshBtn.style.background = '#4CAF50';
+                
+                // 2초 후 원래 상태로 복원
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalText;
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.background = '#4CAF50';
+                    refreshBtn.style.cursor = 'pointer';
+                }, 2000);
+                
+                console.log('콘텐츠 목록이 새로고침되었습니다.');
+                
+            } catch (error) {
+                console.error('콘텐츠 새로고침 실패:', error);
+                
+                // 오류 상태 표시
+                const refreshBtn = document.getElementById('refreshContentBtn');
+                refreshBtn.innerHTML = '<span style="font-size: 1.1em;">❌</span> 실패';
+                refreshBtn.style.background = '#FF6B6B';
+                
+                // 2초 후 원래 상태로 복원
+                setTimeout(() => {
+                    refreshBtn.innerHTML = '<span style="font-size: 1.1em;">🔄</span> 새로고침';
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.background = '#4CAF50';
+                    refreshBtn.style.cursor = 'pointer';
+                }, 2000);
+            }
+        }
 
         
         // 페이지 로드 시 실행
