@@ -243,6 +243,7 @@ class TrainingKeyCheckRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     training_key: str
+    username: str
     name: str
     password: str
 
@@ -336,7 +337,8 @@ async def next_member_key(data: TrainingKeyCheckRequest):
             cursor.execute(sql, (data.training_key,))
             result = cursor.fetchone()
             next_key = 1 if not result or result['max_key'] is None else int(result['max_key']) + 1
-            member_id = f"labuser{next_key}"
+            # Users will provide their own username instead of labuser1, 2, etc.
+            member_id = None
         return {"next_member_key": next_key, "member_id": member_id}
     finally:
         conn.close()
@@ -356,7 +358,7 @@ async def register_user(data: RegisterRequest):
             cursor.execute("SELECT MAX(member_key) as max_key FROM training_member WHERE training_key = %s", (data.training_key,))
             result = cursor.fetchone()
             next_key = 1 if not result or result['max_key'] is None else int(result['max_key']) + 1
-            member_id = f"labuser{next_key}"
+            member_id = data.username  # Users provide their own username
             
             # 중복 체크
             cursor.execute("SELECT 1 FROM training_member WHERE training_key = %s AND member_id = %s", (data.training_key, member_id))

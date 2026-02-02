@@ -5,8 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hello AI HTC</title>
     <style>
-        :root { --bg: #0E1117; --panel: #262730; --muted: #888888; --accent: #1E1E1E; --text: #FAFAFA; }
-        body { font-family: Arial, sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        :root {
+            --bg: #f7f8fb;
+            --panel: #ffffff;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --hover: #f1f5f9;
+            --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
         
         /* 모바일 반응형 스타일 */
         @media (max-width: 768px) {
@@ -30,12 +39,12 @@
         }
         
         .controls { display:flex; justify-content:space-between; gap:10px; margin-bottom:12px; }
-        select { background: var(--panel); color:var(--text); border:1px solid #3E3E3E; padding:6px 8px; border-radius:4px; }
+        select { background: var(--panel); color:var(--text); border:1px solid var(--border); padding:6px 8px; border-radius:6px; }
         .schedule-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:0.9em; }
-        .schedule-table th, .schedule-table td { border:1px solid #3E3E3E; padding:10px; text-align:left; }
-        .schedule-table th { background: var(--accent); color:var(--text); font-weight:600; }
+        .schedule-table th, .schedule-table td { border:1px solid var(--border); padding:10px; text-align:left; }
+        .schedule-table th { background: #eff6ff; color:var(--text); font-weight:600; }
         .schedule-table td { background: var(--panel); color:var(--text); }
-        .schedule-table tr:hover td { background: #2a2d35; }
+        .schedule-table tr:hover td { background: var(--hover); }
         .status-working { color:#FFD700; font-weight:600; }
         .status-working td { color:#FFD700; font-weight:600; }
         .status-planned { color:var(--text); }
@@ -44,46 +53,46 @@
         .status-cancelled td { color:#FF6B6B; text-decoration:line-through; }
         
         /* 탭 스타일 */
-        .tab-container { display:flex; margin-bottom:20px; border-bottom:1px solid #3E3E3E; }
-        .tab-button { background:var(--panel); color:var(--text); border:none; padding:12px 24px; cursor:pointer; border-radius:4px 4px 0 0; margin-right:4px; }
-        .tab-button:hover { background:#2a2d35; }
-        .tab-button.active { background:var(--accent); color:var(--text); }
+        .tab-container { display:flex; margin-bottom:20px; border-bottom:1px solid var(--border); }
+        .tab-button { background:var(--panel); color:var(--text); border:none; padding:12px 24px; cursor:pointer; border-radius:8px 8px 0 0; margin-right:4px; border:1px solid var(--border); border-bottom:none; }
+        .tab-button:hover { background: var(--hover); }
+        .tab-button.active { background:var(--accent); color:#fff; border-color: var(--accent); }
         
         /* 탭 콘텐츠 */
         .tab-content { display:none; }
         .tab-content.active { display:block; }
         
         /* 로그인 폼 스타일 */
-        .login-container { max-width:400px; margin:40px auto; padding:30px; background:var(--panel); border-radius:8px; border:1px solid #3E3E3E; }
+        .login-container { max-width:400px; margin:40px auto; padding:30px; background:var(--panel); border-radius:12px; border:1px solid var(--border); box-shadow: var(--shadow); }
         .login-form { display:flex; flex-direction:column; gap:20px; }
         .form-group { display:flex; flex-direction:column; gap:8px; }
         .form-group label { color:var(--text); font-weight:600; }
-        .form-group input { background:var(--bg); color:var(--text); border:1px solid #3E3E3E; padding:12px; border-radius:4px; font-size:14px; }
-        .form-group input:focus { outline:none; border-color:#FFD700; }
-        .login-button { background:#FFD700; color:#000; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
-        .login-button:hover { background:#FFED4E; }
+        .form-group input { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:12px; border-radius:6px; font-size:14px; }
+        .form-group input:focus { outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+        .login-button { background:var(--accent); color:#fff; border:none; padding:12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:14px; }
+        .login-button:hover { background:#1d4ed8; }
         .register-button { background:#1565C0; color:white; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
         .register-button:hover { background:#1976D2; }
         
         /* 과정 목록 스타일 */
         .course-card {
             background: var(--panel);
-            border: 1px solid #3E3E3E;
-            border-radius: 8px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
         }
         .course-card:hover {
-            background: #2a2d35;
-            border-color: #FFD700;
+            background: var(--hover);
+            border-color: var(--accent);
             transform: translateY(-2px);
         }
         .course-title {
             font-size: 1.2em;
             font-weight: 600;
-            color: #FFD700;
+            color: var(--accent);
             margin-bottom: 10px;
         }
         .course-content {
@@ -108,9 +117,9 @@
         
         /* 공개 과정 카드 스타일 */
         .public-course-card {
-            background: linear-gradient(135deg, var(--panel), #2a2d35);
-            border: 2px solid #4CAF50;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #ffffff, #f3f4f6);
+            border: 2px solid #22c55e;
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             cursor: pointer;
@@ -127,19 +136,19 @@
             opacity: 0.8;
         }
         .public-course-card:hover {
-            background: linear-gradient(135deg, #2a2d35, var(--panel));
-            border-color: #FFD700;
+            background: linear-gradient(135deg, #f8fafc, #eef2f7);
+            border-color: var(--accent);
             transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
         }
         .public-course-title {
             font-size: 1.2em;
             font-weight: 600;
-            color: #4CAF50;
+            color: #16a34a;
             margin-bottom: 10px;
         }
         .public-course-badge {
-            background: #4CAF50;
+            background: #16a34a;
             color: white;
             padding: 4px 8px;
             border-radius: 4px;
@@ -191,14 +200,14 @@
 
     <!-- 회원가입 모달 -->
     <div id="registerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
-        <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:0 8px 32px rgba(0,0,0,0.3); position:relative; border:1px solid #3E3E3E;">
-            <h2 id="registerModalTitle" style="margin-bottom:24px; color:#FFD700; text-align:center; font-size:1.5em;">회원가입</h2>
+        <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <h2 id="registerModalTitle" style="margin-bottom:24px; color:var(--accent); text-align:center; font-size:1.5em;">회원가입</h2>
             
             <!-- 트레이닝 키 확인 단계 -->
             <div id="trainingKeyStep">
                 <div class="form-group" style="margin-bottom:18px;">
                     <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">트레이닝 키</label>
-                    <input type="text" id="registerTrainingKey" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="트레이닝 키를 입력하세요">
+                    <input type="text" id="registerTrainingKey" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="트레이닝 키를 입력하세요">
                 </div>
                 <div style="margin-top:20px; text-align:center;">
                     <button type="button" class="login-button" onclick="checkTrainingKey()" style="min-width:100px; margin-right:10px;">확인</button>
@@ -210,16 +219,20 @@
             <div id="registerFormStep" style="display:none;">
                 <form id="registerForm">
                     <div class="form-group" style="margin-bottom:18px;">
+                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">아이디</label>
+                        <input type="text" id="registerUsername" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="아이디를 입력하세요">
+                    </div>
+                    <div class="form-group" style="margin-bottom:18px;">
                         <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">이름</label>
-                        <input type="text" id="registerName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="이름을 입력하세요">
+                        <input type="text" id="registerName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="이름을 입력하세요">
                     </div>
                     <div class="form-group" style="margin-bottom:18px;">
                         <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호</label>
-                        <input type="password" id="registerPassword" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 입력하세요">
+                        <input type="password" id="registerPassword" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 입력하세요">
                     </div>
                     <div class="form-group" style="margin-bottom:24px;">
                         <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호 확인</label>
-                        <input type="password" id="registerPasswordConfirm" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid #3E3E3E; background:var(--bg); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 다시 입력하세요">
+                        <input type="password" id="registerPasswordConfirm" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 다시 입력하세요">
                     </div>
                     <div style="margin-top:20px; text-align:center;">
                         <button type="submit" class="login-button" style="min-width:100px; margin-right:10px;">가입하기</button>
@@ -232,8 +245,8 @@
             <div id="registerCompleteStep" style="display:none;">
                 <div style="text-align:center; margin-bottom:24px;">
                     <h3 style="color:#4CAF50; margin-bottom:16px;">🎉 회원가입이 완료되었습니다!</h3>
-                    <p style="color:var(--text); margin-bottom:8px;">이름: <span id="completeName" style="font-weight:600; color:#FFD700;"></span></p>
-                    <p style="color:var(--text); margin-bottom:16px;">아이디: <span id="completeId" style="font-weight:600; color:#FFD700;"></span></p>
+                    <p style="color:var(--text); margin-bottom:8px;">이름: <span id="completeName" style="font-weight:600; color:var(--accent);"></span></p>
+                    <p style="color:var(--text); margin-bottom:16px;">아이디: <span id="completeId" style="font-weight:600; color:var(--accent);"></span></p>
                     <p style="color:var(--muted); font-size:14px;">위의 아이디로 로그인해주세요.</p>
                 </div>
                 <div style="text-align:center;">
@@ -472,6 +485,7 @@
             document.getElementById('registerFormStep').style.display = 'none';
             document.getElementById('registerCompleteStep').style.display = 'none';
             document.getElementById('registerTrainingKey').value = '';
+            document.getElementById('registerUsername').value = '';
             document.getElementById('registerName').value = '';
             document.getElementById('registerPassword').value = '';
             document.getElementById('registerPasswordConfirm').value = '';
@@ -525,12 +539,13 @@
             e.preventDefault();
             
             const trainingKey = document.getElementById('registerTrainingKey').value;
+            const username = document.getElementById('registerUsername').value;
             const name = document.getElementById('registerName').value;
             const password = document.getElementById('registerPassword').value;
             const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
             const messageDiv = document.getElementById('registerMessage');
             
-            if (!name || !password || !passwordConfirm) {
+            if (!username || !name || !password || !passwordConfirm) {
                 messageDiv.textContent = '모든 필드를 입력해주세요.';
                 messageDiv.style.color = '#FF6B6B';
                 return;
@@ -550,6 +565,7 @@
                     },
                     body: JSON.stringify({
                         training_key: trainingKey,
+                        username: username,
                         name: name,
                         password: password
                     })
