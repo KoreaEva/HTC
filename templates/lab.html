@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>랩 관리</title>
+    <title>Lab Management</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             background: #f5f5f5;
             margin: 0;
-            padding: 20px;
+            padding: 20px 24px;
+            box-sizing: border-box;
         }
         
         /* 모바일 반응형 스타일 */
@@ -32,12 +33,14 @@
         }
         
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: none;
+            margin: 0;
             background: #fff;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             padding: 20px;
+            box-sizing: border-box;
         }
         .header {
             display: flex;
@@ -95,15 +98,146 @@
         .refresh-icon.rotating {
             transform: rotate(360deg);
         }
-        /* 토글 스위치 */
+        .tab-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #333;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .metric-card {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .metric-title {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        /* 실시간 콘솔 스타일 */
+        .monitoring-console {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #00ff00;
+        }
+        .console-line {
+            margin-bottom: 8px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .console-timestamp {
+            color: #888;
+            margin-right: 10px;
+        }
+        .console-event-user_added { color: #00ff00; }
+        .console-event-lab_added { color: #4a9eff; }
+        .console-event-lab_updated { color: #ffa500; }
+        .console-event-lab_deleted { color: #ff4444; }
+        .console-event-content_added { color: #00ffff; }
+        .console-event-content_updated { color: #ffff00; }
+        .console-event-content_deleted { color: #ff6b6b; }
+        .console-event-content_viewed { color: #90ee90; }
+        .console-event-content_status_changed { color: #ff69b4; }
+        /* 공용 토글 스위치 (자동 새로고침 등) */
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cfd4da; transition: .2s; border-radius: 24px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #fff; transition: .2s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
         input:checked + .slider { background-color: #2196F3; }
         input:checked + .slider:before { transform: translateX(20px); }
+        /* 상태 텍스트 버튼 */
+        .status-text-btn {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            min-width: 84px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            transition: opacity .2s ease;
+        }
+        .status-text-btn.active {
+            background: #28a745;
+        }
+        .status-text-btn.inactive {
+            background: #6c757d;
+        }
+        .status-text-btn:hover {
+            opacity: 0.9;
+        }
         /* 비활성화 행 */
         tr.inactive-row { opacity: 0.5; }
+        
+        /* 아이콘 버튼 스타일 */
+        .icon-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+        }
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            transition: all 0.2s ease;
+        }
+        .icon-btn:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            transform: translateY(-1px);
+        }
+        .icon-btn.delete {
+            color: #dc2626;
+        }
+        .icon-btn.delete:hover {
+            background: #fee;
+            border-color: #dc2626;
+        }
 
         table {
             width: 100%;
@@ -136,11 +270,88 @@
         .modal-content {
             background: #fff;
             width: 90%;
-            max-width: 500px;
+            max-width: 700px;
             margin: 50px auto;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .content-row {
+            background: #f8f9fa;
+        }
+        .content-row.expanded {
+            display: table-row;
+        }
+        .content-details {
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .content-table {
+            width: 100%;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .content-table th {
+            background: #f1f5f9;
+            padding: 10px;
+            font-size: 13px;
+        }
+        .content-table td {
+            padding: 10px;
+            font-size: 13px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .lab-name-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0;
+            font-size: inherit;
+        }
+        .lab-name-btn:hover {
+            text-decoration: underline;
+        }
+        .content-title-btn {
+            background: none;
+            border: none;
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0;
+            text-align: left;
+            width: 100%;
+            display: block;
+            font-size: inherit;
+            transition: all 0.2s;
+        }
+        .content-title-btn:hover {
+            background-color: #e3f2fd;
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        .expand-icon {
+            display: inline-block;
+            transition: transform 0.2s;
+            margin-right: 5px;
+        }
+        .expand-icon.expanded {
+            transform: rotate(90deg);
         }
         .form-group {
             margin-bottom: 15px;
@@ -172,6 +383,66 @@
         .form-actions button {
             margin-left: 10px;
         }
+        .content-edit-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+        .content-preview-pane {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+            min-height: 420px;
+            max-height: 420px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff;
+            font-weight: 600;
+            color: #333;
+        }
+        .preview-body {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #111827;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .preview-code {
+            margin: 0;
+            white-space: pre-wrap;
+            background: #111827;
+            color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+            overflow: auto;
+        }
+        .preview-empty {
+            color: #6b7280;
+            font-style: italic;
+        }
+        @media (max-width: 1100px) {
+            .content-edit-layout {
+                grid-template-columns: 1fr;
+            }
+            .content-preview-pane {
+                min-height: 280px;
+            }
+        }
         a {
             color: #007bff;
             text-decoration: none;
@@ -179,17 +450,185 @@
         a:hover {
             text-decoration: underline;
         }
+        /* Markdown content styling */
+        .markdown-content h1 {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 16px 0 8px 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+        .markdown-content h2 {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 12px 0 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 4px;
+        }
+        .markdown-content h3 {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0 6px 0;
+        }
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            font-weight: bold;
+            margin: 8px 0 4px 0;
+        }
+        .markdown-content p {
+            margin: 8px 0;
+        }
+        .markdown-content ul, .markdown-content ol {
+            margin: 8px 0;
+            padding-left: 32px;
+        }
+        .markdown-content li {
+            margin: 4px 0;
+        }
+        .markdown-content code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .markdown-content pre {
+            background: #111827;
+            color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #007bff;
+            padding-left: 12px;
+            margin: 8px 0;
+            color: #666;
+            font-style: italic;
+        }
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 8px 0;
+        }
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 8px 0;
+        }
+        .markdown-content table th,
+        .markdown-content table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .markdown-content table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+        .markdown-content hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 12px 0;
+        }
+        .markdown-content a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+        /* Syntax highlighting styles */
+        .code-block-wrapper {
+            margin: 16px 0;
+            border-radius: 8px;
+            background: #22272e;
+        }
+        .code-block-wrapper pre {
+            margin: 0;
+            padding: 0;
+            background: #22272e;
+            overflow-x: auto;
+        }
+        .code-block-wrapper code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            display: block;
+            white-space: pre;
+        }
+        .code-header {
+            background: #2d333b;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .code-language {
+            color: #adbac7;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .copy-code-btn {
+            background: #373e47;
+            color: #adbac7;
+            border: 1px solid #444c56;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-code-btn:hover {
+            background: #444c56;
+            color: #ffffff;
+        }
+        .copy-code-btn.copied {
+            background: #238636;
+            color: #ffffff;
+            border-color: #238636;
+        }
+        .hljs {
+            background: #22272e !important;
+            padding: 16px !important;
+            margin: 0 !important;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
 </head>
 <body>
+    <!-- 페이지 로딩 상태 표시 -->
+    <div id="pageStatus" style="position: fixed; top: 10px; right: 10px; padding: 10px 15px; background: #007bff; color: white; border-radius: 5px; z-index: 9999; font-size: 14px; font-weight: 600;">
+        ⏳ 페이지 로딩 중...
+    </div>
+    
     <div class="container">
         <div class="header">
-            <h1 id="courseTitle">랩 관리</h1>
-            <button class="button" onclick="showAddLabModal()">랩 추가</button>
+            <h1 id="courseTitle">Lab Management</h1>
+            <button class="button" onclick="showAddLabModal()">Add Lab</button>
+        </div>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="showCourseTab('lab', this)">Lab Management</button>
+            <button class="tab-btn" onclick="showCourseTab('user', this)">User Management</button>
+            <button class="tab-btn" onclick="showCourseTab('monitoring', this)">Monitoring</button>
         </div>
         
         <!-- 랩 목록 섹션 -->
-        <div style="margin-bottom: 30px;">
+        <div id="lab-tab" class="tab-pane active" style="margin-bottom: 30px;">
             <h2 style="color: #333; margin-bottom: 15px;">랩 목록</h2>
             <table>
                 <thead>
@@ -204,12 +643,17 @@
                 </thead>
                 <tbody id="labList">
                     <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
+                    <tr>
+                        <td colspan="6" style="text-align:center; padding: 30px; color: #666;">
+                            <div style="font-size: 16px;">⏳ 로딩 중...</div>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
         
         <!-- 사용자 목록 섹션 -->
-        <div>
+            <div id="user-tab" class="tab-pane">
                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                  <h2 style="color: #333; margin: 0;">사용자 목록</h2>
                  <div style="display: flex; align-items: center; gap: 15px;">
@@ -240,12 +684,47 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- 모니터링 섹션 -->
+        <div id="monitoring-tab" class="tab-pane">
+            <h2 style="color: #333; margin-bottom: 14px;">Real-time Monitoring</h2>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Total Users</div>
+                    <div class="metric-value" id="metricUserCount">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Total Labs</div>
+                    <div class="metric-value" id="metricLabCount">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Total Contents</div>
+                    <div class="metric-value" id="metricContentCount">0</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="color: #333; margin: 0;">Activity Log Console</h3>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span id="connectionStatus" style="font-size: 12px; color: #666;">●&nbsp;Disconnected</span>
+                    <label for="monitoringIntervalSec" style="font-size: 12px; color: #666;">간격(초)</label>
+                    <input id="monitoringIntervalSec" type="number" min="1" max="300" value="5" style="width:70px; padding:4px 6px; border:1px solid #ddd; border-radius:4px; font-size:12px;">
+                    <button class="button secondary" onclick="applyMonitoringInterval()" style="padding: 6px 12px; font-size: 13px;">적용</button>
+                    <button class="button" onclick="startMonitoringPolling(true)" style="padding: 6px 12px; font-size: 13px;">시작</button>
+                    <button class="button secondary" onclick="stopMonitoringPolling()" style="padding: 6px 12px; font-size: 13px;">중지</button>
+                    <button class="button" onclick="clearConsole()" style="padding: 6px 12px; font-size: 13px;">Clear</button>
+                </div>
+            </div>
+            <div class="monitoring-console" id="monitoringConsole">
+                <div class="console-line" style="color: #666;">Waiting for events...</div>
+            </div>
+        </div>
     </div>
 
     <!-- 랩 추가/수정 모달 -->
     <div id="labModal" class="modal">
         <div class="modal-content">
-            <h2 id="modalTitle">랩 추가</h2>
+            <h2 id="modalTitle">Add Lab</h2>
             <form id="labForm">
                 <input type="hidden" id="labId">
                 <div class="form-group">
@@ -265,8 +744,74 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="button">저장</button>
-                    <button type="button" class="button" onclick="closeModal('labModal')">취소</button>
+                    <button type="submit" class="button">Save</button>
+                    <button type="button" class="button secondary" onclick="closeModal('labModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 콘텐츠 추가/수정 모달 -->
+    <div id="contentModal" class="modal">
+        <div class="modal-content" style="max-width: 1100px;">
+            <h2 id="contentModalTitle">Add Content</h2>
+            <form id="contentForm">
+                <input type="hidden" id="contentLabId">
+                <input type="hidden" id="contentId">
+                <div class="content-edit-layout">
+                    <div>
+                        <div class="form-group">
+                            <label for="contentSubject">콘텐츠 제목:</label>
+                            <input type="text" id="contentSubject" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="contentBody">콘텐츠 내용:</label>
+                            <textarea id="contentBody" rows="12" oninput="detectContentType()"></textarea>
+                            <small style="color: #666; font-size: 12px; display: block; margin-top: 5px;">
+                                💡 URL, 코드, 마크다운 문법을 자동으로 감지하여 유형이 선택됩니다. 수동으로 변경할 수도 있습니다.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="contentType">
+                                콘텐츠 유형: 
+                                <span id="autoDetectedLabel" style="color: #28a745; font-size: 11px; font-weight: normal;"></span>
+                            </label>
+                            <select id="contentType" required onchange="markManualTypeChange(); toggleCodeLanguageOption()">
+                                <option value="text">📝 텍스트 (일반 텍스트)</option>
+                                <option value="markdown">📄 마크다운 (마크다운 문서)</option>
+                                <option value="code">💻 코드 (소스 코드)</option>
+                                <option value="web">🔗 웹페이지 (URL 링크)</option>
+                                <option value="web_markdown">🌐 웹 마크다운 (URL)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="codeLanguageGroup" style="display: none;">
+                            <label for="codeLanguage">코드 언어:</label>
+                            <select id="codeLanguage" onchange="updateCodeLanguageDisplay()">
+                                <option value="python" selected>🐍 Python</option>
+                                <option value="shell">🔧 Shell</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="contentStatus">콘텐츠 상태:</label>
+                            <select id="contentStatus" required>
+                                <option value="1">활성화</option>
+                                <option value="0">비활성화</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="content-preview-pane">
+                        <div class="preview-header">
+                            <span>콘텐츠 프리뷰</span>
+                            <button type="button" class="button secondary" onclick="updateContentPreview()">Apply</button>
+                        </div>
+                        <div id="contentPreview" class="preview-body">
+                            <div class="preview-empty">왼쪽 내용을 수정한 뒤 적용 버튼을 누르면 여기에 프리뷰가 표시됩니다.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">Save</button>
+                    <button type="button" class="button secondary" onclick="closeModal('contentModal')">Cancel</button>
                 </div>
             </form>
         </div>
@@ -284,26 +829,68 @@
                     </select>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="button">이동</button>
-                    <button type="button" class="button" onclick="closeModal('moveContentModal')">취소</button>
+                    <button type="submit" class="button">Move</button>
+                    <button type="button" class="button secondary" onclick="closeModal('moveContentModal')">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
+        // ===== 전역 변수 선언 =====
+        
+        let trainingKey = null;
+        
+        // ===== 유틸리티 함수 =====
         // 쿼리스트링에서 training_key 추출
         function getQueryParam(name) {
-            const url = new URL(window.location.href);
-            return url.searchParams.get(name);
+            try {
+                const url = new URL(window.location.href);
+                const value = url.searchParams.get(name);
+                return value ? decodeURIComponent(value) : null;
+            } catch (e) {
+                return null;
+            }
         }
-        const trainingKey = getQueryParam('training_key');
+        
+        // 전역 에러 캡처
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            alert('JavaScript 오류 발생: ' + msg);
+            return false;
+        };
+        
+        // ===== 초기화 =====
+        trainingKey = getQueryParam('training_key');
+        
+        // ===== UI 함수 =====
+        function showCourseTab(tabName, buttonElement) {
+            if (tabName !== 'monitoring') {
+                stopMonitoringPolling();
+            }
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            buttonElement.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'user') {
+                loadUsers();
+            }
+            if (tabName === 'monitoring') {
+                startMonitoringPolling(true);
+            }
+        }
+        
         // 과정명 불러오기
         async function loadCourseTitle() {
-            const res = await fetch(`/api/admin/courses/${trainingKey}`);
-            if (res.ok) {
-                const data = await res.json();
-                document.getElementById('courseTitle').textContent = `[${data.course_name}] 랩 관리`;
+            try {
+                const res = await fetch(`/api/admin/courses/${trainingKey}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('courseTitle').textContent = `[${data.course_name}] 랩 관리`;
+                } else {
+                }
+            } catch (error) {
             }
         }
                  // 랩 상태 텍스트 변환
@@ -312,54 +899,170 @@
          }
         // 랩 목록 로드
         async function loadLabs() {
+            const tbody = document.getElementById('labList');
             try {
-                console.log('Loading labs for training_key:', trainingKey);
-                const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
-                if (!res.ok) {
-                    // HTTP 오류 응답의 경우 상태 코드와 텍스트를 함께 출력
-                    const errorText = await res.text();
-                    throw new Error(`랩 목록을 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
-                }
-                const labs = await res.json();
-                console.log('Loaded labs from API:', labs);
                 
-                const tbody = document.getElementById('labList');
-                tbody.innerHTML = '';
-                if (labs.length === 0) {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = '<td colspan="6" style="text-align:center;">랩이 없습니다.</td>';
-                    tbody.appendChild(tr);
+                if (!trainingKey) {
+                    if (tbody) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding: 30px; color: #dc3545;">
+                                    <div style="font-size: 18px; margin-bottom: 10px;">❌ 과정 키가 없습니다</div>
+                                    <div style="font-size: 14px; color: #666;">URL에 training_key 파라미터가 필요합니다.</div>
+                                    <div style="margin-top: 15px;">
+                                        <button class="button" onclick="window.location.href='/admin'">Go to Admin</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
                     return;
                 }
-                labs.forEach(lab => {
-                    console.log('Processing lab:', lab);
-                    const tr = document.createElement('tr');
-                    if (lab.lab_status != 20) {
-                        tr.classList.add('inactive-row');
+                
+                // 로딩 표시
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 30px; color: #666;">
+                                <div style="font-size: 16px;">⏳ 랩 목록을 불러오는 중...</div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                const apiUrl = `/api/admin/labs?training_key=${encodeURIComponent(trainingKey)}`;
+                
+                const res = await fetch(apiUrl);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    if (tbody) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding: 30px; color: #dc3545;">
+                                    <div style="font-size: 18px; margin-bottom: 10px;">❌ 랩 목록을 불러오는데 실패했습니다</div>
+                                    <div style="font-size: 14px; color: #666;">서버 응답: ${res.status} ${res.statusText}</div>
+                                    <div style="font-size: 13px; color: #999; margin-top: 5px;">${errorText}</div>
+                                    <div style="margin-top: 15px;">
+                                        <button class="button" onclick="loadLabs()">Retry</button>
+                                        <button class="button secondary" onclick="window.location.href='/admin'">Go to Admin</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
                     }
-
-                    
+                    throw new Error(`랩 목록을 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
+                }
+                
+                let labs = await res.json();
+                
+                // 응답이 배열이 아닌 경우 처리
+                if (!Array.isArray(labs)) {
+                    // 만약 {labs: [...]} 형식이면 추출
+                    if (labs && labs.labs && Array.isArray(labs.labs)) {
+                        labs = labs.labs;
+                    } else if (labs && labs.data && Array.isArray(labs.data)) {
+                        labs = labs.data;
+                    } else {
+                        labs = [];
+                    }
+                }
+                
+                
+                if (!tbody) {
+                    return;
+                }
+                
+                // 기존 내용 모두 제거
+                tbody.innerHTML = '';
+                
+                if (labs.length === 0) {
+                    const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${lab.lab_id}</td>
-                        <td><a href="/admin/lab_content?training_key=${lab.training_key}&lab_id=${lab.lab_id}">${lab.lab_name}</a></td>
-                        <td>${lab.content_count}</td>
-                        <td>${lab.create_date}</td>
-                        <td>
-                            <button class="button" onclick="editLab(${lab.lab_id})" data-lab-id="${lab.lab_id}" data-lab-name="${lab.lab_name}">수정</button>
-                            <button class="button danger" onclick="deleteLab(${lab.lab_id})">삭제</button>
-                        </td>
-                        <td>
-                            <label class="switch" title="${getLabStatusText(lab.lab_status)}">
-                                <input type="checkbox" ${lab.lab_status == 20 ? 'checked' : ''} onchange="toggleLabStatus(${lab.lab_id}, this)">
-                                <span class="slider"></span>
-                            </label>
+                        <td colspan="6" style="text-align:center; padding: 30px;">
+                            <div style="font-size: 18px; margin-bottom: 10px; color: #6c757d;">📋 랩이 없습니다</div>
+                            <div style="font-size: 14px; color: #999; margin-bottom: 15px;">이 과정에 등록된 랩이 없습니다. 새로운 랩을 추가해주세요.</div>
+                            <button class="button" onclick="showAddLabModal()">Add Lab</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
+                    return;
+                }
+                
+                labs.forEach((lab, index) => {
+                    try {
+                        const tr = document.createElement('tr');
+                        tr.id = `lab-row-${lab.lab_id}`;
+                        if (lab.lab_status != 20) {
+                            tr.classList.add('inactive-row');
+                        }
+
+                        const labNameEscaped = (lab.lab_name || '').replace(/"/g, '&quot;');
+                        const labContentEscaped = (lab.lab_content || '').replace(/"/g, '&quot;');
+                        
+                        tr.innerHTML = `
+                            <td>${lab.lab_id}</td>
+                            <td>
+                                <button class="lab-name-btn" id="lab-btn-${lab.lab_id}" onclick="toggleLabContents(${lab.lab_id})" data-lab-name="${labNameEscaped}">▶ ${lab.lab_name}</button>
+                            </td>
+                            <td>${lab.content_count || 0}</td>
+                            <td>${lab.create_date || ''}</td>
+                            <td>
+                                <div class="icon-actions">
+                                    <button class="icon-btn" onclick="editLab(${lab.lab_id})" title="수정" aria-label="수정">✏️</button>
+                                    <button class="icon-btn delete" onclick="deleteLab(${lab.lab_id})" title="삭제" aria-label="삭제">🗑️</button>
+                                </div>
+                            </td>
+                            <td>
+                                <button
+                                    class="status-text-btn ${lab.lab_status == 20 ? 'active' : 'inactive'}"
+                                    onclick="toggleLabStatus(${lab.lab_id}, ${lab.lab_status}, this)">
+                                    ${lab.lab_status == 20 ? 'Active' : 'Deactive'}
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                        
+                        // 콘텐츠 확장 영역 행 추가
+                        const contentRow = document.createElement('tr');
+                        contentRow.id = `content-row-${lab.lab_id}`;
+                        contentRow.className = 'content-row';
+                        contentRow.style.display = 'none';
+                        contentRow.innerHTML = `
+                            <td colspan="6">
+                                <div class="content-details" id="content-details-${lab.lab_id}">
+                                    <div class="content-header">
+                                        <h3 style="margin: 0; color: #333;">${lab.lab_name} - 콘텐츠 목록</h3>
+                                        <button class="icon-btn" onclick="showAddContentModal(${lab.lab_id})" title="콘텐츠 추가" aria-label="콘텐츠 추가">➕</button>
+                                    </div>
+                                    <div id="content-list-${lab.lab_id}">로딩 중...</div>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(contentRow);
+                    } catch (err) {
+                    }
                 });
+                
             } catch (error) {
-                console.error('Error loading labs:', error);
-                alert(`랩 목록을 불러오는데 실패했습니다: ${error.message}`);
+                // 오류 시 테이블에도 메시지 표시
+                if (tbody && !tbody.innerHTML.includes('다시 시도')) {
+                    // 이미 오류 메시지가 표시되지 않은 경우만 표시
+                    const errorMsg = String(error.message || '알 수 없는 오류').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 30px; color: #dc3545;">
+                                <div style="font-size: 18px; margin-bottom: 10px;">❌ 오류 발생</div>
+                                <div style="font-size: 14px; color: #666;">랩 목록을 불러올 수 없습니다.</div>
+                                <div style="font-size: 13px; color: #999; margin-top: 5px;">${errorMsg}</div>
+                                <div style="margin-top: 15px;">
+                                    <button class="button" onclick="loadLabs()">Retry</button>
+                                    <button class="button secondary" onclick="window.location.reload()">Refresh</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
         // 랩 추가/수정 모달 열기
@@ -382,25 +1085,26 @@
                 document.getElementById('labForm').reset();
                 document.getElementById('labId').value = '';
             }
+            if (modalId === 'contentModal') {
+                document.getElementById('contentForm').reset();
+                document.getElementById('contentLabId').value = '';
+                document.getElementById('contentId').value = '';
+                document.getElementById('autoDetectedLabel').textContent = '';
+                manualTypeOverride = false; // 자동 감지 플래그 리셋
+            }
         }
         // 랩 수정 모달 열기
         async function editLab(labId) {
             try {
-                console.log('=== 랩 수정 시작 ===');
-                console.log('요청된 lab_id:', labId);
-                console.log('현재 training_key:', trainingKey);
                 
                 const res = await fetch(`/api/admin/labs/${labId}?training_key=${trainingKey}`);
-                console.log('API 응답 상태:', res.status, res.statusText);
                 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    console.error('API 오류 응답:', errorText);
                     throw new Error(`랩 정보를 불러오는데 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
                 }
                 
                 const lab = await res.json();
-                console.log('서버에서 받은 랩 데이터:', lab);
                 
                 // 모달 폼 초기화
                 document.getElementById('modalTitle').textContent = '랩 수정';
@@ -410,49 +1114,107 @@
                 document.getElementById('labStatus').value = lab.lab_status || 20;
 
                 
-                console.log('모달 폼에 설정된 값들:');
-                console.log('- lab_id:', document.getElementById('labId').value);
-                console.log('- lab_name:', document.getElementById('labName').value);
-                console.log('- lab_status:', document.getElementById('labStatus').value);
                 
                 // 모달 표시
                 document.getElementById('labModal').style.display = 'flex';
-                console.log('=== 랩 수정 모달 열기 완료 ===');
             } catch (error) {
-                console.error('Error loading lab data:', error);
                 alert(`랩 정보를 불러오는데 실패했습니다: ${error.message}`);
             }
         }
-                 // 랩 상태 토글 (토글 스위치)
-         async function toggleLabStatus(labId, checkboxEl) {
-             const newStatus = checkboxEl.checked ? 20 : 10;
-             const rowEl = checkboxEl.closest('tr');
+                 // 랩 상태 토글 (텍스트 버튼)
+                 async function toggleLabStatus(labId, currentStatus, buttonEl) {
+                     const oldStatus = Number(currentStatus);
+                     const newStatus = oldStatus === 20 ? 10 : 20;
+                     const rowEl = buttonEl.closest('tr');
+
+                     // 즉시 시각적 반영
+                     if (newStatus === 20) {
+                         rowEl.classList.remove('inactive-row');
+                         buttonEl.classList.remove('inactive');
+                         buttonEl.classList.add('active');
+                         buttonEl.textContent = 'Active';
+                     } else {
+                         rowEl.classList.add('inactive-row');
+                         buttonEl.classList.remove('active');
+                         buttonEl.classList.add('inactive');
+                         buttonEl.textContent = 'Deactive';
+                     }
+
+                     try {
+                         const payload = { training_key: trainingKey, lab_status: newStatus };
+                         const res = await fetch(`/api/admin/labs/${labId}`, {
+                             method: 'PUT',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify(payload)
+                         });
+
+                         if (!res.ok) {
+                             const errorText = await res.text();
+                             throw new Error(errorText || '상태 변경 실패');
+                         }
+
+                         buttonEl.setAttribute('onclick', `toggleLabStatus(${labId}, ${newStatus}, this)`);
+                     } catch (error) {
+                         // 실패 시 원래 상태로 롤백
+                         if (oldStatus === 20) {
+                             rowEl.classList.remove('inactive-row');
+                             buttonEl.classList.remove('inactive');
+                             buttonEl.classList.add('active');
+                             buttonEl.textContent = 'Active';
+                         } else {
+                             rowEl.classList.add('inactive-row');
+                             buttonEl.classList.remove('active');
+                             buttonEl.classList.add('inactive');
+                             buttonEl.textContent = 'Deactive';
+                         }
+                         alert(`상태 변경 중 오류가 발생했습니다: ${error.message}`);
+                     }
+                 }
+         
+         // 콘텐츠 상태 토글 (텍스트 버튼)
+         async function toggleContentStatus(labId, contentId, currentStatus, buttonEl) {
+             const oldStatus = Number(currentStatus);
+             const newStatus = oldStatus === 1 ? 0 : 1;
+             const rowEl = buttonEl.closest('tr');
+
              // 즉시 시각적 반영
-             if (newStatus === 20) {
-                 rowEl.classList.remove('inactive-row');
+             rowEl.style.opacity = newStatus === 1 ? '1' : '0.6';
+             if (newStatus === 1) {
+                 buttonEl.classList.remove('inactive');
+                 buttonEl.classList.add('active');
+                 buttonEl.textContent = 'Active';
              } else {
-                 rowEl.classList.add('inactive-row');
+                 buttonEl.classList.remove('active');
+                 buttonEl.classList.add('inactive');
+                 buttonEl.textContent = 'Deactive';
              }
+
              try {
-                 const payload = { training_key: trainingKey, lab_status: newStatus };
-                 const res = await fetch(`/api/admin/labs/${labId}`, {
+                 const res = await fetch(`/api/admin/lab_contents/${contentId}/status?training_key=${encodeURIComponent(trainingKey)}&lab_id=${labId}`, {
                      method: 'PUT',
                      headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify(payload)
+                     body: JSON.stringify({ new_status: newStatus })
                  });
+
                  if (!res.ok) {
                      const errorText = await res.text();
-                     // 실패 시 원래 상태로 롤백
-                     checkboxEl.checked = !checkboxEl.checked;
-                     if (checkboxEl.checked) rowEl.classList.remove('inactive-row'); else rowEl.classList.add('inactive-row');
-                     alert(`상태 변경에 실패했습니다: ${errorText}`);
+                     throw new Error(errorText || '상태 변경 실패');
                  }
+
+                 buttonEl.setAttribute('onclick', `toggleContentStatus(${labId}, ${contentId}, ${newStatus}, this)`);
              } catch (error) {
-                 // 오류 시 원래 상태로 롤백
-                 checkboxEl.checked = !checkboxEl.checked;
-                 if (checkboxEl.checked) rowEl.classList.remove('inactive-row'); else rowEl.classList.add('inactive-row');
-                 console.error('Error toggling lab status:', error);
-                 alert(`상태 변경 중 오류가 발생했습니다: ${error.message}`);
+                 // 실패 시 원래 상태로 롤백
+                 rowEl.style.opacity = oldStatus === 1 ? '1' : '0.6';
+                 if (oldStatus === 1) {
+                     buttonEl.classList.remove('inactive');
+                     buttonEl.classList.add('active');
+                     buttonEl.textContent = 'Active';
+                 } else {
+                     buttonEl.classList.remove('active');
+                     buttonEl.classList.add('inactive');
+                     buttonEl.textContent = 'Deactive';
+                 }
+                 alert(`콘텐츠 상태 변경 중 오류가 발생했습니다: ${error.message}`);
              }
          }
          
@@ -474,7 +1236,6 @@
                 const labStatus = parseInt(document.getElementById('labStatus').value);
 
                 
-                console.log('Form submission - labId:', labId, 'labName:', labName, 'labStatus:', labStatus);
                 
                 // 유효성 검사
                 if (!labName) {
@@ -496,7 +1257,6 @@
                     method = 'PUT';
                 }
                 
-                console.log('Submitting to:', url, 'with method:', method, 'payload:', payload);
                 
                 const res = await fetch(url, {
                     method,
@@ -505,19 +1265,638 @@
                 });
                 
                                  if (res.ok) {
-                     console.log('Lab saved successfully');
                      closeModal('labModal');
                      loadLabs();
                  } else {
                     const errorText = await res.text();
-                    console.error('Save failed:', res.status, errorText);
                     alert(`저장에 실패했습니다: ${res.status} ${res.statusText} - ${errorText}`);
                 }
             } catch (error) {
-                console.error('Error saving lab:', error);
                 alert(`저장 중 오류가 발생했습니다: ${error.message}`);
             }
         });
+        // 랩 콘텐츠 목록 토글
+        let currentExpandedLab = null;
+        async function toggleLabContents(labId) {
+            const contentRow = document.getElementById(`content-row-${labId}`);
+            const labRow = document.getElementById(`lab-row-${labId}`);
+            const expandIcon = labRow.querySelector('.lab-name-btn');
+            const labName = expandIcon.getAttribute('data-lab-name');
+            
+            // 이미 펼쳐진 경우 접기
+            if (currentExpandedLab === labId) {
+                contentRow.style.display = 'none';
+                expandIcon.innerHTML = `▶ ${labName}`;
+                currentExpandedLab = null;
+                return;
+            }
+            
+            // 다른 랩이 펼쳐져 있으면 접기
+            if (currentExpandedLab !== null) {
+                const prevContentRow = document.getElementById(`content-row-${currentExpandedLab}`);
+                const prevLabRow = document.getElementById(`lab-row-${currentExpandedLab}`);
+                if (prevContentRow) prevContentRow.style.display = 'none';
+                if (prevLabRow) {
+                    const prevIcon = prevLabRow.querySelector('.lab-name-btn');
+                    if (prevIcon) {
+                        const prevLabName = prevIcon.getAttribute('data-lab-name');
+                        prevIcon.innerHTML = `▶ ${prevLabName}`;
+                    }
+                }
+            }
+            
+            // 현재 랩 펼치기
+            contentRow.style.display = 'table-row';
+            expandIcon.innerHTML = `▼ ${labName}`;
+            currentExpandedLab = labId;
+            
+            // 콘텐츠 목록 로드
+            await loadLabContents(labId);
+        }
+        
+        // 특정 랩의 콘텐츠 목록 로드
+        async function loadLabContents(labId) {
+            const contentListDiv = document.getElementById(`content-list-${labId}`);
+            
+            if (!contentListDiv) {
+                return;
+            }
+            
+            contentListDiv.innerHTML = '로딩 중...';
+            
+            try {
+                const apiUrl = `/api/admin/lab_contents?training_key=${encodeURIComponent(trainingKey)}&lab_id=${labId}`;
+                const res = await fetch(apiUrl);
+                if (!res.ok) throw new Error('콘텐츠 목록을 불러오는데 실패했습니다.');
+                
+                const contents = await res.json();
+                
+                if (contents.length === 0) {
+                    contentListDiv.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">등록된 콘텐츠가 없습니다.</p>';
+                    return;
+                }
+                
+                let html = `
+                    <table class="content-table">
+                        <thead>
+                            <tr>
+                                <th style="width:80px;">순서</th>
+                                <th>제목</th>
+                                <th style="width:100px;">유형</th>
+                                <th style="width:150px;">생성일</th>
+                                <th style="width:100px;">상태</th>
+                                <th style="width:180px;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                contents.forEach(content => {
+                    // 콘텐츠 유형 변환 (숫자 또는 문자열)
+                    let typeDisplay = '';
+                    let typeIcon = '';
+                    const contentType = String(content.lab_content_type).toLowerCase();
+                    
+                    // 숫자로 저장된 경우 처리
+                    if (contentType === '0') {
+                        typeDisplay = '웹 마크다운';
+                        typeIcon = '🌐';
+                    } else if (contentType === '1' || contentType === '10' || contentType === 'text') {
+                        typeDisplay = '웹페이지';
+                        typeIcon = '🔗';
+                    } else if (contentType === '2' || contentType === '20' || contentType === 'markdown') {
+                        typeDisplay = '마크다운';
+                        typeIcon = '📄';
+                    } else if (contentType === '3' || contentType === '30' || contentType === 'code') {
+                        typeDisplay = '코드';
+                        typeIcon = '💻';
+                    } else if (contentType === '4' || contentType === '40') {
+                        typeDisplay = '텍스트';
+                        typeIcon = '📝';
+                    } else if (contentType === 'web') {
+                        typeDisplay = '웹페이지';
+                        typeIcon = '🔗';
+                    } else {
+                        // 알 수 없는 타입인 경우 원본 표시
+                        typeDisplay = content.lab_content_type;
+                        typeIcon = '📌';
+                    }
+                    
+                    html += `
+                        <tr style="${content.lab_content_status != 1 ? 'opacity:0.6;' : ''}" id="content-row-${labId}-${content.content_id}">
+                            <td style="text-align:center;">${content.view_number}</td>
+                            <td style="padding: 0;"><button class="content-title-btn" onclick="editContent(${labId}, ${content.content_id})" style="padding: 10px;">${content.lab_content_subject}</button></td>
+                            <td style="text-align:center;">${typeIcon} ${typeDisplay}</td>
+                            <td>${content.lab_content_create_date}</td>
+                            <td style="text-align:center;">
+                                <button
+                                    class="status-text-btn ${content.lab_content_status == 1 ? 'active' : 'inactive'}"
+                                    onclick="toggleContentStatus(${labId}, ${content.content_id}, ${content.lab_content_status}, this)">
+                                    ${content.lab_content_status == 1 ? 'Active' : 'Deactive'}
+                                </button>
+                            </td>
+                            <td style="text-align:center;">
+                                <div class="icon-actions">
+                                    <button class="icon-btn" onclick="editContent(${labId}, ${content.content_id})" title="수정" aria-label="수정">✏️</button>
+                                    <button class="icon-btn delete" onclick="deleteContent(${labId}, ${content.content_id})" title="삭제" aria-label="삭제">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                contentListDiv.innerHTML = html;
+                
+            } catch (error) {
+                contentListDiv.innerHTML = `<p style="text-align:center; color:#dc3545; padding:20px;">${error.message}</p>`;
+            }
+        }
+        
+        // 콘텐츠 유형 자동 감지 관련 변수
+        let manualTypeOverride = false;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizeUrl(url) {
+            const trimmed = String(url || '').trim();
+            if (!trimmed) return '';
+            if (/^https?:\/\//i.test(trimmed)) return trimmed;
+            if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
+            return trimmed;
+        }
+
+        function toUiContentType(rawType) {
+            const value = String(rawType ?? '').toLowerCase();
+            if (value === '0' || value === 'web_markdown' || value === 'url_markdown') return 'web_markdown';
+            if (value === '1' || value === 'web') return 'web';
+            if (value === '2' || value === 'markdown') return 'markdown';
+            if (value === '3' || value === 'code') return 'code';
+            return 'text';
+        }
+
+        function toDbContentType(uiType) {
+            const value = String(uiType ?? '').toLowerCase();
+            if (value === 'web_markdown' || value === 'url_markdown') return 0;
+            if (value === 'web') return 1;
+            if (value === 'markdown') return 2;
+            if (value === 'code') return 3;
+            return 4;
+        }
+
+        function updateContentPreview() {
+            const previewEl = document.getElementById('contentPreview');
+            const subject = document.getElementById('contentSubject').value.trim();
+            const body = document.getElementById('contentBody').value.trim();
+            const uiType = document.getElementById('contentType').value;
+
+            if (!body) {
+                previewEl.innerHTML = '<div class="preview-empty">콘텐츠 내용이 비어 있습니다.</div>';
+                return;
+            }
+
+            // Handle web markdown - fetch and render markdown from URL
+            if (uiType === 'web_markdown') {
+                const normalized = normalizeUrl(body);
+                if (/^https?:\/\//i.test(normalized)) {
+                    previewEl.innerHTML = '<div class="preview-empty">마크다운을 로드 중입니다...</div>';
+                    
+                    fetch(`/api/proxy-markdown?url=${encodeURIComponent(normalized)}`)
+                        .then(response => response.text())
+                        .then(html => {
+                            previewEl.innerHTML = `
+                                <div style="margin-bottom: 12px;">
+                                    <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(subject || '제목 없음')}</div>
+                                    <div style="color: #4b5563; font-size: 12px;">유형: 웹 마크다운 URL</div>
+                                </div>
+                                <div style="border-top: 1px solid #ddd; padding-top: 12px; margin-top: 12px;">
+                                    <div class="markdown-content" style="line-height: 1.6;">
+                                        ${html}
+                                    </div>
+                                </div>
+                            `;
+                        })
+                        .catch(error => {
+                            previewEl.innerHTML = `<div class="preview-empty" style="color: red;">마크다운 로드 실패: ${escapeHtml(error.message)}</div>`;
+                        });
+                } else {
+                    previewEl.innerHTML = '<div class="preview-empty">유효한 URL을 입력해주세요. (http:// 또는 https://)</div>';
+                }
+                return;
+            }
+
+            // Handle regular web URL
+            if (uiType === 'web') {
+                const normalized = normalizeUrl(body);
+                if (/^https?:\/\//i.test(normalized)) {
+                    previewEl.innerHTML = `
+                        <div style="margin-bottom: 8px; font-weight: 600;">${escapeHtml(subject || '제목 없음')}</div>
+                        <div style="margin-bottom: 10px; color: #4b5563;">유형: 웹페이지 URL</div>
+                        <a href="${escapeHtml(normalized)}" target="_blank" rel="noopener noreferrer">${escapeHtml(normalized)}</a>
+                    `;
+                } else {
+                    previewEl.innerHTML = '<div class="preview-empty">유효한 URL을 입력해주세요. (http:// 또는 https://)</div>';
+                }
+                return;
+            }
+
+            if (uiType === 'code') {
+                const codeLanguage = document.getElementById('codeLanguage').value || 'python';
+                const languageDisplay = codeLanguage === 'python' ? '🐍 Python' : codeLanguage === 'shell' ? '🔧 Shell' : '💻 Code';
+                const escapedCode = escapeHtml(body);
+                
+                previewEl.innerHTML = `
+                    <div class="code-block-wrapper">
+                        <div class="code-header">
+                            <span class="code-language">${languageDisplay}</span>
+                            <button type="button" class="copy-code-btn" onclick="copyPreviewCode(this)">Copy code</button>
+                        </div>
+                        <pre><code class="language-${codeLanguage}">${escapedCode}</code></pre>
+                    </div>
+                `;
+                // Scroll to top of code block
+                setTimeout(() => {
+                    const codeBlockWrapper = previewEl.querySelector('.code-block-wrapper');
+                    if (codeBlockWrapper) {
+                        codeBlockWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 0);
+                
+                // Apply syntax highlighting
+                const codeBlock = previewEl.querySelector('code');
+                if (codeBlock && window.hljs) {
+                    hljs.highlightElement(codeBlock);
+                }
+                return;
+            }
+
+            if (uiType === 'markdown') {
+                let markdownHtml = escapeHtml(body)
+                    .replace(/^###\s(.+)$/gm, '<h3>$1</h3>')
+                    .replace(/^##\s(.+)$/gm, '<h2>$1</h2>')
+                    .replace(/^#\s(.+)$/gm, '<h1>$1</h1>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\n/g, '<br>');
+                previewEl.innerHTML = markdownHtml;
+                return;
+            }
+
+            previewEl.textContent = body;
+        }
+        
+        // 콘텐츠 유형 수동 변경 표시
+        function markManualTypeChange() {
+            manualTypeOverride = true;
+            document.getElementById('autoDetectedLabel').textContent = '';
+        }
+        
+        // 코드 언어 옵션 표시/숨김
+        function toggleCodeLanguageOption() {
+            const contentType = document.getElementById('contentType').value;
+            const codeLanguageGroup = document.getElementById('codeLanguageGroup');
+            const codeLanguageSelect = document.getElementById('codeLanguage');
+            
+            if (contentType === 'code') {
+                codeLanguageGroup.style.display = 'block';
+                // 코드 타입 선택 시 기본값을 python으로 설정
+                if (!codeLanguageSelect.value) {
+                    codeLanguageSelect.value = 'python';
+                }
+            } else {
+                codeLanguageGroup.style.display = 'none';
+                codeLanguageSelect.value = 'python';
+            }
+        }
+        
+        // 코드 언어 선택 업데이트
+        function updateCodeLanguageDisplay() {
+            // 프리뷰 업데이트가 필요하면 여기서 처리
+            updateContentPreview();
+        }
+        
+        // 프리뷰에서 코드 복사
+        function copyPreviewCode(button) {
+            if (!button) return;
+            
+            try {
+                // 버튼의 부모 요소(code-header)를 찾고, 그 다음 형제 요소인 pre > code를 찾기
+                const codeHeader = button.parentElement;
+                const codeBlockWrapper = codeHeader.parentElement;
+                const preElement = codeBlockWrapper.querySelector('pre');
+                const codeElement = preElement ? preElement.querySelector('code') : null;
+                
+                if (!codeElement) {
+                    button.textContent = '✗ Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                    }, 2000);
+                    return;
+                }
+                
+                // textContent를 사용하여 HTML escape된 텍스트를 자동으로 디코드
+                const code = codeElement.textContent || '';
+                
+                if (!code.trim()) {
+                    button.textContent = '✗ Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                    }, 2000);
+                    return;
+                }
+                
+                // 클립보드에 복사
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        button.textContent = '✓ Copied!';
+                        button.classList.add('copied');
+                        setTimeout(() => {
+                            button.textContent = 'Copy code';
+                            button.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        fallbackCopy(code, button);
+                    });
+                } else {
+                    fallbackCopy(code, button);
+                }
+            } catch (error) {
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy code';
+                }, 2000);
+            }
+        }
+        
+        // 폴백 복사 메서드
+        function fallbackCopy(text, button) {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    button.textContent = '✓ Copied!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                        button.classList.remove('copied');
+                    }, 2000);
+                } else {
+                    throw new Error('Copy command failed');
+                }
+            } catch (err) {
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy code';
+                }, 2000);
+            }
+        }
+        
+        // 콘텐츠 유형 자동 감지
+        function detectContentType() {
+            if (manualTypeOverride) return; // 수동으로 변경한 경우 자동 감지 중단
+            
+            const content = document.getElementById('contentBody').value.trim();
+            const typeSelect = document.getElementById('contentType');
+            const autoLabel = document.getElementById('autoDetectedLabel');
+            
+            if (!content) {
+                typeSelect.value = 'text';
+                autoLabel.textContent = '';
+                return;
+            }
+            
+            // URL 패턴 감지 (http://, https://로 시작하거나 www.로 시작)
+            const urlPattern = /^(https?:\/\/|www\.)/i;
+            const hasUrl = urlPattern.test(content) || content.includes('http://') || content.includes('https://');
+            
+            if (hasUrl) {
+                typeSelect.value = /\.md(\?|$)/i.test(content) ? 'web_markdown' : 'web';
+                autoLabel.textContent = typeSelect.value === 'web_markdown' ? '(자동 감지: 웹 마크다운 URL)' : '(자동 감지: Web 링크)';
+                return;
+            }
+            
+            // 코드 패턴 감지 (프로그래밍 언어 키워드, 문법, 주석 등)
+            const codePatterns = [
+                // 프로그래밍 언어 키워드
+                /\b(function|class|def|import|from|const|let|var|public|private|protected|static|return|if|else|for|while|switch|case|break|continue|try|catch|finally|throw|async|await|yield|interface|type|enum|namespace|export|default)\b/,
+                
+                // 세미콜론으로 끝나는 라인 (3개 이상)
+                /(.*;.*\n.*.*;.*\n.*.*;)/,
+                
+                // 주석 패턴
+                /(\/\/.*|\/\*[\s\S]*?\*\/|#.*)/,
+                
+                // 함수 선언/호출 패턴
+                /\w+\s*\([^)]*\)\s*\{/,
+                /\w+\([^)]*\)\s*:/,
+                
+                // 중괄호 블록 (2개 이상의 중괄호 쌍)
+                /(\{[\s\S]*?\}[\s\S]*?\{[\s\S]*?\})/,
+                
+                // 화살표 함수
+                /=>|->|::/,
+                
+                // 변수 할당 패턴 (여러 줄)
+                /(\w+\s*=\s*[^=\n]+[;\n][\s\S]*?\w+\s*=\s*[^=\n]+[;\n])/,
+                
+                // 객체/배열 리터럴
+                /(\[\s*\{[\s\S]*?\}\s*,|\{\s*[\w"']+\s*:)/,
+                
+                // 메서드 체이닝
+                /\.\w+\([^)]*\)\.\w+/,
+                
+                // import/include/require 문
+                /^\s*(import|#include|require|using)\s+/m
+            ];
+            
+            const hasCode = codePatterns.some(pattern => pattern.test(content));
+            
+            if (hasCode) {
+                typeSelect.value = 'code';
+                autoLabel.textContent = '(자동 감지: Code)';
+                return;
+            }
+            
+            // 마크다운 문법 감지
+            const markdownPatterns = [
+                /^#{1,6}\s/m,           // 헤더 (# ## ###)
+                /\*\*.*\*\*/,            // 볼드 (**text**)
+                /\*.*\*/,                // 이탤릭 (*text*)
+                /^[-*+]\s/m,             // 리스트 (- * +)
+                /^\d+\.\s/m,             // 번호 리스트 (1. 2.)
+                /\[.*\]\(.*\)/,          // 링크 [text](url)
+                /```[\s\S]*```/,         // 코드 블록
+                /`[^`]+`/,               // 인라인 코드
+                /^>\s/m,                 // 인용구 (>)
+                /^---$/m,                // 구분선
+                /!\[.*\]\(.*\)/          // 이미지 ![alt](url)
+            ];
+            
+            const hasMarkdown = markdownPatterns.some(pattern => pattern.test(content));
+            
+            if (hasMarkdown) {
+                typeSelect.value = 'markdown';
+                autoLabel.textContent = '(자동 감지: Markdown)';
+                return;
+            }
+            
+            // 기본값: text
+            typeSelect.value = 'text';
+            autoLabel.textContent = '(자동 감지: Text)';
+        }
+        
+        // 콘텐츠 추가 모달 열기
+        function showAddContentModal(labId) {
+            document.getElementById('contentModalTitle').textContent = '콘텐츠 추가';
+            document.getElementById('contentLabId').value = labId;
+            document.getElementById('contentId').value = '';
+            document.getElementById('contentSubject').value = '';
+            document.getElementById('contentBody').value = '';
+            document.getElementById('contentType').value = 'text';
+            document.getElementById('contentStatus').value = '1';
+            document.getElementById('autoDetectedLabel').textContent = '';
+            manualTypeOverride = false; // 자동 감지 활성화
+            document.getElementById('contentModal').style.display = 'flex';
+            toggleCodeLanguageOption(); // 코드 언어 옵션 표시/숨김 토글
+            updateContentPreview();
+        }
+        
+        // 콘텐츠 수정 모달 열기
+        async function editContent(labId, contentId) {
+            try {
+                const res = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${trainingKey}&lab_id=${labId}`);
+                if (!res.ok) throw new Error('콘텐츠 정보를 불러오는데 실패했습니다.');
+                
+                const content = await res.json();
+                
+                document.getElementById('contentModalTitle').textContent = '콘텐츠 수정';
+                document.getElementById('contentLabId').value = labId;
+                document.getElementById('contentId').value = content.content_id;
+                document.getElementById('contentSubject').value = content.lab_content_subject;
+                document.getElementById('contentBody').value = content.lab_content;
+                document.getElementById('contentType').value = toUiContentType(content.lab_content_type);
+                document.getElementById('contentStatus').value = content.lab_content_status;
+                document.getElementById('autoDetectedLabel').textContent = '';
+                manualTypeOverride = true; // 수정 모드에서는 기존 유형 유지
+                document.getElementById('contentModal').style.display = 'flex';
+                toggleCodeLanguageOption(); // 코드 언어 옵션 표시/숨김 토글
+                updateContentPreview();
+                
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+        
+        // 콘텐츠 삭제
+        async function deleteContent(labId, contentId) {
+            if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까?')) return;
+            
+            try {
+                const res = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${encodeURIComponent(trainingKey)}&lab_id=${labId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (res.ok) {
+                    // 콘텐츠 수 업데이트를 위해 랩 목록 새로고침
+                    await loadLabs();
+                    // 삭제 후에도 목록이 열린 상태 유지
+                    const contentRow = document.getElementById(`content-row-${labId}`);
+                    const labRow = document.getElementById(`lab-row-${labId}`);
+                    const expandIcon = labRow.querySelector('.lab-name-btn');
+                    const labName = expandIcon.getAttribute('data-lab-name');
+                    
+                    contentRow.style.display = 'table-row';
+                    expandIcon.innerHTML = `▼ ${labName}`;
+                    currentExpandedLab = labId;
+                    await loadLabContents(labId);
+                } else {
+                    const errorData = await res.json();
+                    alert('콘텐츠 삭제에 실패했습니다: ' + (errorData.detail || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                alert('콘텐츠 삭제 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+        
+        // 콘텐츠 폼 제출
+        document.getElementById('contentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const labId = document.getElementById('contentLabId').value;
+            const contentId = document.getElementById('contentId').value;
+            const subject = document.getElementById('contentSubject').value.trim();
+            const body = document.getElementById('contentBody').value.trim();
+            const type = toDbContentType(document.getElementById('contentType').value);
+            const status = parseInt(document.getElementById('contentStatus').value);
+            
+            if (!subject) {
+                alert('콘텐츠 제목을 입력해주세요.');
+                return;
+            }
+            
+            const payload = {
+                training_key: trainingKey,
+                lab_id: parseInt(labId),
+                lab_content_subject: subject,
+                lab_content: body,
+                lab_content_type: type,
+                lab_content_status: status
+            };
+            
+            try {
+                let url = '/api/admin/lab_contents';
+                let method = 'POST';
+                
+                if (contentId) {
+                    url += `/${contentId}`;
+                    method = 'PUT';
+                    payload.content_id = parseInt(contentId);
+                }
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    closeModal('contentModal');
+                    // 콘텐츠 수 업데이트를 위해 랩 목록 새로고침
+                    await loadLabs();
+                    // 저장 후에도 목록이 열린 상태 유지
+                    const contentRow = document.getElementById(`content-row-${labId}`);
+                    const labRow = document.getElementById(`lab-row-${labId}`);
+                    const expandIcon = labRow.querySelector('.lab-name-btn');
+                    const labName = expandIcon.getAttribute('data-lab-name');
+                    
+                    contentRow.style.display = 'table-row';
+                    expandIcon.innerHTML = `▼ ${labName}`;
+                    currentExpandedLab = labId;
+                    await loadLabContents(labId);
+                } else {
+                    const errorText = await res.text();
+                    alert(`저장에 실패했습니다: ${errorText}`);
+                }
+            } catch (error) {
+                alert('저장 중 오류가 발생했습니다.');
+            }
+        });
+        
         // 콘텐츠 이동 모달 열기
         async function openMoveContentModal(contentId) {
             const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
@@ -553,7 +1932,9 @@
                 if (res.ok) {
                     alert('콘텐츠가 성공적으로 이동되었습니다.');
                     closeModal('moveContentModal');
-                    loadLabContents(); // 콘텐츠 목록 새로고침
+                    if (currentExpandedLab) {
+                        await loadLabContents(currentExpandedLab);
+                    }
                     loadLabs(); // 랩 목록 새로고침 (콘텐츠 수 업데이트)
                 } else {
                     const error = await res.json();
@@ -594,7 +1975,7 @@
                          <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lastContent}">${lastContent}</td>
                          <td>${user.create_date}</td>
                          <td>
-                             <button class="button danger" onclick="deleteUser('${user.member_id}')">삭제</button>
+                             <button class="button danger" onclick="deleteUser('${user.member_id}')">Delete</button>
                          </td>
                      `;
                      tbody.appendChild(tr);
@@ -606,9 +1987,218 @@
                 }, 500);
                 
             } catch (error) {
-                console.error('Error loading users:', error);
                 alert(`사용자 목록을 불러오는데 실패했습니다: ${error.message}`);
             }
+        }
+
+        let monitoringIntervalId = null;
+        let monitoringPollingSeconds = 5;
+        let monitoringLastId = null;
+
+        function setMonitoringStatus(text, color = '#666') {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.innerHTML = text;
+            statusEl.style.color = color;
+        }
+
+        function applyMonitoringInterval() {
+            const input = document.getElementById('monitoringIntervalSec');
+            const sec = parseInt(input.value, 10);
+
+            if (!Number.isInteger(sec) || sec < 1 || sec > 300) {
+                alert('모니터링 간격은 1~300초 사이로 입력해 주세요.');
+                input.value = String(monitoringPollingSeconds);
+                return;
+            }
+
+            monitoringPollingSeconds = sec;
+
+            if (document.getElementById('monitoring-tab').classList.contains('active')) {
+                startMonitoringPolling(false);
+            }
+        }
+
+        function startMonitoringPolling(reset = true) {
+            if (!trainingKey) {
+                return;
+            }
+
+            const input = document.getElementById('monitoringIntervalSec');
+            const sec = parseInt(input.value, 10);
+            if (Number.isInteger(sec) && sec >= 1 && sec <= 300) {
+                monitoringPollingSeconds = sec;
+            }
+
+            if (monitoringIntervalId) {
+                clearInterval(monitoringIntervalId);
+                monitoringIntervalId = null;
+            }
+
+            if (reset) {
+                monitoringLastId = null;
+                clearConsole();
+            }
+
+            loadMonitoring(reset);
+            monitoringIntervalId = setInterval(() => loadMonitoring(false), monitoringPollingSeconds * 1000);
+            setMonitoringStatus(`● Polling (${monitoringPollingSeconds}s)`, '#00aa00');
+        }
+
+        function stopMonitoringPolling() {
+            if (monitoringIntervalId) {
+                clearInterval(monitoringIntervalId);
+                monitoringIntervalId = null;
+            }
+            setMonitoringStatus('● Stopped', '#666');
+        }
+
+        async function loadMonitoring(reset = false) {
+            if (!trainingKey) {
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    training_key: trainingKey,
+                    limit: reset ? '50' : '100'
+                });
+
+                if (!reset && monitoringLastId) {
+                    params.append('since_id', String(monitoringLastId));
+                }
+
+                const response = await fetch(`/api/admin/monitoring/events?${params.toString()}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error('이벤트 데이터 조회 실패');
+                }
+
+                document.getElementById('metricUserCount').textContent = data.stats.user_count;
+                document.getElementById('metricLabCount').textContent = data.stats.lab_count;
+                document.getElementById('metricContentCount').textContent = data.stats.content_count;
+
+                const events = Array.isArray(data.events) ? data.events : [];
+                if (events.length > 0) {
+                    monitoringLastId = data.last_id || monitoringLastId;
+
+                    const orderedEvents = [...events].reverse();
+                    orderedEvents.forEach((event) => {
+                        const line = toMonitoringLine(event);
+                        addConsoleMessage(line.timestamp, line.icon, line.message, line.color);
+                    });
+                }
+
+                setMonitoringStatus(`● Polling (${monitoringPollingSeconds}s)`, '#00aa00');
+            } catch (error) {
+                setMonitoringStatus('● Error', '#ff4444');
+                addConsoleMessage(new Date().toLocaleTimeString('ko-KR'), '❌', `모니터링 조회 실패: ${error.message}`, '#ff4444');
+            }
+        }
+
+        function toMonitoringLine(event) {
+            const timestamp = event.create_date || new Date().toLocaleTimeString('ko-KR');
+            const details = event.details || {};
+            const userName = event.user_name || details.member_name || '-';
+            const targetName = event.target_name || details.lab_name || details.subject || details.content_subject || '';
+
+            let message = event.description || event.event_type;
+            let icon = '📋';
+            let color = '#00ff00';
+
+            switch(event.event_type) {
+                case 'user_register':
+                    icon = '👤';
+                    color = '#00ff00';
+                    message = `${userName} registered`;
+                    break;
+                case 'user_login':
+                    icon = '🔐';
+                    color = '#00ff00';
+                    message = `${userName} logged in`;
+                    break;
+                case 'user_logout':
+                    icon = '🔓';
+                    color = '#888888';
+                    message = `${userName} logged out`;
+                    break;
+                case 'lab_add':
+                    icon = '➕';
+                    color = '#4a9eff';
+                    message = `Lab "${targetName}" created`;
+                    break;
+                case 'lab_edit':
+                    icon = '✏️';
+                    color = '#ffa500';
+                    message = `Lab "${targetName}" updated`;
+                    break;
+                case 'lab_delete':
+                    icon = '🗑️';
+                    color = '#ff4444';
+                    message = `Lab "${targetName}" deleted`;
+                    break;
+                case 'lab_view':
+                    icon = '👁️';
+                    color = '#90ee90';
+                    message = `${userName} opened ${targetName || 'lab'}`;
+                    break;
+                case 'content_add':
+                    icon = '📄';
+                    color = '#00ffff';
+                    message = `Content "${targetName}" created`;
+                    break;
+                case 'content_edit':
+                    icon = '📝';
+                    color = '#ffff00';
+                    message = `Content "${targetName}" updated`;
+                    break;
+                case 'content_delete':
+                    icon = '🗑️';
+                    color = '#ff6b6b';
+                    message = `Content "${targetName}" deleted`;
+                    break;
+                case 'content_view':
+                    icon = '📖';
+                    color = '#90ee90';
+                    message = `${userName} viewed "${targetName}"`;
+                    break;
+                default:
+                    icon = '📋';
+                    color = '#cccccc';
+                    message = event.description || `${event.event_type}`;
+            }
+
+            return { timestamp, icon, message, color };
+        }
+        
+        function addConsoleMessage(timestamp, icon, message, color) {
+            const consoleEl = document.getElementById('monitoringConsole');
+            
+            // "Waiting for events" 메시지 제거
+            if (consoleEl.innerHTML.includes('Waiting for events')) {
+                consoleEl.innerHTML = '';
+            }
+            
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            line.innerHTML = `<span style="color: ${color}">${icon} [${timestamp}] ${message}</span>`;
+            consoleEl.appendChild(line);
+            
+            // 자동 스크롤
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            
+            // 최대 1000줄 유지
+            while (consoleEl.children.length > 1000) {
+                consoleEl.removeChild(consoleEl.firstChild);
+            }
+        }
+        
+        function clearConsole() {
+            const consoleEl = document.getElementById('monitoringConsole');
+            consoleEl.innerHTML = '<div class="console-line" style="color: #666;">Console cleared. Waiting for new events...</div>';
         }
         
         // 사용자 삭제
@@ -652,11 +2242,9 @@
              
              // 5초마다 사용자 목록 새로고침
              autoRefreshInterval = setInterval(() => {
-                 console.log('자동 새로고침 실행');
                  loadUsers();
              }, 5000);
              
-             console.log('자동 새로고침이 시작되었습니다. (5초 간격)');
          }
          
          // 자동 새로고침 중지
@@ -664,18 +2252,79 @@
              if (autoRefreshInterval) {
                  clearInterval(autoRefreshInterval);
                  autoRefreshInterval = null;
-                 console.log('자동 새로고침이 중지되었습니다.');
              }
          }
          
-         // 페이지 로드시
-         loadCourseTitle();
-         loadLabs();
-         loadUsers();
+         // 페이지 로드시 - DOMContentLoaded 사용
+         document.addEventListener('DOMContentLoaded', function() {
+             
+             try {
+                 // 페이지 상태 업데이트 (가장 먼저)
+                 const pageStatus = document.getElementById('pageStatus');
+                 if (pageStatus) {
+                     pageStatus.textContent = '✓ 페이지 준비 완료';
+                     pageStatus.style.background = '#28a745';
+                     setTimeout(() => {
+                         pageStatus.style.display = 'none';
+                     }, 3000);
+                 }
+                 
+                 
+                 if (!trainingKey) {
+                     const tbody = document.getElementById('labList');
+                     if (tbody) {
+                         tbody.innerHTML = `
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding: 30px; color: #dc3545;">
+                                    <div style="font-size: 18px; margin-bottom: 10px;">❌ 과정 키가 없습니다</div>
+                                    <div style="font-size: 14px; color: #666;">URL에 training_key 파라미터가 필요합니다.</div>
+                                    <div style="margin-top: 15px;">
+                                        <button class="button" onclick="window.location.href='/admin'">Go to Admin</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                     }
+                     return;
+                 }
+                 
+                 // 초기 데이터 로드
+                 try {
+                     loadCourseTitle();
+                 } catch (e) {
+                 }
+                 
+                 try {
+                     loadLabs();
+                 } catch (e) {
+                 }
+                 
+                 try {
+                     loadUsers();
+                 } catch (e) {
+                 }
+                 
+                 const monitoringInput = document.getElementById('monitoringIntervalSec');
+                 if (monitoringInput) {
+                     monitoringInput.value = '5';
+                 }
+                 
+             } catch (error) {
+                 alert('페이지 초기화 중 오류 발생: ' + error.message);
+                 
+                 // 페이지 상태를 오류로 표시
+                 const pageStatus = document.getElementById('pageStatus');
+                 if (pageStatus) {
+                     pageStatus.textContent = '❌ 오류 발생';
+                     pageStatus.style.background = '#dc3545';
+                 }
+             }
+         });
          
          // 페이지를 벗어날 때 자동 새로고침 정리
          window.addEventListener('beforeunload', function() {
              stopAutoRefresh();
+             stopMonitoringPolling();
          });
     </script>
 </body>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>랩 관리 - 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .debug-box {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            border-left: 4px solid #007bff;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .debug-line {
+            padding: 5px 0;
+            line-height: 1.6;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #0066cc; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 랩 관리 - 디버그 테스트</h1>
+        
+        <div style="margin: 20px 0;">
+            <button onclick="testFetch()">Test API</button>
+            <button onclick="clearDebug()">Clear Log</button>
+        </div>
+
+        <h2>디버그 정보</h2>
+        <div id="debugBox" class="debug-box">
+            <div class="debug-line"><span class="info">⏳ 준비 중...</span></div>
+        </div>
+    </div>
+
+    <script>
+        function addDebugLog(message, type = 'info') {
+            const debugBox = document.getElementById('debugBox');
+            if (!debugBox) {
+                return;
+            }
+            const line = document.createElement('div');
+            line.className = 'debug-line';
+            const now = new Date().toLocaleTimeString();
+            let icon = '◆';
+            if (type === 'success') icon = '✓';
+            if (type === 'error') icon = '✗';
+            line.innerHTML = `<span class="${type}">[${now}] ${icon} ${message}</span>`;
+            debugBox.appendChild(line);
+            debugBox.scrollTop = debugBox.scrollHeight;
+        }
+
+        function clearDebug() {
+            const debugBox = document.getElementById('debugBox');
+            debugBox.innerHTML = '';
+            addDebugLog('로그 지워짐', 'info');
+        }
+
+        // 초기화
+        window.addEventListener('DOMContentLoaded', function() {
+            addDebugLog('✓ 페이지 로드됨', 'success');
+            
+            // URL 파라미터 확인
+            const url = new URL(window.location.href);
+            const trainingKey = url.searchParams.get('training_key');
+            addDebugLog('URL: ' + window.location.href, 'info');
+            addDebugLog('training_key: ' + (trainingKey || '없음'), trainingKey ? 'success' : 'error');
+        });
+
+        async function testFetch() {
+            addDebugLog('API 테스트 시작...', 'info');
+            
+            const url = new URL(window.location.href);
+            const trainingKey = url.searchParams.get('training_key');
+            
+            if (!trainingKey) {
+                addDebugLog('❌ training_key가 없습니다!', 'error');
+                return;
+            }
+
+            try {
+                const apiUrl = `/api/admin/labs?training_key=${trainingKey}`;
+                addDebugLog(`API 호출: ${apiUrl}`, 'info');
+                
+                const response = await fetch(apiUrl);
+                addDebugLog(`응답 상태: ${response.status}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    addDebugLog(`오류: ${errorText}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                addDebugLog(`데이터 수신: ${data.length}개 랩`, 'success');
+                
+                // 랩 목록 표시
+                if (data.length > 0) {
+                    addDebugLog('랩 목록:', 'info');
+                    data.forEach((lab, idx) => {
+                        addDebugLog(`  ${idx + 1}. [${lab.lab_id}] ${lab.lab_name} (콘텐츠: ${lab.content_count}개)`, 'success');
+                    });
+                } else {
+                    addDebugLog('등록된 랩이 없습니다.', 'info');
+                }
+
+            } catch (error) {
+                addDebugLog(`예외 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 로드 시 자동 테스트
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                testFetch();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

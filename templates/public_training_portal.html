@@ -193,9 +193,70 @@
         .markdown-content a:hover {
             text-decoration: underline;
         }
-
+        /* Code block styles */
+        .code-block-wrapper {
+            margin: 16px 0;
+            border-radius: 8px;
+            background: #22272e;
+        }
+        .code-block-wrapper pre {
+            margin: 0;
+            padding: 0;
+            background: #22272e;
+            overflow-x: auto;
+        }
+        .code-block-wrapper code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            display: block;
+            white-space: pre;
+        }
+        .code-header {
+            background: #2d333b;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .code-language {
+            color: #adbac7;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .copy-code-btn {
+            background: #373e47;
+            color: #adbac7;
+            border: 1px solid #444c56;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-code-btn:hover {
+            background: #444c56;
+            color: #ffffff;
+        }
+        .copy-code-btn.copied {
+            background: #238636;
+            color: #ffffff;
+            border-color: #238636;
+        }
+        .hljs {
+            background: #22272e !important;
+            padding: 16px !important;
+            margin: 0 !important;
+        }
 
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // 마크다운 파서 설정
@@ -209,7 +270,7 @@
 <body>
     <div class="header">
         <div class="welcome">Public Training Center에 오신 것을 환영합니다!</div>
-        <button class="home-btn" onclick="goHome()">홈으로</button>
+        <button class="home-btn" onclick="goHome()">Home</button>
     </div>
     
 
@@ -218,7 +279,7 @@
     <div class="labs-section collapsed" id="labsSection">
         <div class="labs-header">
             <h2>랩 목록</h2>
-            <button type="button" class="labs-toggle" id="labsToggleBtn">펼치기</button>
+            <button type="button" class="labs-toggle" id="labsToggleBtn">Expand</button>
         </div>
         <div id="trainingInfo" style="margin-bottom:20px; padding:15px; background:var(--panel); border-radius:8px; border-left:4px solid var(--accent);">
             <h2 style="margin:0 0 10px 0; color:var(--accent); font-size:1.5em;">과정 정보</h2>
@@ -282,34 +343,27 @@
         // 랩 목록 로드
         async function loadLabs() {
             try {
-                console.log('=== loadLabs 함수 시작 ===');
                 const trainingKey = getTrainingKeyFromURL();
                 
                 if (!trainingKey) {
-                    console.log('training_key가 없음 - 홈으로 리다이렉트');
                     window.location.href = '/';
                     return;
                 }
                 
-                console.log('요청할 training_key:', trainingKey);
                 
                 const response = await fetch(`/api/public-labs?training_key=${trainingKey}`);
-                console.log('API 응답 상태:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error('랩 목록을 불러올 수 없습니다.');
                 }
                 
                 const data = await response.json();
-                console.log('API에서 받은 전체 데이터:', data);
-                console.log('랩 목록:', data.labs);
                 
                 const labsContainer = document.getElementById('labsList');
                 const trainingInfoContainer = document.getElementById('trainingInfo');
                 
                 // 트레이닝 정보 표시
                 if (data.training_name) {
-                    console.log('트레이닝 정보:', {
                         name: data.training_name,
                         status: data.training_status,
                         is_public: data.is_public
@@ -321,23 +375,18 @@
                 }
                 
                 if (data.message) {
-                    console.log('메시지가 있음:', data.message);
                     labsContainer.innerHTML = `<p style="text-align:center; color:var(--muted);">${data.message}</p>`;
                     return;
                 }
                 
                 if (data.labs.length === 0) {
-                    console.log('랩 목록이 비어있음');
                     labsContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">진행중인 공개 랩이 없습니다.</p>';
                     return;
                 }
                 
-                console.log(`총 ${data.labs.length}개의 공개 랩을 처리합니다.`);
                 
                 let labsHTML = '';
                 data.labs.forEach((lab, index) => {
-                    console.log(`=== 공개 랩 ${index + 1} 처리 ===`);
-                    console.log('전체 랩 객체:', lab);
                     
                     labsHTML += `
                         <div class="lab-card" onclick="openLab(${lab.lab_id})">
@@ -360,13 +409,9 @@
                             }
 
                 
-                console.log('생성된 HTML:', labsHTML);
                 labsContainer.innerHTML = labsHTML;
-                console.log('=== loadLabs 함수 완료 ===');
                 
             } catch (error) {
-                console.error('=== loadLabs 오류 ===');
-                console.error('랩 목록 로드 실패:', error);
                 document.getElementById('labsList').innerHTML = 
                     '<p style="text-align:center; color:#FF6B6B;">랩 목록을 불러오는데 실패했습니다.</p>';
                 document.getElementById('trainingInfo').innerHTML = 
@@ -450,7 +495,6 @@
                 }
                 
             } catch (error) {
-                console.error('콘텐츠 목록 로드 실패:', error);
                 document.getElementById('contentList').innerHTML = 
                     '<p style="text-align:center; color:#FF6B6B;">콘텐츠 목록을 불러오는데 실패했습니다.</p>';
                 document.getElementById('selectedLabInfo').innerHTML = 
@@ -499,9 +543,6 @@
                 const contentText = content.lab_content || '(내용 없음)';
                 
                 // 디버깅을 위한 콘텐츠 타입 로그
-                console.log('Content type:', content.lab_content_type);
-                console.log('Content text:', contentText);
-                console.log('Marked library available:', typeof marked !== 'undefined');
                 
                 if (content.lab_content_type === 0) {
                     // 타입 0: URL 기반 마크다운 처리
@@ -534,7 +575,6 @@
                                 <h1>${content.lab_content_subject || '제목 없음'}</h1>
                                 <div class="markdown-content">${parsedMarkdown}</div>
                             `;
-                            console.log('Auto-detected markdown content and parsed successfully');
                         } catch (error) {
                             contentViewer.innerHTML = `
                                 <h1>${content.lab_content_subject || '제목 없음'}</h1>
@@ -550,9 +590,7 @@
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">${parsedMarkdown}</div>
                         `;
-                        console.log('Markdown parsed successfully');
                     } catch (error) {
-                        console.error('Markdown parsing error:', error);
                         contentViewer.innerHTML = `
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">
@@ -597,126 +635,31 @@
                          `;
                      }
                  } else if (content.lab_content_type === 3) {
-                     // 타입 3: 프롬프트 처리 - 별도 복사 버튼과 함께 표시
+                     // 타입 3: 코드 - 언어별 syntax highlighting과 함께 표시
                      try {
-                         const parsedMarkdown = marked.parse(contentText);
+                         const codeLanguage = content.lab_content_option || 'python';
+                         const languageDisplayName = codeLanguage === 'shell' ? 'Shell' : 'Python';
                          contentViewer.innerHTML = `
                              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #FF6B6B;">
                                  <h1 style="margin: 0; color: #FF6B6B;">${content.lab_content_subject || '제목 없음'}</h1>
-                                 <div style="display: flex; align-items: center; gap: 15px;">
-                                     <button id="copyPromptBtn" onclick="copyPromptContent()" style="
-                                         display: inline-flex;
-                                         align-items: center;
-                                         gap: 8px;
-                                         background: #FF6B6B;
-                                         color: white;
-                                         border: none;
-                                         padding: 12px 20px;
-                                         border-radius: 8px;
-                                         cursor: pointer;
-                                         font-weight: 600;
-                                         font-size: 0.95em;
-                                         transition: all 0.3s ease;
-                                         box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
-                                     " onmouseover="this.style.background='#FF5252'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 107, 107, 0.4)'" 
-                                        onmouseout="this.style.background='#FF6B6B'; this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 8px rgba(255, 107, 107, 0.3)'">
-                                         <span style="font-size: 1.2em;">📋</span>
-                                         프롬프트 복사
-                                     </button>
-                                     <span id="copyStatus" style="
-                                         padding: 8px 12px;
-                                         border-radius: 6px;
-                                         font-size: 0.9em;
-                                         font-weight: 500;
-                                         min-width: 120px;
-                                         text-align: center;
-                                         opacity: 0;
-                                         transition: opacity 0.3s ease;
-                                     "></span>
-                                 </div>
                              </div>
-                             <div class="markdown-content" style="
-                                 background: rgba(255, 107, 107, 0.05);
-                                 border: 1px solid rgba(255, 107, 107, 0.2);
-                                 border-radius: 8px;
-                                 padding: 20px;
-                                 position: relative;
-                             ">
-                                 <div style="
-                                     position: absolute;
-                                     top: -10px;
-                                     left: 20px;
-                                     background: var(--bg);
-                                     padding: 0 10px;
-                                     color: #FF6B6B;
-                                     font-size: 0.8em;
-                                     font-weight: 600;
-                                     text-transform: uppercase;
-                                     letter-spacing: 0.5px;
-                                 ">프롬프트 콘텐츠</div>
-                                 ${parsedMarkdown}
+                             <div class="code-block-wrapper">
+                                 <div class="code-header">
+                                     <span class="code-language">${languageDisplayName}</span>
+                                     <button type="button" class="copy-code-btn" onclick="copyCodeContent(event)">Copy code</button>
+                                 </div>
+                                 <pre><code class="language-${codeLanguage}">${contentText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>
                              </div>
                          `;
-                         console.log('Prompt content displayed with enhanced copy button');
+                         // Apply syntax highlighting
+                         const codeBlock = contentViewer.querySelector('code');
+                         if (codeBlock) {
+                             hljs.highlightElement(codeBlock);
+                         }
                      } catch (error) {
-                         console.error('Prompt content parsing error:', error);
                          contentViewer.innerHTML = `
-                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #FF6B6B;">
-                                 <h1 style="margin: 0; color: #FF6B6B;">${content.lab_content_subject || '제목 없음'}</h1>
-                                 <div style="display: flex; align-items: center; gap: 15px;">
-                                     <button id="copyPromptBtn" onclick="copyPromptContent()" style="
-                                         display: inline-flex;
-                                         align-items: center;
-                                         gap: 8px;
-                                         background: #FF6B6B;
-                                         color: white;
-                                         border: none;
-                                         padding: 12px 20px;
-                                         border-radius: 8px;
-                                         cursor: pointer;
-                                         font-weight: 600;
-                                         font-size: 0.95em;
-                                         transition: all 0.3s ease;
-                                         box-shadow: 0 3px 8px rgba(255, 107, 107, 0.3);
-                                     " onmouseover="this.style.background='#FF5252'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 5px 15px rgba(255, 107, 107, 0.4)'" 
-                                        onmouseout="this.style.background='#FF6B6B'; this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 8px rgba(255, 107, 107, 0.3)'">
-                                         <span style="font-size: 1.2em;">📋</span>
-                                         프롬프트 복사
-                                     </button>
-                                     <span id="copyStatus" style="
-                                         padding: 8px 12px;
-                                         border-radius: 6px;
-                                         font-size: 0.9em;
-                                         font-weight: 500;
-                                         min-width: 120px;
-                                         text-align: center;
-                                         opacity: 0;
-                                         transition: opacity 0.3s ease;
-                                     "></span>
-                                 </div>
-                             </div>
-                             <div class="markdown-content" style="
-                                 background: rgba(255, 107, 107, 0.05);
-                                 border: 1px solid rgba(255, 107, 107, 0.2);
-                                 border-radius: 8px;
-                                 padding: 20px;
-                                 position: relative;
-                             ">
-                                 <div style="
-                                     position: absolute;
-                                     top: -10px;
-                                     left: 20px;
-                                     background: var(--bg);
-                                     padding: 0 10px;
-                                     color: #FF6B6B;
-                                     font-size: 0.8em;
-                                     font-weight: 600;
-                                     text-transform: uppercase;
-                                     letter-spacing: 0.5px;
-                                 ">프롬프트 콘텐츠</div>
-                                 <p style="color:#FF6B6B;">프롬프트 파싱 중 오류가 발생했습니다.</p>
-                                 <pre style="background: #f1f5f9; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
-                             </div>
+                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                             <pre style="background: #f1f5f9; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
                          `;
                      }
                 } else {
@@ -727,7 +670,6 @@
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">${parsedMarkdown}</div>
                         `;
-                        console.log('Auto-detected markdown content for unknown type and parsed successfully');
                     } catch (error) {
                         // 마크다운 파싱 실패 시 기본 텍스트 처리
                         contentViewer.innerHTML = `
@@ -738,7 +680,6 @@
                 }
                 
             } catch (error) {
-                console.error('콘텐츠 상세 로드 실패:', error);
                 document.getElementById('contentViewer').innerHTML = `
                     <p style="text-align:center; color:#FF6B6B;">콘텐츠를 불러오는데 실패했습니다.</p>
                 `;
@@ -752,7 +693,6 @@
                  const markdownContent = contentViewer.querySelector('.markdown-content');
                  
                  if (!markdownContent) {
-                     console.error('마크다운 콘텐츠를 찾을 수 없습니다.');
                      return;
                  }
                  
@@ -794,7 +734,6 @@
                      copyStatus.style.opacity = '1';
                  }
                  
-                 console.log('프롬프트가 클립보드에 복사되었습니다. (라벨 제외)');
                  
                  // 3초 후 원래 상태로 복원
                  setTimeout(() => {
@@ -809,7 +748,6 @@
                  }, 3000);
                  
              } catch (error) {
-                 console.error('프롬프트 복사 실패:', error);
                  
                  // 폴백: 구식 복사 방법 사용
                  try {
@@ -851,7 +789,6 @@
                              copyStatus.style.opacity = '1';
                          }
                          
-                         console.log('프롬프트가 클립보드에 복사되었습니다. (구식 방법, 라벨 제외)');
                          
                          // 3초 후 원래 상태로 복원
                          setTimeout(() => {
@@ -864,7 +801,6 @@
                          }, 3000);
                      }
                  } catch (fallbackError) {
-                     console.error('구식 복사 방법도 실패:', fallbackError);
                      
                      // 복사 실패 상태 표시
                      const copyBtn = document.getElementById('copyPromptBtn');
@@ -892,6 +828,65 @@
                          }
                      }, 3000);
                  }
+             }
+         }
+        
+         // 코드 콘텐츠 복사 함수
+         async function copyCodeContent(event) {
+             event.preventDefault();
+             event.stopPropagation();
+             
+             const button = event.currentTarget;
+             try {
+                 const codeBlockWrapper = button.closest('.code-block-wrapper');
+                 if (!codeBlockWrapper) {
+                     throw new Error('Code block not found');
+                 }
+                 
+                 const codeElement = codeBlockWrapper.querySelector('code');
+                 if (!codeElement) {
+                     throw new Error('Code element not found');
+                 }
+                 
+                 const codeText = codeElement.textContent;
+                 
+                 navigator.clipboard.writeText(codeText).then(() => {
+                     const originalText = button.textContent;
+                     button.textContent = '✓ Copied!';
+                     button.classList.add('copied');
+                     
+                     setTimeout(() => {
+                         button.textContent = originalText;
+                         button.classList.remove('copied');
+                     }, 2000);
+                 }).catch(err => {
+                     // 폴백 메서드 사용
+                     try {
+                         const textArea = document.createElement('textarea');
+                         textArea.value = codeText;
+                         document.body.appendChild(textArea);
+                         textArea.select();
+                         document.execCommand('copy');
+                         document.body.removeChild(textArea);
+                         
+                         button.textContent = '✓ Copied!';
+                         button.classList.add('copied');
+                         setTimeout(() => {
+                             button.textContent = 'Copy code';
+                             button.classList.remove('copied');
+                         }, 2000);
+                     } catch (fallbackErr) {
+                         button.textContent = '✗ Failed';
+                         setTimeout(() => {
+                             button.textContent = 'Copy code';
+                         }, 2000);
+                     }
+                 });
+             } catch (error) {
+                 button.textContent = '✗ Failed';
+                 setTimeout(() => {
+                     button.textContent = 'Copy code';
+                 }, 2000);
              }
          }
         
@@ -933,10 +928,8 @@
                      refreshBtn.style.cursor = 'pointer';
                  }, 2000);
                  
-                 console.log('콘텐츠 목록이 새로고침되었습니다.');
                  
              } catch (error) {
-                 console.error('콘텐츠 새로고침 실패:', error);
                  
                  // 오류 상태 표시
                  const refreshBtn = document.getElementById('refreshContentBtn');

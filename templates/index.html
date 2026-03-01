@@ -163,8 +163,9 @@
     
     <!-- 탭 네비게이션 -->
     <div class="tab-container">
-        <button class="tab-button active" onclick="showTab('courses')">활성화된 과정</button>
-        <button class="tab-button" onclick="showTab('training')">Training Center</button>
+        <button class="tab-button active" onclick="showTab('courses', this)">Active Courses</button>
+        <button class="tab-button" onclick="showTab('training', this)">Training Center</button>
+        <button class="tab-button" onclick="window.location.href='/admin'">Admin</button>
     </div>
     
     <!-- 활성화된 과정 탭 -->
@@ -177,31 +178,29 @@
         <div class="login-container">
             <h2>Training Center 로그인</h2>
             <form id="loginForm" class="login-form">
-                                 <div class="form-group">
-                     <label for="trainingKey">트레이닝 키 (관리자는 비워둘 수 있음)</label>
-                     <input type="text" id="trainingKey" name="trainingKey" placeholder="트레이닝 키를 입력하세요 (관리자는 비워둘 수 있음)">
-                 </div>
                 <div class="form-group">
-                    <label for="username">아이디</label>
-                    <input type="text" id="username" name="username" required placeholder="아이디를 입력하세요">
+                    <label for="trainingKey">트레이닝 키 (관리자는 비워둘 수 있음)</label>
+                    <input type="text" id="trainingKey" name="trainingKey" placeholder="트레이닝 키를 입력하세요 (관리자는 비워둘 수 있음)">
                 </div>
                 <div class="form-group">
-                    <label for="password">비밀번호</label>
-                    <input type="password" id="password" name="password" required placeholder="비밀번호를 입력하세요">
+                    <label for="username">이름</label>
+                    <input type="text" id="username" name="username" required placeholder="이름을 입력하세요">
                 </div>
-                <button type="submit" class="login-button">로그인</button>
+                <button type="submit" class="login-button">Login</button>
             </form>
             <div id="loginMessage" style="margin-top:15px; text-align:center; color:var(--muted);"></div>
             <div style="margin-top:20px; text-align:center;">
-                <button type="button" class="register-button" onclick="showRegisterForm()">회원가입</button>
+                <button type="button" class="register-button" onclick="showRegisterForm()">Sign Up</button>
             </div>
         </div>
     </div>
 
+
+
     <!-- 회원가입 모달 -->
     <div id="registerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
         <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
-            <h2 id="registerModalTitle" style="margin-bottom:24px; color:var(--accent); text-align:center; font-size:1.5em;">회원가입</h2>
+            <h2 id="registerModalTitle" style="margin-bottom:24px; color:var(--accent); text-align:center; font-size:1.5em;">Sign Up</h2>
             
             <!-- 트레이닝 키 확인 단계 -->
             <div id="trainingKeyStep">
@@ -210,47 +209,54 @@
                     <input type="text" id="registerTrainingKey" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="트레이닝 키를 입력하세요">
                 </div>
                 <div style="margin-top:20px; text-align:center;">
-                    <button type="button" class="login-button" onclick="checkTrainingKey()" style="min-width:100px; margin-right:10px;">확인</button>
-                    <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px;">취소</button>
+                    <button type="button" class="login-button" onclick="checkTrainingKey()" style="min-width:100px; margin-right:10px;">Confirm</button>
+                    <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px;">Cancel</button>
                 </div>
             </div>
 
             <!-- 회원가입 폼 단계 -->
             <div id="registerFormStep" style="display:none;">
                 <form id="registerForm">
-                    <div class="form-group" style="margin-bottom:18px;">
-                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">아이디</label>
-                        <input type="text" id="registerUsername" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="아이디를 입력하세요">
-                    </div>
-                    <div class="form-group" style="margin-bottom:18px;">
+                    <div class="form-group" style="margin-bottom:24px;">
                         <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">이름</label>
                         <input type="text" id="registerName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="이름을 입력하세요">
                     </div>
-                    <div class="form-group" style="margin-bottom:18px;">
-                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호</label>
-                        <input type="password" id="registerPassword" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 입력하세요">
-                    </div>
-                    <div class="form-group" style="margin-bottom:24px;">
-                        <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">비밀번호 확인</label>
-                        <input type="password" id="registerPasswordConfirm" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;" placeholder="비밀번호를 다시 입력하세요">
-                    </div>
                     <div style="margin-top:20px; text-align:center;">
-                        <button type="submit" class="login-button" style="min-width:100px; margin-right:10px;">가입하기</button>
-                        <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px;">취소</button>
+                        <button type="submit" class="login-button" style="min-width:100px; margin-right:10px;">Register</button>
+                        <button type="button" class="register-button" onclick="closeRegisterModal()" style="min-width:100px; background:#6c757d;">Cancel</button>
                     </div>
                 </form>
+            </div>
+
+            <!-- 이름 중복 경고 단계 -->
+            <div id="registerDuplicateWarningStep" style="display:none;">
+                <div style="text-align:center; margin-bottom:24px;">
+                    <h3 style="color:#FF9800; margin-bottom:16px;">⚠️ 이름 중복 경고</h3>
+                    <p style="color:var(--text); margin-bottom:8px;">입력하신 이름 '<span id="originalName" style="font-weight:600;"></span>'은(는) 이미 존재합니다.</p>
+                    <p style="color:var(--text); margin-bottom:16px;">다음 이름으로 등록됩니다: '<span id="modifiedName" style="font-weight:600; color:var(--accent);"></span>'</p>
+                    <p style="color:var(--muted); font-size:14px; margin-bottom:16px;">이 이름으로 가입하시겠습니까?</p>
+                </div>
+                <div style="text-align:center;">
+                    <button type="button" class="login-button" onclick="confirmDuplicateRegistration()" style="min-width:100px; margin-right:10px;">Confirm</button>
+                    <button type="button" class="register-button" onclick="cancelDuplicateRegistration()" style="min-width:100px; background:#6c757d;">Cancel</button>
+                </div>
             </div>
 
             <!-- 가입 완료 단계 -->
             <div id="registerCompleteStep" style="display:none;">
                 <div style="text-align:center; margin-bottom:24px;">
-                    <h3 style="color:#4CAF50; margin-bottom:16px;">🎉 회원가입이 완료되었습니다!</h3>
-                    <p style="color:var(--text); margin-bottom:8px;">이름: <span id="completeName" style="font-weight:600; color:var(--accent);"></span></p>
-                    <p style="color:var(--text); margin-bottom:16px;">아이디: <span id="completeId" style="font-weight:600; color:var(--accent);"></span></p>
-                    <p style="color:var(--muted); font-size:14px;">위의 아이디로 로그인해주세요.</p>
+                    <h3 style="color:#4CAF50; margin-bottom:24px;">🎉 회원가입이 완료되었습니다!</h3>
+                    <p style="color:var(--text); margin-bottom:8px; font-size:18px;">이름: <span id="completeName" style="font-weight:600; color:var(--accent); font-size:28px;"></span></p>
+                    <p style="color:var(--muted); font-size:16px; margin-bottom:10px;">일련번호:</p>
+                    <p style="color:#ff0000; font-size:72px; font-weight:bold; margin:32px 0; line-height:1.2;"><span id="completeOrder"></span></p>
+                    <div style="margin-top:30px; padding:15px; background-color:#e3f2fd; border-radius:8px; border:1px solid #2196f3;">
+                        <p style="font-size:16px; color:#1976d2; margin:0;">
+                            로그인할 때는 <strong style="font-size:20px; color:#d32f2f;" id="completeLoginName"></strong> 으로 로그인하세요
+                        </p>
+                    </div>
                 </div>
                 <div style="text-align:center;">
-                    <button type="button" class="login-button" onclick="closeRegisterModal()" style="min-width:100px;">확인</button>
+                    <button type="button" class="login-button" onclick="closeRegisterModal()" style="min-width:100px;">Confirm</button>
                 </div>
             </div>
 
@@ -259,8 +265,13 @@
     </div>
 
     <script>
+        // 0.0.0.0 접속 시 자동으로 localhost로 리다이렉트
+        if (window.location.hostname === '0.0.0.0') {
+            window.location.href = window.location.href.replace('0.0.0.0', 'localhost');
+        }
+        
         // 탭 전환 함수
-        function showTab(tabName) {
+        function showTab(tabName, buttonElement) {
             // 모든 탭 버튼에서 active 클래스 제거
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
@@ -271,12 +282,28 @@
                 content.classList.remove('active');
             });
             
-            // 선택된 탭 버튼에 active 클래스 추가
-            event.target.classList.add('active');
+            // 버튼 요소가 전달된 경우 해당 버튼 활성화, 아니면 탭명으로 찾기
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            } else {
+                // 버튼을 찾아서 활성화 (텍스트로 매칭)
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    if (tabName === 'courses' && btn.textContent.includes('Active Courses')) {
+                        btn.classList.add('active');
+                    } else if (tabName === 'training' && btn.textContent.includes('Training Center')) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // 선택된 탭 콘텐츠에 active 클래스 추가
-            document.getElementById(tabName + '-tab').classList.add('active');
+            const tabElement = document.getElementById(tabName + '-tab');
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
         }
+
+
         
         function initializeSelects(){
             const yearSelect = document.getElementById('yearSelect');
@@ -297,16 +324,35 @@
         }
 
         function parseEventDate(event){
-            try{
+            try {
+                const parseKstDate = (value) => {
+                    if(!value) return null;
+                    const raw = String(value).trim().replace('T', ' ').replace(/\.\d+$/, '');
+                    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+                    if(match){
+                        const year = Number(match[1]);
+                        const month = Number(match[2]);
+                        const day = Number(match[3]);
+                        const hour = Number(match[4] || 0);
+                        const minute = Number(match[5] || 0);
+                        const second = Number(match[6] || 0);
+                        return new Date(Date.UTC(year, month - 1, day, hour - 9, minute, second));
+                    }
+                    const parsed = new Date(value);
+                    return Number.isNaN(parsed.getTime()) ? null : parsed;
+                };
+
                 // year 컬럼이 datetime 타입이므로 직접 사용
                 if(event.year){
-                    return new Date(event.year);
+                    return parseKstDate(event.year);
                 }
                 if(event.start_datetime){
-                    return new Date(event.start_datetime.replace(' ', 'T'));
+                    return parseKstDate(event.start_datetime);
                 }
-            }catch(e){ console.warn('parseEventDate error', e); }
-            return null;
+                return null;
+            } catch (error) {
+                return null;
+            }
         }
 
         function formatTime(seconds) {
@@ -359,7 +405,7 @@
 
             events.forEach(ev=>{
                 const dt = parseEventDate(ev);
-                const dateStr = dt ? dt.toLocaleDateString('ko-KR', {year: 'numeric', month: '2-digit', day: '2-digit'}) : '';
+                const dateStr = dt ? dt.toLocaleDateString('ko-KR', {year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Seoul'}) : '';
                 
                 const title = ev.job_title || '';
                 const client = ev.client || '';
@@ -391,14 +437,13 @@
             
             const trainingKey = document.getElementById('trainingKey').value;
             const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
             const messageDiv = document.getElementById('loginMessage');
             
-                         if (!username || !password) {
-                 messageDiv.textContent = '아이디와 비밀번호를 입력해주세요.';
-                 messageDiv.style.color = '#FF6B6B';
-                 return;
-             }
+            if (!username) {
+                messageDiv.textContent = '아이디를 입력해주세요.';
+                messageDiv.style.color = '#FF6B6B';
+                return;
+            }
             
             try {
                 const response = await fetch('/api/login', {
@@ -408,8 +453,7 @@
                     },
                     body: JSON.stringify({
                         training_key: trainingKey,
-                        username: username,
-                        password: password
+                        username: username
                     })
                 });
                 
@@ -428,8 +472,8 @@
                         // 로그인 정보를 세션에 저장
                         sessionStorage.setItem('loginInfo', JSON.stringify({
                             training_key: result.training_key || trainingKey,
-                            member_id: username,
-                            member_name: username, // 실제로는 서버에서 이름을 가져와야 함
+                            member_id: result.member_id || username,
+                            member_name: result.member_name || username,
                             role: role
                         }));
                         
@@ -445,8 +489,8 @@
                         // 로그인 정보를 세션에 저장
                         sessionStorage.setItem('loginInfo', JSON.stringify({
                             training_key: result.training_key || trainingKey,
-                            member_id: username,
-                            member_name: username, // 실제로는 서버에서 이름을 가져와야 함
+                            member_id: result.member_id || username,
+                            member_name: result.member_name || username,
                             role: role
                         }));
                         
@@ -463,7 +507,6 @@
                 }
                 
             } catch (error) {
-                console.error('로그인 오류:', error);
                 messageDiv.textContent = '로그인 중 오류가 발생했습니다.';
                 messageDiv.style.color = '#FF6B6B';
             }
@@ -483,17 +526,31 @@
         function resetRegisterModal() {
             document.getElementById('trainingKeyStep').style.display = 'block';
             document.getElementById('registerFormStep').style.display = 'none';
+            document.getElementById('registerDuplicateWarningStep').style.display = 'none';
             document.getElementById('registerCompleteStep').style.display = 'none';
             document.getElementById('registerTrainingKey').value = '';
-            document.getElementById('registerUsername').value = '';
             document.getElementById('registerName').value = '';
-            document.getElementById('registerPassword').value = '';
-            document.getElementById('registerPasswordConfirm').value = '';
             document.getElementById('registerMessage').textContent = '';
             document.getElementById('registerMessage').style.color = 'var(--muted)';
         }
 
-        // 트레이닝 키 확인
+        // 중복 경고 후 확인
+        let pendingRegistrationData = null;
+        
+        function confirmDuplicateRegistration() {
+            document.getElementById('registerDuplicateWarningStep').style.display = 'none';
+            document.getElementById('registerCompleteStep').style.display = 'block';
+            document.getElementById('completeName').textContent = pendingRegistrationData.originalName;
+            document.getElementById('completeOrder').textContent = pendingRegistrationData.order;
+            document.getElementById('completeLoginName').textContent = pendingRegistrationData.registeredName;
+        }
+        
+        function cancelDuplicateRegistration() {
+            document.getElementById('registerDuplicateWarningStep').style.display = 'none';
+            document.getElementById('registerFormStep').style.display = 'block';
+            document.getElementById('registerTrainingKey').value = pendingRegistrationData?.trainingKey || '';
+            document.getElementById('registerName').value = '';
+        }
         async function checkTrainingKey() {
             const trainingKey = document.getElementById('registerTrainingKey').value;
             const messageDiv = document.getElementById('registerMessage');
@@ -528,7 +585,6 @@
                 }
                 
             } catch (error) {
-                console.error('트레이닝 키 확인 오류:', error);
                 messageDiv.textContent = '트레이닝 키 확인 중 오류가 발생했습니다.';
                 messageDiv.style.color = '#FF6B6B';
             }
@@ -539,20 +595,11 @@
             e.preventDefault();
             
             const trainingKey = document.getElementById('registerTrainingKey').value;
-            const username = document.getElementById('registerUsername').value;
             const name = document.getElementById('registerName').value;
-            const password = document.getElementById('registerPassword').value;
-            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
             const messageDiv = document.getElementById('registerMessage');
             
-            if (!username || !name || !password || !passwordConfirm) {
-                messageDiv.textContent = '모든 필드를 입력해주세요.';
-                messageDiv.style.color = '#FF6B6B';
-                return;
-            }
-            
-            if (password !== passwordConfirm) {
-                messageDiv.textContent = '비밀번호가 일치하지 않습니다.';
+            if (!name) {
+                messageDiv.textContent = '이름을 입력해주세요.';
                 messageDiv.style.color = '#FF6B6B';
                 return;
             }
@@ -565,20 +612,37 @@
                     },
                     body: JSON.stringify({
                         training_key: trainingKey,
-                        username: username,
-                        name: name,
-                        password: password
+                        username: name,
+                        name: name
                     })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // 회원가입 성공
-                    document.getElementById('registerFormStep').style.display = 'none';
-                    document.getElementById('registerCompleteStep').style.display = 'block';
-                    document.getElementById('completeName').textContent = result.name;
-                    document.getElementById('completeId').textContent = result.member_id;
+                    // 등록된 이름 저장
+                    pendingRegistrationData = {
+                        trainingKey: trainingKey,
+                        originalName: result.name,
+                        registeredName: result.registered_name,
+                        order: result.order,
+                        memberId: result.member_id
+                    };
+                    
+                    if (result.warning) {
+                        // 이름 중복 - 경고 화면 표시
+                        document.getElementById('originalName').textContent = name;
+                        document.getElementById('modifiedName').textContent = result.registered_name;
+                        document.getElementById('registerFormStep').style.display = 'none';
+                        document.getElementById('registerDuplicateWarningStep').style.display = 'block';
+                    } else {
+                        // 이름 중복 없음 - 바로 완료 화면
+                        document.getElementById('registerFormStep').style.display = 'none';
+                        document.getElementById('registerCompleteStep').style.display = 'block';
+                        document.getElementById('completeName').textContent = result.name;
+                        document.getElementById('completeOrder').textContent = result.order;
+                        document.getElementById('completeLoginName').textContent = result.registered_name;
+                    }
                     messageDiv.textContent = '';
                 } else {
                     messageDiv.textContent = result.detail || '회원가입에 실패했습니다.';
@@ -586,7 +650,6 @@
                 }
                 
             } catch (error) {
-                console.error('회원가입 오류:', error);
                 messageDiv.textContent = '회원가입 중 오류가 발생했습니다.';
                 messageDiv.style.color = '#FF6B6B';
             }
@@ -596,7 +659,20 @@
         async function loadCourses() {
             try {
                 const response = await fetch('/api/active-courses');
+                
+                // API 응답 상태 확인
+                if (!response.ok) {
+                    throw new Error(`API 오류: ${response.status} ${response.statusText}`);
+                }
+                
                 const courses = await response.json();
+                
+                // 응답이 배열인지 확인
+                if (!Array.isArray(courses)) {
+                    console.error('API 응답이 배열이 아닙니다:', courses);
+                    document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록 형식이 잘못되었습니다.</p>';
+                    return;
+                }
                 
                 const coursesContainer = document.getElementById('coursesList');
                 
@@ -639,7 +715,7 @@
                 coursesContainer.innerHTML = coursesHTML;
             } catch (error) {
                 console.error('과정 목록 로드 오류:', error);
-                document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록을 불러오는 중 오류가 발생했습니다.</p>';
+                document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록을 불러오는 중 오류가 발생했습니다.<br><small style="color:var(--muted);">' + error.message + '</small></p>';
             }
         }
         

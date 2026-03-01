@@ -74,6 +74,12 @@
         .button.danger:hover {
             background: #c82333;
         }
+        .button.secondary {
+            background: #6c757d;
+        }
+        .button.secondary:hover {
+            background: #5a6268;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -246,8 +252,8 @@
         <div class="header">
             <h1 id="labTitle">랩 콘텐츠 관리</h1>
             <div>
-                <button class="button" onclick="goBackToLabList()" style="margin-right: 10px;">돌아가기</button>
-                <button class="button" onclick="showAddContentModal()">콘텐츠 추가</button>
+                <button class="button" onclick="goBackToLabList()" style="margin-right: 10px;">Back</button>
+                <button class="button" onclick="showAddContentModal()">Add Content</button>
             </div>
         </div>
         <table>
@@ -271,7 +277,7 @@
     <!-- 콘텐츠 추가/수정 모달 -->
     <div id="contentModal" class="modal">
         <div class="modal-content">
-            <h2 id="modalTitle">콘텐츠 추가</h2>
+            <h2 id="modalTitle">Add Content</h2>
             <form id="contentForm">
                 <input type="hidden" id="contentId">
                 <input type="hidden" id="currentTrainingKey">
@@ -303,8 +309,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="button">저장</button>
-                    <button type="button" class="button danger" onclick="closeContentModal()">닫기</button>
+                    <button type="submit" class="button">Save</button>
+                    <button type="button" class="button danger" onclick="closeContentModal()">Close</button>
                 </div>
             </form>
         </div>
@@ -321,8 +327,8 @@
                 </select>
             </div>
             <div class="form-actions">
-                <button type="button" class="button" onclick="confirmMoveContent()">이동</button>
-                <button type="button" class="button danger" onclick="closeMoveModal()">취소</button>
+                <button type="button" class="button" onclick="confirmMoveContent()">Move</button>
+                <button type="button" class="button secondary" onclick="closeMoveModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -377,7 +383,6 @@
                 const lab = await response.json();
                 labTitle.innerText = `[${lab.lab_name}] 랩 콘텐츠 관리`;
             } catch (error) {
-                console.error('Error fetching lab details:', error);
                 alert(`랩 정보를 불러오는데 실패했습니다: ${error.message}`);
             }
         }
@@ -392,7 +397,6 @@
                 const contents = await response.json();
                 displayLabContents(contents);
             } catch (error) {
-                console.error('Error fetching lab contents:', error);
                 alert(`랩 콘텐츠를 불러오는데 실패했습니다: ${error.message}`);
             }
         }
@@ -426,9 +430,9 @@
                     <td>${content.lab_content_status === 1 ? '활성화' : '비활성화'}</td>
                     <td>${content.lab_content_create_date}</td>
                     <td>
-                        <button class="button" onclick="showEditContentModal(${content.content_id})">수정</button>
-                        <button class="button danger" onclick="deleteContent(${content.content_id})">삭제</button>
-                        <button class="button" onclick="showMoveContentModal(${content.content_id})">이동</button>
+                        <button class="button" onclick="showEditContentModal(${content.content_id})">Edit</button>
+                        <button class="button danger" onclick="deleteContent(${content.content_id})">Delete</button>
+                        <button class="button" onclick="showMoveContentModal(${content.content_id})">Move</button>
                     </td>
                     <td>
                         <label class="switch">
@@ -467,7 +471,6 @@
                 updateContentTypeLabel(); // 수정 모달 열 때 레이블 설정
                 contentModal.style.display = 'flex';
             } catch (error) {
-                console.error('Error fetching content for edit:', error);
                 alert(`콘텐츠 정보를 불러오는데 실패했습니다: ${error.message}`);
             }
         }
@@ -566,7 +569,6 @@
                 closeContentModal();
                 fetchLabContents();
             } catch (error) {
-                console.error('Error saving content:', error);
                 alert(`콘텐츠 저장 실패: ${error.message}`);
             }
         });
@@ -586,7 +588,6 @@
                 alert('콘텐츠가 성공적으로 삭제되었습니다.');
                 fetchLabContents();
             } catch (error) {
-                console.error('Error deleting content:', error);
                 alert(`콘텐츠 삭제 실패: ${error.message}`);
             }
         }
@@ -606,7 +607,6 @@
                 }
                 fetchLabContents(); // Refresh list to reflect changes
             } catch (error) {
-                console.error('Error updating content status:', error);
                 alert(`콘텐츠 상태 업데이트 실패: ${error.message}`);
             }
         }
@@ -636,7 +636,6 @@
                     moveLabSelect.appendChild(option);
                 }
             } catch (error) {
-                console.error('Error fetching labs for move:', error);
                 alert(`랩 목록을 불러오는데 실패했습니다: ${error.message}`);
             }
         }
@@ -675,7 +674,6 @@
                 closeMoveModal();
                 fetchLabContents(); // Refresh the list after moving
             } catch (error) {
-                console.error('Error moving content:', error);
                 alert(`콘텐츠 이동 실패: ${error.message}`);
             }
         }
@@ -704,7 +702,6 @@
                 }
                 fetchLabContents(); // Refresh the list to reflect changes
             } catch (error) {
-                console.error('Error updating content order:', error);
                 alert(`콘텐츠 순서 변경 실패: ${error.message}`);
             }
         }

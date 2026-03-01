@@ -1,3 +1,22 @@
 {
-    "appService.defaultWebAppToDeploy": "None"
+    "appService.defaultWebAppToDeploy": "None",
+    "chat.tools.terminal.autoApprove": {
+        "/^python3 << 'PYTHON_EOF'\nwith open\\('/Users/winkey/Documents/github/HTC/templates/register\\.html', 'r', encoding='utf-8'\\) as f:\n    content = f\\.read\\(\\)\n\n# </script> 태그 앞에 함수 추가\nfunctions = '''\n        \n        function finalizeRegistration\\(name\\) \\{\n            const resultDiv = document\\.getElementById\\('registerResult'\\);\n            const goLoginDiv = document\\.getElementById\\('goLoginDiv'\\);\n            resultDiv\\.innerHTML = '<b>회원가입 성공!</b><br>이름: ' \\+ name;\n            goLoginDiv\\.style\\.display = '';\n        \\}\n        \n        function resetRegistration\\(\\) \\{\n            const resultDiv = document\\.getElementById\\('registerResult'\\);\n            const errorDiv = document\\.getElementById\\('registerError'\\);\n            resultDiv\\.innerHTML = '';\n            errorDiv\\.textContent = '';\n            document\\.getElementById\\('registerName'\\)\\.value = '';\n        \\}'''\n\ncontent = content\\.replace\\('    </script>', functions \\+ '\\\\n    </script>'\\)\n\nwith open\\('/Users/winkey/Documents/github/HTC/templates/register\\.html', 'w', encoding='utf-8'\\) as f:\n    f\\.write\\(content\\)\n\nprint\\(\"✓ register\\.html 파일 수정 완료\"\\)\nPYTHON_EOF$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "mv": true,
+        "git checkout": true,
+        "/^python -c \"import pymysql; from dotenv import load_dotenv; import os; load_dotenv\\(\\); conn = pymysql\\.connect\\(host=os\\.getenv\\('MYSQL_HOST'\\), user=os\\.getenv\\('MYSQL_USER'\\), password=os\\.getenv\\('MYSQL_PASSWORD'\\), database=os\\.getenv\\('MYSQL_DATABASE'\\), charset='utf8mb4', cursorclass=pymysql\\.cursors\\.DictCursor\\); cursor = conn\\.cursor\\(\\); cursor\\.execute\\('SELECT COUNT\\(\\*\\) as cnt FROM training WHERE training_status = 20'\\); result = cursor\\.fetchone\\(\\); print\\(f'Active courses: \\{result\\}'\\); conn\\.close\\(\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^python -c \"import pymysql; from dotenv import load_dotenv; import os; load_dotenv\\(\\); conn = pymysql\\.connect\\(host=os\\.getenv\\('MYSQL_HOST'\\), user=os\\.getenv\\('MYSQL_USER'\\), password=os\\.getenv\\('MYSQL_PASSWORD'\\), database=os\\.getenv\\('MYSQL_DATABASE'\\), charset='utf8mb4', cursorclass=pymysql\\.cursors\\.DictCursor, ssl=\\{'ssl': True\\}\\); cursor = conn\\.cursor\\(\\); cursor\\.execute\\('SELECT COUNT\\(\\*\\) as cnt FROM training WHERE training_status = 20'\\); result = cursor\\.fetchone\\(\\); print\\(f'Active courses: \\{result\\[\\\\\"cnt\\\\\"\\]\\}'\\); conn\\.close\\(\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "uvicorn": true,
+        "/opt/homebrew/bin/python3.11": true
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }

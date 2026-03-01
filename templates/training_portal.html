@@ -209,28 +209,179 @@
         .markdown-content a:hover {
             text-decoration: underline;
         }
+        /* Code block styles */
+        .code-block-wrapper {
+            margin: 16px 0;
+            border-radius: 8px;
+            background: #22272e;
+        }
+        .code-block-wrapper pre {
+            margin: 0;
+            padding: 0;
+            background: #22272e;
+            overflow-x: auto;
+        }
+        .code-block-wrapper code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            display: block;
+            white-space: pre;
+        }
+        .code-header {
+            background: #2d333b;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .code-language {
+            color: #adbac7;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .copy-code-btn {
+            background: #373e47;
+            color: #adbac7;
+            border: 1px solid #444c56;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s;
+            type: button;
+        }
+        .copy-code-btn:hover {
+            background: #444c56;
+            color: #ffffff;
+        }
+        .copy-code-btn.copied {
+            background: #238636;
+            color: #ffffff;
+            border-color: #238636;
+        }
+        .hljs {
+            background: #22272e !important;
+            padding: 16px !important;
+            margin: 0 !important;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
     <script>
+        // 0.0.0.0 접속 시 자동으로 localhost로 리다이렉트
+        if (window.location.hostname === '0.0.0.0') {
+            window.location.href = window.location.href.replace('0.0.0.0', 'localhost');
+        }
+        
         // 마크다운 파서 설정
         marked.setOptions({
             breaks: true,  // 줄바꿈을 <br>로 변환
             gfm: true,     // GitHub Flavored Markdown 지원
             sanitize: false // HTML 태그 허용 (XSS 방지는 서버에서 처리)
         });
+        
+        // 트레이닝 센터 코드 복사 함수
+        function copyTrainingCode(button) {
+            if (!button) return;
+            
+            try {
+                // 버튼의 부모 요소(code-header)를 찾고, 그 다음 형제 요소인 pre > code를 찾기
+                const codeHeader = button.parentElement;
+                const codeBlockWrapper = codeHeader.parentElement;
+                const preElement = codeBlockWrapper.querySelector('pre');
+                const codeElement = preElement ? preElement.querySelector('code') : null;
+                
+                if (!codeElement) {
+                    button.textContent = '✗ Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                    }, 2000);
+                    return;
+                }
+                
+                // textContent를 사용하여 HTML escape된 텍스트를 자동으로 디코드
+                const code = codeElement.textContent || '';
+                
+                if (!code.trim()) {
+                    button.textContent = '✗ Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                    }, 2000);
+                    return;
+                }
+                
+                // 클립보드에 복사
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(() => {
+                        button.textContent = '✓ Copied!';
+                        button.classList.add('copied');
+                        setTimeout(() => {
+                            button.textContent = 'Copy code';
+                            button.classList.remove('copied');
+                        }, 2000);
+                    }).catch(err => {
+                        fallbackCopyTraining(code, button);
+                    });
+                } else {
+                    fallbackCopyTraining(code, button);
+                }
+            } catch (error) {
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy code';
+                }, 2000);
+            }
+        }
+        
+        // 폴백 복사 메서드 (트레이닝 센터)
+        function fallbackCopyTraining(text, button) {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    button.textContent = '✓ Copied!';
+                    button.classList.add('copied');
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                        button.classList.remove('copied');
+                    }, 2000);
+                } else {
+                    throw new Error('Copy command failed');
+                }
+            } catch (err) {
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy code';
+                }, 2000);
+            }
+        }
     </script>
 </head>
 <body>
     <div class="header">
         <div class="welcome">Training Center에 오신 것을 환영합니다!</div>
-        <button class="logout-btn" onclick="logout()">로그아웃</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
     
     <!-- 랩 목록 -->
     <div class="labs-section collapsed" id="labsSection">
         <div class="labs-header">
             <h2>랩 목록</h2>
-            <button type="button" class="labs-toggle" id="labsToggleBtn">펼치기</button>
+            <button type="button" class="labs-toggle" id="labsToggleBtn">Expand</button>
         </div>
         <div id="trainingInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:8px; border-left:4px solid var(--accent);">
             <p style="margin:0; color:var(--muted);">트레이닝 정보를 불러오는 중...</p>
@@ -304,7 +455,28 @@
         }
         
         // 로그아웃
-        function logout() {
+        async function logout() {
+            const loginInfo = getLoginInfo();
+            
+            // 로그아웃 이벤트 로그 기록
+            if (loginInfo) {
+                try {
+                    await fetch('/api/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            training_key: loginInfo.training_key,
+                            member_id: loginInfo.member_id,
+                            member_name: loginInfo.member_name
+                        })
+                    });
+                } catch (error) {
+                    console.error('로그아웃 로그 기록 실패:', error);
+                }
+            }
+            
             sessionStorage.removeItem('loginInfo');
             window.location.href = '/';
         }
@@ -342,27 +514,20 @@
         // 랩 목록 로드
         async function loadLabs() {
             try {
-                console.log('=== loadLabs 함수 시작 ===');
                 const loginInfo = getLoginInfo();
                 if (!loginInfo) {
-                    console.log('로그인 정보가 없음 - 홈으로 리다이렉트');
                     window.location.href = '/';
                     return;
                 }
                 
-                console.log('로그인 정보:', loginInfo);
-                console.log('요청할 training_key:', loginInfo.training_key);
                 
                 const response = await fetch(`/api/portal-labs?training_key=${loginInfo.training_key}`);
-                console.log('API 응답 상태:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error('랩 목록을 불러올 수 없습니다.');
                 }
                 
                 const data = await response.json();
-                console.log('API에서 받은 전체 데이터:', data);
-                console.log('랩 목록:', data.labs);
                 
                 const labsContainer = document.getElementById('labsList');
                 const trainingInfoContainer = document.getElementById('trainingInfo');
@@ -370,11 +535,6 @@
                 // 트레이닝 정보 표시
                 if (data.training_name) {
                     const statusText = getTrainingStatusText(data.training_status);
-                    console.log('트레이닝 정보:', {
-                        name: data.training_name,
-                        status: data.training_status,
-                        statusText: statusText
-                    });
                     trainingInfoContainer.innerHTML = `
                         <p style="margin:0; color:var(--text); font-weight:600;">${data.training_name}</p>
                         <p style="margin:5px 0 0 0; color:var(--muted); font-size:0.9em;">상태: ${statusText}</p>
@@ -382,39 +542,25 @@
                 }
                 
                 if (data.message) {
-                    console.log('메시지가 있음:', data.message);
                     labsContainer.innerHTML = `<p style="text-align:center; color:var(--muted);">${data.message}</p>`;
                     return;
                 }
                 
                 if (data.labs.length === 0) {
-                    console.log('랩 목록이 비어있음');
                     labsContainer.innerHTML = '<p style="text-align:center; color:var(--muted);">진행중인 랩이 없습니다.</p>';
                     return;
                 }
                 
-                console.log(`총 ${data.labs.length}개의 랩을 처리합니다.`);
                 
                 let labsHTML = '';
                 data.labs.forEach((lab, index) => {
-                    console.log(`=== 랩 ${index + 1} 처리 ===`);
-                    console.log('전체 랩 객체:', lab);
-                    console.log('lab_status 값:', lab.lab_status, '타입:', typeof lab.lab_status);
                     
                     // 상태 값을 숫자로 변환 (1: 활성화, 0: 비활성화)
                     const labStatus = parseInt(lab.lab_status) || 0;
-                    console.log('변환된 labStatus:', labStatus, '타입:', typeof labStatus);
                     
                     const statusClass = getLabStatusClass(labStatus);
                     const statusText = getLabStatusText(labStatus);
                     const isActive = labStatus === 20;
-                    
-                    console.log('최종 결과:', {
-                        statusClass: statusClass,
-                        statusText: statusText,
-                        isActive: isActive
-                    });
-                    console.log(`=== 랩 ${index + 1} 처리 완료 ===`);
                     
                     // 활성화된 랩만 선택 가능, 비활성화된 랩은 선택 불가능
                     const cardClass = isActive ? 'lab-card' : 'lab-card disabled';
@@ -431,23 +577,19 @@
                         </div>
                     `;
                 });
-                            const labsSection = document.getElementById('labsSection');
-                            const labsToggleBtn = document.getElementById('labsToggleBtn');
-                            if (labsToggleBtn && labsSection) {
-                                labsToggleBtn.addEventListener('click', () => {
-                                    labsSection.classList.toggle('collapsed');
-                                    labsToggleBtn.textContent = labsSection.classList.contains('collapsed') ? '펼치기' : '접기';
-                                });
-                            }
 
-                
-                console.log('생성된 HTML:', labsHTML);
+                const labsSection = document.getElementById('labsSection');
+                const labsToggleBtn = document.getElementById('labsToggleBtn');
+                if (labsToggleBtn && labsSection) {
+                    labsToggleBtn.addEventListener('click', () => {
+                        labsSection.classList.toggle('collapsed');
+                        labsToggleBtn.textContent = labsSection.classList.contains('collapsed') ? '펼치기' : '접기';
+                    });
+                }
+
                 labsContainer.innerHTML = labsHTML;
-                console.log('=== loadLabs 함수 완료 ===');
                 
             } catch (error) {
-                console.error('=== loadLabs 오류 ===');
-                console.error('랩 목록 로드 실패:', error);
                 document.getElementById('labsList').innerHTML = 
                     '<p style="text-align:center; color:#FF6B6B;">랩 목록을 불러오는데 실패했습니다.</p>';
                 document.getElementById('trainingInfo').innerHTML = 
@@ -474,30 +616,21 @@
             // 선택된 랩 정보 저장
             window.selectedLabId = labId;
             
-            // 랩 조회 로그 기록 (첫 번째 콘텐츠로 기록)
+            // 랩 선택 로그 기록
             try {
-                // 해당 랩의 첫 번째 콘텐츠 ID를 가져와서 로그 기록
-                const response = await fetch(`/api/admin/lab_contents?training_key=${loginInfo.training_key}&lab_id=${labId}`);
-                if (response.ok) {
-                    const contents = await response.json();
-                    if (contents.length > 0) {
-                        // 첫 번째 콘텐츠로 랩 조회 로그 기록
-                        await fetch('/api/portal/log_content_view', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                training_key: loginInfo.training_key,
-                                member_id: loginInfo.member_id,
-                                lab_id: labId,
-                                content_id: contents[0].content_id
-                            })
-                        });
-                    }
-                }
+                await fetch('/api/portal/log_lab_view', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        training_key: loginInfo.training_key,
+                        member_id: loginInfo.member_id,
+                        lab_id: parseInt(labId)
+                    })
+                });
             } catch (error) {
-                console.error('랩 조회 로그 기록 실패:', error);
+                console.error('랩 선택 로그 기록 실패:', error);
             }
             
             // 콘텐츠 섹션 표시
@@ -565,7 +698,6 @@
                 }
                 
             } catch (error) {
-                console.error('콘텐츠 목록 로드 실패:', error);
                 document.getElementById('contentList').innerHTML = 
                     '<p style="text-align:center; color:#FF6B6B;">콘텐츠 목록을 불러오는데 실패했습니다.</p>';
                 document.getElementById('selectedLabInfo').innerHTML = 
@@ -611,7 +743,7 @@
             
             // 콘텐츠 조회 로그 기록
             try {
-                await fetch('/api/portal/log_content_view', {
+                const logResponse = await fetch('/api/portal/log_content_view', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -623,8 +755,10 @@
                         content_id: contentId
                     })
                 });
+                if (!logResponse.ok) {
+                    const errorData = await logResponse.json();
+                }
             } catch (error) {
-                console.error('콘텐츠 조회 로그 기록 실패:', error);
             }
             
             // 콘텐츠 로드
@@ -652,9 +786,6 @@
             const contentText = content.lab_content || '(내용 없음)';
             
             // 디버깅을 위한 콘텐츠 타입 로그
-            console.log('Content type:', content.lab_content_type);
-            console.log('Content text:', contentText);
-            console.log('Marked library available:', typeof marked !== 'undefined');
             
             if (content.lab_content_type === 0) {
                 // 타입 0: URL 기반 마크다운 처리
@@ -687,7 +818,6 @@
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">${parsedMarkdown}</div>
                         `;
-                        console.log('Auto-detected markdown content and parsed successfully');
                     } catch (error) {
                         contentViewer.innerHTML = `
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
@@ -703,9 +833,7 @@
                         <h1>${content.lab_content_subject || '제목 없음'}</h1>
                         <div class="markdown-content">${parsedMarkdown}</div>
                     `;
-                    console.log('Markdown parsed successfully');
                 } catch (error) {
-                    console.error('Markdown parsing error:', error);
                     contentViewer.innerHTML = `
                         <h1>${content.lab_content_subject || '제목 없음'}</h1>
                         <div class="markdown-content">
@@ -749,6 +877,31 @@
                             <p style="color:#FF6B6B;">웹페이지 URL이 아닙니다.</p>
                         `;
                     }
+                } else if (content.lab_content_type === 3) {
+                    // 타입 3: 코드 - Copy code 버튼 포함
+                    const codeLanguage = content.lab_content_option || 'python';
+                    const languageDisplayName = codeLanguage === 'shell' ? 'Shell' : 'Python';
+                    const escapedCode = contentText
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    
+                    contentViewer.innerHTML = `
+                        <h1>${content.lab_content_subject || '제목 없음'}</h1>
+                        <div class="code-block-wrapper">
+                            <div class="code-header">
+                                <span class="code-language">${languageDisplayName}</span>
+                                <button type="button" class="copy-code-btn" onclick="copyTrainingCode(this)">Copy code</button>
+                            </div>
+                            <pre><code class="language-${codeLanguage}">${escapedCode}</code></pre>
+                        </div>
+                    `;
+                    
+                    // Apply syntax highlighting
+                    const codeBlock = contentViewer.querySelector('code');
+                    if (codeBlock && window.hljs) {
+                        hljs.highlightElement(codeBlock);
+                    }
                 } else {
                     // 기타 타입: 마크다운 텍스트인지 확인하여 자동 파싱
                     try {
@@ -757,7 +910,6 @@
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">${parsedMarkdown}</div>
                         `;
-                        console.log('Auto-detected markdown content for unknown type and parsed successfully');
                     } catch (error) {
                         // 마크다운 파싱 실패 시 기본 텍스트 처리
                         contentViewer.innerHTML = `
@@ -768,7 +920,6 @@
                 }
                 
             } catch (error) {
-                console.error('콘텐츠 상세 로드 실패:', error);
                 document.getElementById('contentViewer').innerHTML = `
                     <p style="text-align:center; color:#FF6B6B;">콘텐츠를 불러오는데 실패했습니다.</p>
                 `;
@@ -813,10 +964,8 @@
                     refreshBtn.style.cursor = 'pointer';
                 }, 2000);
                 
-                console.log('콘텐츠 목록이 새로고침되었습니다.');
                 
             } catch (error) {
-                console.error('콘텐츠 새로고침 실패:', error);
                 
                 // 오류 상태 표시
                 const refreshBtn = document.getElementById('refreshContentBtn');

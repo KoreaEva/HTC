@@ -7,3 +7,4 @@ sqlalchemy>=2.0.0
 requests
 python-dotenv
 pymysql
+markdown>=3.4.0

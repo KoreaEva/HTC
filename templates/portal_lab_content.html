@@ -197,7 +197,82 @@
             color: var(--accent);
             text-decoration: underline;
         }
+        /* 코드 블럭 헤더 스타일 */
+        .code-header {
+            background: #2d333b;
+            padding: 10px 16px;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .code-language {
+            color: #adbac7;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .copy-code-btn {
+            background: #373e47;
+            color: #adbac7;
+            border: 1px solid #444c56;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-code-btn:hover {
+            background: #444c56;
+            color: #ffffff;
+        }
+        .copy-code-btn.copied {
+            background: #238636;
+            color: #ffffff;
+            border-color: #238636;
+        }
+        .code-block-wrapper {
+            margin: 16px 0;
+            border-radius: 8px;
+            background: #22272e;
+        }
+        .code-header {
+            background: #2d333b;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .code-language {
+            color: #adbac7;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .code-block-wrapper pre {
+            margin: 0;
+            padding: 0;
+            background: #22272e;
+            overflow-x: auto;
+        }
+        .code-block-wrapper code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            display: block;
+            white-space: pre;
+        }
+        .hljs {
+            background: #22272e !important;
+            padding: 16px !important;
+            margin: 0 !important;
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // 마크다운 파서 설정
@@ -216,7 +291,7 @@
     </div>
     <div class="container">
         <div class="sidebar">
-            <button class="back-btn button" onclick="window.history.back()">← 뒤로가기</button>
+            <button class="back-btn button" onclick="window.history.back()">← Back</button>
             <h2>콘텐츠 목록</h2>
             <ul class="content-list" id="contentList"></ul>
         </div>
@@ -307,7 +382,6 @@
                     document.getElementById('contentBody').innerHTML = '<p style="color:#555;">현재 활성화된 콘텐츠가 없습니다.</p>';
                 }
             } catch (error) {
-                console.error('Error loading titles or contents:', error);
                 alert(`페이지 로드 실패: ${error.message}`);
             }
         }
@@ -370,6 +444,28 @@
                 } else {
                     bodyDiv.innerHTML = '<span style="color:red">웹페이지 URL이 아닙니다.</span>';
                 }
+            } else if (content.lab_content_type === 3) {
+                // 타입 3: 코드 - Copy code 버튼 포함
+                const escapedCode = contentText
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                
+                bodyDiv.innerHTML = `
+                    <div class="code-block-wrapper">
+                        <div class="code-header">
+                            <span class="code-language">💻 Code</span>
+                            <button type="button" class="copy-code-btn" onclick="copyCodeToClipboard(event)">Copy code</button>
+                        </div>
+                        <pre><code class="language-python">${escapedCode}</code></pre>
+                    </div>
+                `;
+                
+                // Apply syntax highlighting
+                const codeBlock = bodyDiv.querySelector('code');
+                if (codeBlock && window.hljs) {
+                    hljs.highlightElement(codeBlock);
+                }
             } else {
                 // 기타 타입: 기본 텍스트 처리
                 bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
@@ -383,7 +479,6 @@
                     lab_id: parseInt(labId),
                     content_id: content.content_id
                 };
-                console.log('Attempting to log content view with data:', logData);
                 const logRes = await fetch('/api/portal/log_content_view', {
                     method: 'POST',
                     headers: {
@@ -393,12 +488,71 @@
                 });
                 if (!logRes.ok) {
                     const errorData = await logRes.json();
-                    console.error('Failed to log content view. Server response:', logRes.status, logRes.statusText, errorData);
                 } else {
-                    console.log('Content view logged successfully.');
                 }
             } catch (error) {
-                console.error('Error logging content view:', error);
+            }
+        }
+        
+        // 코드 복사 함수
+        function copyCodeToClipboard(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const button = event.currentTarget;
+            
+            try {
+                const codeBlockWrapper = button.closest('.code-block-wrapper');
+                if (!codeBlockWrapper) {
+                    throw new Error('Code block wrapper not found');
+                }
+                
+                const codeElement = codeBlockWrapper.querySelector('code');
+                if (!codeElement) {
+                    throw new Error('Code element not found');
+                }
+                
+                const code = codeElement.textContent;
+                
+                if (!code || code.trim() === '') {
+                    throw new Error('Code is empty');
+                }
+                
+                navigator.clipboard.writeText(code).then(() => {
+                    button.textContent = '✓ Copied!';
+                    button.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        button.textContent = 'Copy code';
+                        button.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    try {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = code;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        
+                        button.textContent = '✓ Copied!';
+                        button.classList.add('copied');
+                        setTimeout(() => {
+                            button.textContent = 'Copy code';
+                            button.classList.remove('copied');
+                        }, 2000);
+                    } catch (fallbackErr) {
+                        button.textContent = '✗ Failed';
+                        setTimeout(() => {
+                            button.textContent = 'Copy code';
+                        }, 2000);
+                    }
+                });
+            } catch (error) {
+                button.textContent = '✗ Failed';
+                setTimeout(() => {
+                    button.textContent = 'Copy code';
+                }, 2000);
             }
         }
         

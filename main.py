@@ -2,20 +2,39 @@
 from fastapi import FastAPI, HTTPException, Body, Query, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
 import pymysql
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import os
 import hashlib
+import random
+import asyncio
+import json
+from collections import deque
 
 load_dotenv()
 
 app = FastAPI()
+
+
+@app.get("/.well-known/appspecific/com.chrome.devtools.json", include_in_schema=False)
+async def chrome_devtools_well_known():
+    return {}
+
+# 앱 시작 시 이벤트 로그 테이블 생성
+@app.on_event("startup")
+async def startup_event():
+    try:
+        ensure_event_logs_table()
+        print("✅ 이벤트 로그 테이블 확인/생성 완료")
+    except Exception as e:
+        print(f"⚠️ 이벤트 로그 테이블 생성 실패: {str(e)}")
 
 # CORS 설정
 app.add_middleware(
@@ -35,10 +54,166 @@ MYSQL_HOST = os.getenv('MYSQL_HOST', 'helloaibase-mysql-01.mysql.database.azure.
 MYSQL_USER = os.getenv('MYSQL_USER', 'winkey')
 MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD', '!Korea10041004')
 MYSQL_DATABASE = os.getenv('MYSQL_DATABASE', 'helloaibasedb')
+KST = ZoneInfo('Asia/Seoul')
+
+
+def now_kst():
+    return datetime.now(KST)
+
+
+def now_kst_naive():
+    return now_kst().replace(tzinfo=None)
+
+
+# 실시간 모니터링을 위한 이벤트 큐
+monitoring_events = deque(maxlen=100)  # 최근 100개 이벤트 저장
+
+
+def ensure_event_logs_table():
+    """이벤트 로그 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS event_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100),
+                    event_type VARCHAR(50) NOT NULL,
+                    event_category VARCHAR(50) NOT NULL,
+                    user_id VARCHAR(100),
+                    user_name VARCHAR(100),
+                    target_type VARCHAR(50),
+                    target_id VARCHAR(100),
+                    target_name VARCHAR(255),
+                    description TEXT,
+                    details JSON,
+                    ip_address VARCHAR(50),
+                    user_agent TEXT,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_training_key (training_key),
+                    INDEX idx_event_type (event_type),
+                    INDEX idx_create_date (create_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def log_monitoring_event(training_key: str, event_type: str, details: dict, 
+                         event_category: str = "system", user_id: str = None, 
+                         user_name: str = None, target_type: str = None, 
+                         target_id: str = None, target_name: str = None,
+                         description: str = None):
+    """모니터링 이벤트 기록 (메모리 큐 + 데이터베이스)"""
+    event = {
+        "timestamp": now_kst().isoformat(),
+        "training_key": training_key,
+        "type": event_type,
+        "category": event_category,
+        "user_id": user_id,
+        "user_name": user_name,
+        "target_type": target_type,
+        "target_id": target_id,
+        "target_name": target_name,
+        "description": description,
+        "details": details
+    }
+    monitoring_events.append(event)
+    
+    # 콘솔에 컬러로 출력
+    event_icons = {
+        "user_login": "🔐",
+        "user_register": "👤",
+        "lab_add": "➕",
+        "lab_edit": "✏️",
+        "lab_delete": "🗑️",
+        "content_add": "📝",
+        "content_edit": "✏️",
+        "content_delete": "🗑️",
+        "content_view": "👁️",
+        "content_click": "🖱️"
+    }
+    icon = event_icons.get(event_type, "📋")
+    
+    print(f"\n{'='*60}")
+    print(f"{icon} [모니터링 이벤트] {event_type}")
+    print(f"   과정키: {training_key}")
+    print(f"   사용자: {user_name} ({user_id})" if user_name else "")
+    print(f"   대상: {target_type} - {target_name}" if target_type else "")
+    print(f"   시간: {now_kst_str()}")
+    print(f"   상세: {details}")
+    print(f"   현재 큐 크기: {len(monitoring_events)}/100")
+    print(f"{'='*60}\n")
+    
+    # 데이터베이스에 저장
+    try:
+        conn = get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO event_logs 
+                    (training_key, event_type, event_category, user_id, user_name, 
+                     target_type, target_id, target_name, description, details, create_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    training_key, event_type, event_category, user_id, user_name,
+                    target_type, target_id, target_name, description,
+                    json.dumps(details, ensure_ascii=False),
+                    now_kst_str('%Y-%m-%d %H:%M:%S')
+                ))
+                conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"⚠️ 이벤트 로그 DB 저장 실패: {str(e)}")
+
+
+def now_kst_str(fmt: str = '%Y-%m-%d %H:%M:%S'):
+    return now_kst().strftime(fmt)
+
+
+def format_kst(dt_value, fmt: str = '%Y-%m-%d %H:%M'):
+    if not dt_value:
+        return ''
+    if dt_value.tzinfo is None:
+        dt_value = dt_value.replace(tzinfo=KST)
+    else:
+        dt_value = dt_value.astimezone(KST)
+    return dt_value.strftime(fmt)
+
+
+def normalize_lab_content_type(raw_type):
+    if raw_type is None:
+        return 4
+
+    if isinstance(raw_type, int):
+        return raw_type
+
+    value = str(raw_type).strip().lower()
+    mapping = {
+        '0': 0,
+        'web_markdown': 0,
+        'url_markdown': 0,
+        '1': 1,
+        'web': 1,
+        '2': 2,
+        'markdown': 2,
+        '3': 3,
+        'code': 3,
+        '4': 4,
+        'text': 4,
+    }
+    if value in mapping:
+        return mapping[value]
+
+    try:
+        return int(value)
+    except Exception:
+        return 4
 
 def get_mysql_conn():
     try:
-        print(f"[DEBUG] MySQL 연결 시도: {MYSQL_HOST}, {MYSQL_USER}, {MYSQL_DATABASE}")
         conn = pymysql.connect(
             host=MYSQL_HOST,
             user=MYSQL_USER,
@@ -48,12 +223,10 @@ def get_mysql_conn():
             cursorclass=pymysql.cursors.DictCursor,
             autocommit=True,
             connect_timeout=30,
-            ssl={'ssl_disabled': False}
+            ssl={'ssl': True}
         )
-        print(f"[DEBUG] MySQL 연결 성공!")
         return conn
     except Exception as e:
-        print(f"[ERROR] MySQL 연결 실패: {str(e)}")
         raise e
 
 @app.get("/")
@@ -104,12 +277,9 @@ async def test_db():
 # 일정 조회 API: /api/events
 @app.get("/api/events")
 async def get_events(year: int = None, month: int = None):
-    print(f"[DEBUG] API 호출: year={year}, month={month}")
     try:
         conn = get_mysql_conn()
-        print(f"[DEBUG] MySQL 연결 성공")
     except Exception as e:
-        print(f"[ERROR] MySQL 연결 실패: {e}")
         raise HTTPException(status_code=500, detail=f"데이터베이스 연결 실패: {str(e)}")
     
     try:
@@ -140,7 +310,6 @@ async def get_events(year: int = None, month: int = None):
             """
             cursor.execute(sql, (start_date, end_date))
             rows = cursor.fetchall()
-            print(f"[DEBUG] 조회된 행 수: {len(rows)}")
 
             # 시간/날짜 포맷 변환
             for row in rows:
@@ -224,7 +393,6 @@ class UserLogin(BaseModel):
 class LoginRequest(BaseModel):
     training_key: str
     username: str
-    password: str
 
 class MoveContentRequest(BaseModel):
     new_lab_id: int
@@ -238,6 +406,11 @@ class ContentViewLog(BaseModel):
     lab_id: int
     content_id: int
 
+class LabViewLog(BaseModel):
+    training_key: str
+    member_id: str
+    lab_id: int
+
 class TrainingKeyCheckRequest(BaseModel):
     training_key: str
 
@@ -245,7 +418,6 @@ class RegisterRequest(BaseModel):
     training_key: str
     username: str
     name: str
-    password: str
 
 @app.get("/")
 async def read_root():
@@ -256,59 +428,103 @@ async def login(data: LoginRequest):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            # 관리자 로그인인지 확인 (트레이닝 키가 비어있거나 'admin'인 경우)
-            is_admin_login = not data.training_key or data.training_key.strip() == '' or data.training_key.lower() == 'admin'
+            # 트레이닝 키가 유효한지 확인
+            cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (data.training_key,))
+            training_exists = cursor.fetchone()
+            if not training_exists:
+                raise HTTPException(status_code=400, detail="트레이닝 키가 존재하지 않습니다. 다시 한번 확인해 주세요.")
             
-            if is_admin_login:
-                # 관리자 로그인: 모든 training_member 테이블에서 사용자 검색
-                sql = "SELECT member_password, role, training_key FROM training_member WHERE member_id = %s"
-                cursor.execute(sql, (data.username,))
-                result = cursor.fetchone()
-                
-                if not result:
-                    raise HTTPException(status_code=400, detail="존재하지 않는 사용자입니다.")
-                
-                if result['member_password'] != data.password:
-                    raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않습니다.")
-                
-                role = result['role']
-                training_key = result['training_key']
-                
-                # 관리자 권한 체크 (role >= 100)
-                if role < 100:
-                    raise HTTPException(status_code=400, detail="관리자 권한이 없습니다.")
-                
-            else:
-                # 일반 사용자 로그인: 기존 로직
-                # 먼저 트레이닝 키가 유효한지 확인
-                cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (data.training_key,))
-                training_exists = cursor.fetchone()
-                if not training_exists:
-                    raise HTTPException(status_code=400, detail="트레이닝 키가 존재하지 않습니다. 다시 한번 확인해 주세요.")
-                
-                # 해당 트레이닝 키에 속한 사용자가 있는지 확인
-                cursor.execute("SELECT member_id FROM training_member WHERE training_key = %s", (data.training_key,))
-                members = cursor.fetchall()
-                if not members:
-                    raise HTTPException(status_code=400, detail="해당 트레이닝 키에 등록된 회원이 없습니다.")
-                
-                # 입력한 사용자 ID가 해당 트레이닝에 속하는지 확인
-                member_ids = [member['member_id'] for member in members]
-                if data.username not in member_ids:
-                    raise HTTPException(status_code=400, detail=f"해당 트레이닝에 '{data.username}' 사용자가 존재하지 않습니다.")
-                
-                # 비밀번호 확인
-                sql = "SELECT member_password, role FROM training_member WHERE training_key = %s AND member_id = %s"
-                cursor.execute(sql, (data.training_key, data.username))
-                result = cursor.fetchone()
-                
-                if result['member_password'] != data.password:
-                    raise HTTPException(status_code=400, detail="비밀번호가 일치하지 않습니다.")
-                
-                role = result['role']
-                training_key = data.training_key
+            # 해당 트레이닝 키에 속한 사용자를 이름(member_name)으로 조회
+            sql = "SELECT member_id, role FROM training_member WHERE training_key = %s AND member_name = %s"
+            cursor.execute(sql, (data.training_key, data.username))
+            result = cursor.fetchone()
             
-        return {"message": "Login successful", "role": role, "training_key": training_key}
+            if not result:
+                raise HTTPException(status_code=400, detail="해당 트레이닝에 등록된 사용자가 없습니다. 이름을 다시 확인해 주세요.")
+            
+            role = result['role']
+            member_id = result['member_id']
+            training_key = data.training_key
+            
+            # 로그인 이벤트 기록
+            log_monitoring_event(
+                training_key=training_key,
+                event_type="user_login",
+                event_category="auth",
+                user_id=member_id,
+                user_name=data.username,
+                description=f"{data.username} 사용자가 로그인했습니다",
+                details={"role": role}
+            )
+            
+        return {
+            "message": "Login successful", 
+            "role": role, 
+            "training_key": training_key,
+            "member_id": member_id,
+            "member_name": data.username
+        }
+    finally:
+        conn.close()
+
+@app.post("/api/logout")
+async def logout(data: dict = Body(...)):
+    """로그아웃 이벤트 로그 기록"""
+    training_key = data.get("training_key")
+    member_id = data.get("member_id")
+    member_name = data.get("member_name")
+    
+    if training_key and member_id:
+        log_monitoring_event(
+            training_key=training_key,
+            event_type="user_logout",
+            event_category="auth",
+            user_id=member_id,
+            user_name=member_name,
+            description=f"{member_name} 사용자가 로그아웃했습니다",
+            details={}
+        )
+    
+    return {"message": "Logout successful"}
+
+@app.post("/api/portal/log_lab_view")
+async def log_lab_view(data: dict = Body(...)):
+    """랩 선택(조회) 이벤트 로그 기록"""
+    training_key = data.get("training_key")
+    member_id = data.get("member_id")
+    lab_id = data.get("lab_id")
+    
+    if not all([training_key, member_id, lab_id]):
+        raise HTTPException(status_code=400, detail="필수 파라미터가 누락되었습니다")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 사용자 정보 조회
+            cursor.execute("SELECT member_name FROM training_member WHERE training_key = %s AND member_id = %s", 
+                         (training_key, member_id))
+            member_info = cursor.fetchone()
+            
+            # 랩 정보 조회
+            cursor.execute("SELECT lab_name FROM training_lab WHERE training_key = %s AND lab_id = %s", 
+                         (training_key, lab_id))
+            lab_info = cursor.fetchone()
+            
+            if member_info and lab_info:
+                log_monitoring_event(
+                    training_key=training_key,
+                    event_type="lab_view",
+                    event_category="lab",
+                    user_id=member_id,
+                    user_name=member_info['member_name'],
+                    target_type="lab",
+                    target_id=str(lab_id),
+                    target_name=lab_info['lab_name'],
+                    description=f"{member_info['member_name']} 사용자가 '{lab_info['lab_name']}' 랩을 선택했습니다",
+                    details={"lab_id": lab_id}
+                )
+        
+        return {"message": "Lab view logged"}
     finally:
         conn.close()
 
@@ -358,13 +574,27 @@ async def register_user(data: RegisterRequest):
             cursor.execute("SELECT MAX(member_key) as max_key FROM training_member WHERE training_key = %s", (data.training_key,))
             result = cursor.fetchone()
             next_key = 1 if not result or result['max_key'] is None else int(result['max_key']) + 1
-            member_id = data.username  # Users provide their own username
             
-            # 중복 체크
-            cursor.execute("SELECT 1 FROM training_member WHERE training_key = %s AND member_id = %s", (data.training_key, member_id))
-            existing_member = cursor.fetchone()
-            if existing_member:
-                raise HTTPException(status_code=400, detail="이미 존재하는 회원입니다.")
+            # 이름 중복 체크 및 숫자 붙이기
+            member_name = data.name
+            suffix = 0
+            duplicated = False
+            
+            while True:
+                cursor.execute(
+                    "SELECT 1 FROM training_member WHERE training_key = %s AND member_name = %s",
+                    (data.training_key, member_name)
+                )
+                check = cursor.fetchone()
+                if check:
+                    suffix += 1
+                    member_name = f"{data.name}{suffix}"
+                    duplicated = True
+                else:
+                    break
+            
+            # 아이디 자동 생성: labuser1, labuser2, labuser3...
+            member_id = f"labuser{next_key}"
             
             # 회원 등록
             try:
@@ -374,16 +604,43 @@ async def register_user(data: RegisterRequest):
                         next_key,
                         data.training_key,
                         member_id,
-                        data.name,
-                        data.password,
+                        member_name,
+                        "",  # 비밀번호 없음
                         10,  # 일반 사용자 역할
-                        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        now_kst_str('%Y-%m-%d %H:%M:%S')
                     )
                 )
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"회원 생성 실패: {str(e)}")
             
-        return {"message": "Registration successful", "member_id": member_id, "name": data.name}
+            conn.commit()
+            
+            # 모니터링 이벤트 기록
+            log_monitoring_event(
+                training_key=data.training_key,
+                event_type="user_register",
+                event_category="user",
+                user_id=member_id,
+                user_name=member_name,
+                target_type="member",
+                target_id=member_id,
+                target_name=member_name,
+                description=f"새로운 사용자 '{member_name}'이(가) 등록되었습니다",
+                details={
+                    "member_id": member_id,
+                    "member_name": member_name,
+                    "duplicated": duplicated,
+                    "order": next_key
+                }
+            )
+            
+            response = {"message": "Registration successful", "member_id": member_id, "name": data.name, "registered_name": member_name, "order": next_key}
+            if duplicated:
+                response["warning"] = f"입력한 이름 '{data.name}'이(가) 중복되어 '{member_name}'으로 등록되었습니다."
+                # 일련번호 추출 (예: "홍길동1" -> 1)
+                response["suffix"] = member_name[len(data.name):]
+            
+            return response
     finally:
         conn.close()
 
@@ -399,9 +656,65 @@ async def portal_page():
 async def admin_page():
     return FileResponse("templates/admin.html")
 
+@app.post("/api/admin/login")
+async def admin_login(data: dict = Body(...)):
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력해 주세요.")
+
+    admin_username = os.getenv("ADMIN_USERNAME", "winkey")
+    admin_password = os.getenv("ADMIN_PASSWORD", "!Korea1004")
+
+    # 1) 환경변수(또는 기본값) 관리자 계정 우선 확인
+    if username == admin_username and password == admin_password:
+        return {
+            "success": True,
+            "message": "로그인 성공",
+            "admin_id": username
+        }
+
+    # 2) DB 관리자 계정(role >= 100) 확인
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT member_id, member_password, role
+                FROM training_member
+                WHERE member_id = %s AND role >= 100
+                ORDER BY create_date DESC
+                LIMIT 1
+                """,
+                (username,)
+            )
+            admin_user = cursor.fetchone()
+
+            if not admin_user:
+                raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 일치하지 않습니다.")
+
+            stored_password = (admin_user.get("member_password") or "").strip()
+            password_sha256 = hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+            if stored_password and (password == stored_password or password_sha256 == stored_password):
+                return {
+                    "success": True,
+                    "message": "로그인 성공",
+                    "admin_id": username
+                }
+
+            raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 일치하지 않습니다.")
+    finally:
+        conn.close()
+
 @app.get("/admin/lab")
 async def lab_page():
     return FileResponse("templates/lab.html")
+
+@app.get("/admin/lab-test")
+async def lab_test_page():
+    return FileResponse("templates/lab_test.html")
 
 @app.get("/admin/lab_content")
 async def lab_content_page():
@@ -420,7 +733,7 @@ async def get_users():
         with conn.cursor() as cursor:
             cursor.execute("SELECT member_id, member_name, role, create_date FROM training_member ORDER BY create_date DESC")
             result = cursor.fetchall()
-            users = [{"member_id": row['member_id'], "member_name": row['member_name'], "role": row['role'], "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else ''} for row in result]
+            users = [{"member_id": row['member_id'], "member_name": row['member_name'], "role": row['role'], "create_date": format_kst(row['create_date'])} for row in result]
         return users
     finally:
         conn.close()
@@ -466,13 +779,13 @@ async def get_users_by_course(training_key: str):
                 if row['lab_id'] and row['content_id']:
                     last_content_info = f"{row['lab_name']} - {row['lab_content_subject']}"
                     if row['last_view_date']:
-                        last_content_info += f" ({row['last_view_date'].strftime('%Y-%m-%d %H:%M')})"
+                        last_content_info += f" ({format_kst(row['last_view_date'])})"
                 
                 users.append({
                     "member_id": row['member_id'], 
                     "member_name": row['member_name'], 
                     "role": row['role'], 
-                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                    "create_date": format_kst(row['create_date']),
                     "last_content": last_content_info
                 })
         return users
@@ -485,6 +798,7 @@ async def delete_user(user_id: str):
     try:
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM training_member WHERE member_id = %s", (user_id,))
+        conn.commit()
         return {"message": "User deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
@@ -504,7 +818,7 @@ async def get_courses():
                     "course_name": row['course_name'],
                     "course_content": row['course_content'],
                     "max_member": row['max_member'],
-                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                    "create_date": format_kst(row['create_date']),
                     "training_status": row['training_status'],
                     "is_public": row['is_public'] if 'is_public' in row else 0
                 }
@@ -517,26 +831,38 @@ async def get_courses():
 @app.get("/api/active-courses")
 async def get_active_courses():
     """활성화된 과정 목록을 반환하는 API"""
-    conn = get_mysql_conn()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT training_key, course_name, course_content, max_member, create_date, training_status, is_public FROM training WHERE training_status = 20 ORDER BY create_date DESC")
-            result = cursor.fetchall()
-            courses = [
-                {
-                    "training_key": row['training_key'],
-                    "course_name": row['course_name'],
-                    "course_content": row['course_content'],
-                    "max_member": row['max_member'],
-                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
-                    "training_status": row['training_status'],
-                    "is_public": row['is_public'] if 'is_public' in row else 0
-                }
-                for row in result
-            ]
-        return courses
-    finally:
-        conn.close()
+        conn = get_mysql_conn()
+        try:
+            with conn.cursor() as cursor:
+                # 활성화된 과정만 조회 (training_status = 20)
+                cursor.execute("""
+                    SELECT training_key, course_name, course_content, max_member, create_date, training_status, is_public 
+                    FROM training 
+                    WHERE training_status = 20
+                    ORDER BY create_date DESC
+                """)
+                
+                result = cursor.fetchall()
+                courses = [
+                    {
+                        "training_key": row['training_key'],
+                        "course_name": row['course_name'],
+                        "course_content": row['course_content'],
+                        "max_member": row['max_member'],
+                        "create_date": format_kst(row['create_date']),
+                        "training_status": row['training_status'],
+                        "is_public": row['is_public'] if row['is_public'] else 0
+                    }
+                    for row in result
+                ]
+            return courses
+        finally:
+            conn.close()
+    except Exception as e:
+        print(f"데이터베이스 오류: {str(e)}")
+        # 오류 발생 시 빈 목록 반환
+        return []
 
 @app.get("/api/admin/courses/{training_key}")
 async def get_course(training_key: str):
@@ -552,7 +878,7 @@ async def get_course(training_key: str):
                 "course_name": row['course_name'],
                 "course_content": row['course_content'],
                 "max_member": row['max_member'],
-                "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                "create_date": format_kst(row['create_date']),
                 "training_status": row['training_status'],
                 "is_public": row['is_public'] if 'is_public' in row else 0
             }
@@ -564,24 +890,26 @@ async def add_course(data: dict = Body(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            now = datetime.now()
-            date_str = now.strftime('%Y%m%d')
-            # 일련번호 01~99까지 시도
-            for seq in range(1, 100):
-                training_key = f"{date_str}{seq:02d}"
+            # 6자리 랜덤 숫자 생성 (중복 확인)
+            max_attempts = 100
+            training_key = None
+            for _ in range(max_attempts):
+                training_key = f"{random.randint(0, 999999):06d}"
                 cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (training_key,))
                 exists = cursor.fetchone()
                 if not exists:
                     break
             else:
-                raise HTTPException(status_code=500, detail="오늘은 더 이상 코스를 생성할 수 없습니다.")
+                raise HTTPException(status_code=500, detail="트레이닝 키를 생성할 수 없습니다. 잠시 후 다시 시도해주세요.")
+            
+            now = now_kst_naive()
             try:
                 cursor.execute(
                     "INSERT INTO training (training_key, course_name, course_content, max_member, create_date, training_status, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                     (
                         training_key,
                         data.get("course_name"),
-                        "",  # course_content를 빈 문자열로 설정
+                        data.get("course_content", ""),
                         data.get("max_member"),
                         now,
                         data.get("training_status"),
@@ -590,13 +918,13 @@ async def add_course(data: dict = Body(...)):
                 )
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"코스 추가 실패: {str(e)}")
+        conn.commit()
         return {"message": "코스가 추가되었습니다."}
     finally:
         conn.close()
 
 @app.put("/api/admin/courses/{training_key}")
 async def update_course(training_key: str, data: dict = Body(...)):
-    print(f"update_course called: training_key={training_key}, data={data}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
@@ -605,7 +933,7 @@ async def update_course(training_key: str, data: dict = Body(...)):
                     "UPDATE training SET course_name=%s, course_content=%s, max_member=%s, training_status=%s, is_public=%s WHERE training_key=%s",
                     (
                         data.get("course_name"),
-                        "",  # course_content를 빈 문자열로 설정
+                        data.get("course_content", ""),
                         int(data.get("max_member")),
                         data.get("training_status"),
                         data.get("is_public", 0),
@@ -624,8 +952,8 @@ async def update_course(training_key: str, data: dict = Body(...)):
                     (is_public, training_key)
                 )
             except Exception as e:
-                print(f"코스 수정 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"코스 수정 실패: {str(e)}")
+        conn.commit()
         return {"message": "코스가 수정되었습니다."}
     finally:
         conn.close()
@@ -639,6 +967,7 @@ async def delete_course(training_key: str):
                 cursor.execute("DELETE FROM training WHERE training_key = %s", (training_key,))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"코스 삭제 실패: {str(e)}")
+        conn.commit()
         return {"message": "코스가 삭제되었습니다."}
     finally:
         conn.close()
@@ -655,22 +984,20 @@ async def copy_course(source_training_key: str, data: dict = Body(...)):
             if not source_course:
                 raise HTTPException(status_code=404, detail="복사할 과정을 찾을 수 없습니다.")
             
-            # 2. 새로운 training_key 생성
-            now = datetime.now()
-            date_str = now.strftime('%Y%m%d')
+            # 2. 새로운 training_key 생성 (6자리 랜덤, 중복 확인)
+            now = now_kst_naive()
             new_training_key = None
+            max_attempts = 100
             
-            # 일련번호 01~99까지 시도
-            for seq in range(1, 100):
-                candidate_key = f"{date_str}{seq:02d}"
-                cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (candidate_key,))
+            for _ in range(max_attempts):
+                new_training_key = f"{random.randint(0, 999999):06d}"
+                cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (new_training_key,))
                 exists = cursor.fetchone()
                 if not exists:
-                    new_training_key = candidate_key
                     break
             
             if not new_training_key:
-                raise HTTPException(status_code=500, detail="오늘은 더 이상 코스를 생성할 수 없습니다.")
+                raise HTTPException(status_code=500, detail="트레이닝 키를 생성할 수 없습니다. 잠시 후 다시 시도해주세요.")
             
             # 3. 새로운 과정 생성
             new_course_name = data.get("new_course_name", f"{source_course['course_name']} (복사본)")
@@ -767,10 +1094,11 @@ async def copy_course(source_training_key: str, data: dict = Body(...)):
             }
             
     except Exception as e:
-        print(f"[ERROR] 과정 복사 실패: {e}")
         raise HTTPException(status_code=500, detail=f"과정 복사 실패: {str(e)}")
     finally:
-        conn.close()
+        if conn:
+            conn.commit()
+            conn.close()
 
 @app.get("/api/debug/labs")
 async def debug_labs():
@@ -785,8 +1113,12 @@ async def debug_labs():
         conn.close()
 
 @app.get("/api/admin/labs")
-async def get_labs(training_key: str = Query(...)):
-    print(f"[DEBUG] Getting labs for training_key: {training_key}")
+async def get_labs(training_key: str = Query(...)) -> List:
+    
+    # training_key 유효성 검사
+    if not training_key or training_key.strip() == "":
+        raise HTTPException(status_code=400, detail="유효하지 않은 과정 키입니다.")
+    
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
@@ -808,7 +1140,6 @@ async def get_labs(training_key: str = Query(...)):
             '''
             cursor.execute(sql, (training_key,))
             result = cursor.fetchall()
-            print(f"[DEBUG] Raw lab data from database: {result}")
             
             labs = []
             for row in result:
@@ -819,21 +1150,21 @@ async def get_labs(training_key: str = Query(...)):
                     "lab_content": row['lab_content'],
                     "lab_status": row['lab_status'],
                     "is_public": row['is_public'] if 'is_public' in row else 0,
-                    "create_date": row['create_date'].strftime('%Y-%m-%d %H:%M') if row['create_date'] else '',
+                    "create_date": format_kst(row['create_date']),
                     "content_count": int(row['content_count'])
                 }
                 labs.append(lab_dict)
-            print(f"[DEBUG] Processed labs data: {labs}")
             return labs
+    except HTTPException:
+        # HTTPException은 그대로 전달
+        raise
     except Exception as e:
-        print(f"Error in get_labs: {e}")
         raise HTTPException(status_code=500, detail=f"랩 목록을 불러오는데 실패했습니다: {str(e)}")
     finally:
         conn.close()
 
 @app.get("/api/admin/labs/{lab_id}")
 async def get_lab(lab_id: int, training_key: str = Query(...)):
-    print(f"[DEBUG] Getting lab with ID: {lab_id}, training_key: {training_key}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
@@ -841,7 +1172,6 @@ async def get_lab(lab_id: int, training_key: str = Query(...)):
             cursor.execute("SELECT lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date FROM training_lab WHERE lab_id = %s AND training_key = %s", (lab_id, training_key))
             result = cursor.fetchone()
             if not result:
-                print(f"[DEBUG] Lab not found with ID: {lab_id} and training_key: {training_key}")
                 raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
             
             lab = {
@@ -851,19 +1181,16 @@ async def get_lab(lab_id: int, training_key: str = Query(...)):
                 "lab_content": result['lab_content'],
                 "lab_status": result['lab_status'],
                 "is_public": result['is_public'] if 'is_public' in result else 0,
-                "create_date": result['create_date'].strftime('%Y-%m-%d %H:%M') if result['create_date'] else ''
+                "create_date": format_kst(result['create_date'])
             }
-            print(f"[DEBUG] Returning lab data: {lab}")
             return lab
     except Exception as e:
-        print(f"[ERROR] Error getting lab {lab_id}: {e}")
         raise HTTPException(status_code=500, detail=f"랩 정보를 불러오는데 실패했습니다: {str(e)}")
     finally:
         conn.close()
 
 @app.post("/api/admin/labs")
 async def add_lab(data: dict = Body(...)):
-    print(f"[DEBUG] add_lab called: training_key={data.get('training_key')}, lab_name={data.get('lab_name')}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
@@ -873,15 +1200,12 @@ async def add_lab(data: dict = Body(...)):
             current_max_id = result['max_lab_id'] if result and result['max_lab_id'] is not None else 0
             next_lab_id = current_max_id + 1
             
-            print(f"[DEBUG] Current max lab_id for training_key {data.get('training_key')}: {current_max_id}")
-            print(f"[DEBUG] Next lab_id will be: {next_lab_id}")
-            
             # 해당 과정이 공개 과정인지 확인하여 is_public 값 결정
             cursor.execute("SELECT is_public FROM training WHERE training_key = %s", (data.get("training_key"),))
             training_result = cursor.fetchone()
             is_public = training_result['is_public'] if training_result else 0
             
-            now = datetime.now()
+            now = now_kst_naive()
             try:
                 cursor.execute(
                     "INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
@@ -895,25 +1219,43 @@ async def add_lab(data: dict = Body(...)):
                         now
                     )
                 )
-                print(f"[DEBUG] Lab added successfully with lab_id: {next_lab_id}")
             except Exception as e:
-                print(f"[ERROR] Lab insertion failed: {e}")
                 raise HTTPException(status_code=500, detail=f"랩 추가 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        log_monitoring_event(
+            training_key=data.get("training_key"),
+            event_type="lab_add",
+            event_category="lab",
+            target_type="lab",
+            target_id=str(next_lab_id),
+            target_name=data.get("lab_name"),
+            description=f"새로운 랩 '{data.get('lab_name')}'이(가) 추가되었습니다",
+            details={
+                "lab_id": next_lab_id,
+                "lab_name": data.get("lab_name"),
+                "lab_status": data.get("lab_status", 20),
+                "is_public": is_public
+            }
+        )
+        
         return {"message": "랩이 추가되었습니다.", "lab_id": next_lab_id}
     finally:
         conn.close()
 
 @app.put("/api/admin/labs/{lab_id}")
 async def update_lab(lab_id: int, data: dict = Body(...)):
-    print(f"[DEBUG] update_lab called: lab_id={lab_id}, data={data}")
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            # 먼저 해당 랩이 존재하는지 확인
-            cursor.execute("SELECT 1 FROM training_lab WHERE lab_id = %s", (lab_id,))
+            # 먼저 해당 랩이 존재하는지 확인하고 랩명 조회
+            cursor.execute("SELECT lab_name FROM training_lab WHERE lab_id = %s", (lab_id,))
             lab_exists = cursor.fetchone()
             if not lab_exists:
                 raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
+            
+            lab_name = data.get("lab_name", lab_exists['lab_name'])
             
             try:
                 # 상태만 업데이트하는 경우
@@ -944,10 +1286,27 @@ async def update_lab(lab_id: int, data: dict = Body(...)):
                 if cursor.rowcount == 0:
                     raise HTTPException(status_code=400, detail="랩을 수정할 수 없습니다. training_key가 일치하지 않을 수 있습니다.")
                 
-                print(f"[DEBUG] Lab update successful for lab_id={lab_id}, rows affected: {cursor.rowcount}")
             except Exception as e:
-                print(f"[ERROR] 랩 수정 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"랩 수정 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록  
+        log_monitoring_event(
+            training_key=data.get("training_key"),
+            event_type="lab_edit",
+            event_category="lab",
+            target_type="lab",
+            target_id=str(lab_id),
+            target_name=lab_name,
+            description=f"랩 '{lab_name}'이(가) 수정되었습니다",
+            details={
+                "lab_id": lab_id,
+                "lab_name": lab_name,
+                "lab_status": data.get("lab_status"),
+                "status_only": "lab_status" in data and len(data) == 2
+            }
+        )
+        
         return {"message": "랩이 수정되었습니다."}
     finally:
         conn.close()
@@ -957,10 +1316,32 @@ async def delete_lab(lab_id: int):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 삭제 전 랩 정보 조회
+            cursor.execute("SELECT training_key, lab_name FROM training_lab WHERE lab_id = %s", (lab_id,))
+            lab_info = cursor.fetchone()
+            
             try:
                 cursor.execute("DELETE FROM training_lab WHERE lab_id = %s", (lab_id,))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"랩 삭제 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        if lab_info:
+            log_monitoring_event(
+                training_key=lab_info['training_key'],
+                event_type="lab_delete",
+                event_category="lab",
+                target_type="lab",
+                target_id=str(lab_id),
+                target_name=lab_info['lab_name'],
+                description=f"랩 '{lab_info['lab_name']}'이(가) 삭제되었습니다",
+                details={
+                    "lab_id": lab_id,
+                    "lab_name": lab_info['lab_name']
+                }
+            )
+        
         return {"message": "랩이 삭제되었습니다."}
     finally:
         conn.close()
@@ -997,7 +1378,7 @@ async def portal_info(request: Request):
                     "lab_name": r['lab_name'],
                     "lab_content": r['lab_content'],
                     "lab_status": r['lab_status'],
-                    "create_date": r['create_date'].strftime('%Y-%m-%d %H:%M') if r['create_date'] else ''
+                    "create_date": format_kst(r['create_date'])
                 })
         return {
             "member_id": member_id,
@@ -1040,22 +1421,18 @@ async def portal_labs(request: Request):
                 """, (training_key,))
                 labs_result = cursor.fetchall()
                 
-                print(f"[DEBUG] portal_labs - 조회된 랩 개수: {len(labs_result)}")
                 
                 lab_list = []
                 for r in labs_result:
-                    print(f"[DEBUG] 랩 데이터: lab_id={r['lab_id']}, lab_name={r['lab_name']}, lab_status={r['lab_status']} (타입: {type(r['lab_status'])})")
                     lab_list.append({
                         "lab_id": r['lab_id'],
                         "lab_name": r['lab_name'],
                         "lab_content": r['lab_content'],
                         "lab_status": r['lab_status'],
-                        "create_date": r['create_date'].strftime('%Y-%m-%d %H:%M') if r['create_date'] else ''
+                        "create_date": format_kst(r['create_date'])
                     })
                 
-                print(f"[DEBUG] 최종 반환할 lab_list: {lab_list}")
             except Exception as e:
-                print(f"[ERROR] 랩 목록 조회 실패: {e}")
                 lab_list = []
             
         return {
@@ -1064,7 +1441,6 @@ async def portal_labs(request: Request):
             "training_status": training_result['training_status']
         }
     except Exception as e:
-        print(f"[ERROR] portal_labs 오류: {e}")
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
     finally:
         conn.close()
@@ -1096,7 +1472,6 @@ async def get_lab_user_counts(training_key: str = Query(...)):
                 })
             return lab_counts
     except Exception as e:
-        print(f"[ERROR] Error fetching lab user counts: {e}")
         raise HTTPException(status_code=500, detail=f"랩별 사용자 수를 불러오는데 실패했습니다: {str(e)}")
     finally:
         conn.close()
@@ -1137,7 +1512,6 @@ async def get_user_content_progress(
                 })
             return {"users": users_list, "contents": contents_list}
     except Exception as e:
-        print(f"[ERROR] Error fetching user content progress: {e}")
         raise HTTPException(status_code=500, detail=f"사용자 진도 데이터를 불러오는데 실패했습니다: {str(e)}")
     finally:
         conn.close()
@@ -1147,48 +1521,140 @@ async def log_content_view(log: ContentViewLog):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 파라미터 데이터 타입 검증 및 변환
+            try:
+                training_key = str(log.training_key)
+                member_id = str(log.member_id)
+                lab_id = int(log.lab_id)
+                content_id = int(log.content_id)
+            except (ValueError, TypeError) as e:
+                raise HTTPException(status_code=400, detail=f"파라미터 타입 오류: {str(e)}")
+            
             # member_id로 member_key 조회
-            cursor.execute("SELECT member_key FROM training_member WHERE training_key = %s AND member_id = %s", (log.training_key, log.member_id))
+            cursor.execute("SELECT member_key, member_id, member_name FROM training_member WHERE training_key = %s AND member_id = %s", (training_key, member_id))
             member_result = cursor.fetchone()
             if not member_result:
-                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+                # 하위 호환: 과거 프론트에서 member_name이 member_id로 전달되던 케이스 대응
+                cursor.execute(
+                    "SELECT member_key, member_id, member_name FROM training_member WHERE training_key = %s AND member_name = %s",
+                    (training_key, member_id)
+                )
+                member_result = cursor.fetchone()
+                if not member_result:
+                    # 디버그: 실제 데이터 확인
+                    cursor.execute("SELECT member_id FROM training_member WHERE training_key = %s LIMIT 1", (training_key,))
+                    sample = cursor.fetchone()
+                    raise HTTPException(status_code=404, detail=f"사용자를 찾을 수 없습니다. training_key={training_key}, member_id={member_id} (존재하는 사용자: {sample['member_id'] if sample else 'None'})")
+            
             member_key = member_result['member_key']
+            actual_member_id = member_result['member_id']
 
-            # 로그 기록이 이미 존재하는지 확인
-            cursor.execute("SELECT 1 FROM training_lab_log WHERE training_key = %s AND member_key = %s AND lab_id = %s AND content_id = %s", (log.training_key, member_key, log.lab_id, log.content_id))
+            # 모니터링 이벤트는 항상 기록 (실시간 모니터링 용도)
+            cursor.execute("SELECT member_name FROM training_member WHERE training_key = %s AND member_key = %s", (training_key, member_key))
+            member_info = cursor.fetchone()
+            cursor.execute("SELECT lab_content_subject FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s", (training_key, lab_id, content_id))
+            content_info = cursor.fetchone()
+            
+            if member_info and content_info:
+                log_monitoring_event(
+                    training_key=training_key,
+                    event_type="content_view",
+                    event_category="content",
+                    user_id=actual_member_id,
+                    user_name=member_info['member_name'],
+                    target_type="content",
+                    target_id=str(content_id),
+                    target_name=content_info['lab_content_subject'],
+                    description=f"{member_info['member_name']} 사용자가 '{content_info['lab_content_subject']}' 콘텐츠를 조회했습니다",
+                    details={
+                        "member_name": member_info['member_name'],
+                        "member_id": actual_member_id,
+                        "lab_id": lab_id,
+                        "content_id": content_id,
+                        "content_subject": content_info['lab_content_subject']
+                    }
+                )
+
+            # 로그 기록이 이미 존재하는지 확인 (중복 방지)
+            cursor.execute("SELECT 1 FROM training_lab_log WHERE training_key = %s AND member_key = %s AND lab_id = %s AND content_id = %s", (training_key, member_key, lab_id, content_id))
             existing_log = cursor.fetchone()
             if existing_log:
-                print(f"[DEBUG] 콘텐츠 조회 기록 이미 존재: training_key={log.training_key}, member_key={member_key}, lab_id={log.lab_id}, content_id={log.content_id}")
-                return {"message": "Content view already logged"}
-
-            # 로그 삽입 전 디버그 출력
-            print(f"[DEBUG] Inserting log: training_key={log.training_key}, member_key={member_key}, lab_id={log.lab_id}, content_id={log.content_id}, create_date={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                return {"message": "Content view already logged (monitoring recorded)"}
 
             # 로그 기록
             cursor.execute(
                 "INSERT INTO training_lab_log (training_key, member_key, lab_id, content_id, create_date) VALUES (%s, %s, %s, %s, %s)",
                 (
-                    log.training_key,
+                    training_key,
                     member_key,
-                    log.lab_id,
-                    log.content_id,
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    lab_id,
+                    content_id,
+                    now_kst_str('%Y-%m-%d %H:%M:%S')
                 )
             )
-            print("[DEBUG] Content view log inserted successfully.")
+            conn.commit()
+            
             return {"message": "Content view logged successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[ERROR] Error during content view logging: {e}")
-        raise HTTPException(status_code=500, detail=f"콘텐츠 조회 기록 실패: {str(e)}")
+        import traceback
+        error_msg = f"콘텐츠 조회 기록 실패: training_key={log.training_key}, member_id={log.member_id}, lab_id={log.lab_id}, content_id={log.content_id}, error={str(e)}"
+        print(f"ERROR: {error_msg}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=error_msg)
     finally:
         conn.close()
+
+@app.get("/api/admin/monitoring-events")
+async def get_monitoring_events(training_key: str = Query(...), limit: int = Query(50, le=100)):
+    """실시간 모니터링 이벤트 조회 (특정 과정)"""
+    try:
+        # 특정 training_key의 최근 이벤트만 필터링
+        events = [e for e in monitoring_events if e['training_key'] == training_key]
+        # 최신 제한 개수만 반환 (이미 시간순으로 정렬되어 있음)
+        events = events[-limit:] if len(events) > limit else events
+        print(f"📊 [모니터링 API] training_key={training_key}, 전체 큐={len(monitoring_events)}, 필터링={len(events)}, 반환={len(events)}")
+        return events
+    except Exception as e:
+        print(f"❌ [모니터링 API 오류] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+@app.get("/api/admin/all-monitoring-events")
+async def get_all_monitoring_events(limit: int = Query(50, le=100)):
+    """모든 모니터링 이벤트 조회"""
+    try:
+        # 모든 이벤트를 시간순으로 반환 (deque는 이미 시간순)
+        events = list(monitoring_events)
+        # 최근 limit 개수만 반환
+        events = events[-limit:] if len(events) > limit else events
+        print(f"📊 [전체 모니터링 API] 전체 큐={len(monitoring_events)}, 반환={len(events)}")
+        return events
+    except Exception as e:
+        print(f"❌ [전체 모니터링 API 오류] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return []
+
+@app.post("/api/admin/test-monitoring")
+async def test_monitoring(training_key: str = "TEST", member_name: str = "테스트사용자"):
+    """모니터링 테스트용 엔드포인트"""
+    log_monitoring_event(training_key, "content_viewed", {
+        "member_name": member_name,
+        "lab_id": 1,
+        "content_id": 1,
+        "content_subject": "테스트 콘텐츠"
+    })
+    return {"message": "테스트 이벤트가 추가되었습니다", "total_events": len(monitoring_events)}
 
 @app.get("/api/admin/lab_contents")
 async def get_lab_contents(training_key: str = Query(...), lab_id: int = Query(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date FROM training_lab_contents WHERE training_key = %s AND lab_id = %s ORDER BY content_id ASC", (training_key, lab_id))
+            cursor.execute("SELECT training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date FROM training_lab_contents WHERE training_key = %s AND lab_id = %s ORDER BY view_number ASC", (training_key, lab_id))
             result = cursor.fetchall()
             contents = [
                 {
@@ -1200,7 +1666,7 @@ async def get_lab_contents(training_key: str = Query(...), lab_id: int = Query(.
                     "lab_content": row['lab_content'],
                     "lab_content_type": row['lab_content_type'],
                     "lab_content_status": row['lab_content_status'],
-                    "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+                    "lab_content_create_date": format_kst(row['lab_content_create_date'])
                 }
                 for row in result
             ]
@@ -1224,7 +1690,7 @@ async def get_lab_content(content_id: int, training_key: str = Query(...), lab_i
                 "lab_content": row['lab_content'],
                 "lab_content_type": row['lab_content_type'],
                 "lab_content_status": row['lab_content_status'],
-                "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+                "lab_content_create_date": format_kst(row['lab_content_create_date'])
             }
     finally:
         conn.close()
@@ -1234,6 +1700,7 @@ async def add_lab_content(data: dict = Body(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            content_type = normalize_lab_content_type(data.get("lab_content_type"))
             # content_id는 lab별로 1부터 시작하는 일련번호
             cursor.execute("SELECT MAX(content_id) as max_content_id FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (data.get("training_key"), data.get("lab_id")))
             result_content_id = cursor.fetchone()
@@ -1244,7 +1711,7 @@ async def add_lab_content(data: dict = Body(...)):
             result_view_number = cursor.fetchone()
             next_view_number = 1 if not result_view_number or result_view_number['max_view_number'] is None else int(result_view_number['max_view_number']) + 1
 
-            now = datetime.now()
+            now = now_kst_naive()
             # 해당 랩이 공개 랩인지 확인하여 is_public 값 결정
             cursor.execute("SELECT is_public FROM training_lab WHERE training_key = %s AND lab_id = %s", (data.get("training_key"), data.get("lab_id")))
             lab_result = cursor.fetchone()
@@ -1260,7 +1727,7 @@ async def add_lab_content(data: dict = Body(...)):
                         next_view_number,
                         data.get("lab_content_subject"),
                         data.get("lab_content"),
-                        data.get("lab_content_type"),
+                        content_type,
                         data.get("lab_content_status"),
                         now,
                         is_public
@@ -1268,6 +1735,27 @@ async def add_lab_content(data: dict = Body(...)):
                 )
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"콘텐츠 추가 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        log_monitoring_event(
+            training_key=data.get("training_key"),
+            event_type="content_add",
+            event_category="content",
+            target_type="content",
+            target_id=str(next_content_id),
+            target_name=data.get("lab_content_subject"),
+            description=f"새로운 콘텐츠 '{data.get('lab_content_subject')}'이(가) 추가되었습니다",
+            details={
+                "lab_id": data.get("lab_id"),
+                "content_id": next_content_id,
+                "subject": data.get("lab_content_subject"),
+                "type": content_type,
+                "status": data.get("lab_content_status"),
+                "is_public": is_public
+            }
+        )
+        
         return {"message": "콘텐츠가 추가되었습니다."}
     finally:
         conn.close()
@@ -1277,6 +1765,7 @@ async def update_lab_content(content_id: int, data: dict = Body(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            content_type = normalize_lab_content_type(data.get("lab_content_type"))
             try:
                 cursor.execute(
                     "UPDATE training_lab_contents SET lab_content_subject=%s, lab_content=%s, lab_content_status=%s, lab_content_type=%s WHERE training_key=%s AND lab_id=%s AND content_id=%s",
@@ -1284,15 +1773,33 @@ async def update_lab_content(content_id: int, data: dict = Body(...)):
                         data.get("lab_content_subject"),
                         data.get("lab_content"),
                         data.get("lab_content_status"),
-                        data.get("lab_content_type"),
+                        content_type,
                         data.get("training_key"),
                         data.get("lab_id"),
                         content_id
                     )
                 )
             except Exception as e:
-                print(f"콘텐츠 수정 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"콘텐츠 수정 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        log_monitoring_event(
+            training_key=data.get("training_key"),
+            event_type="content_edit",
+            event_category="content",
+            target_type="content",
+            target_id=str(content_id),
+            target_name=data.get("lab_content_subject"),
+            description=f"콘텐츠 '{data.get('lab_content_subject')}'이(가) 수정되었습니다",
+            details={
+                "lab_id": data.get("lab_id"),
+                "content_id": content_id,
+                "subject": data.get("lab_content_subject"),
+                "status": data.get("lab_content_status")
+            }
+        )
+        
         return {"message": "콘텐츠가 수정되었습니다."}
     finally:
         conn.close()
@@ -1302,10 +1809,33 @@ async def delete_lab_content(content_id: int, training_key: str = Query(...), la
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 삭제 전 콘텐츠 정보 조회
+            cursor.execute("SELECT lab_content_subject FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s", (training_key, lab_id, content_id))
+            content_info = cursor.fetchone()
+            
             try:
                 cursor.execute("DELETE FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s", (training_key, lab_id, content_id))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"콘텐츠 삭제 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        if content_info:
+            log_monitoring_event(
+                training_key=training_key,
+                event_type="content_delete",
+                event_category="content",
+                target_type="content",
+                target_id=str(content_id),
+                target_name=content_info['lab_content_subject'],
+                description=f"콘텐츠 '{content_info['lab_content_subject']}'이(가) 삭제되었습니다",
+                details={
+                    "lab_id": lab_id,
+                    "content_id": content_id,
+                    "subject": content_info['lab_content_subject']
+                }
+            )
+        
         return {"message": "콘텐츠가 삭제되었습니다."}
     finally:
         conn.close()
@@ -1320,14 +1850,28 @@ async def update_lab_content_status(
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
+            # 상태 변경 전 콘텐츠 정보 조회
+            cursor.execute("SELECT lab_content_subject FROM training_lab_contents WHERE training_key=%s AND lab_id=%s AND content_id=%s", (training_key, lab_id, content_id))
+            content_info = cursor.fetchone()
+            
             try:
                 cursor.execute(
                     "UPDATE training_lab_contents SET lab_content_status=%s WHERE training_key=%s AND lab_id=%s AND content_id=%s",
                     (new_status, training_key, lab_id, content_id)
                 )
             except Exception as e:
-                print(f"콘텐츠 상태 업데이트 실패: {e}")
                 raise HTTPException(status_code=500, detail=f"콘텐츠 상태 업데이트 실패: {str(e)}")
+        conn.commit()
+        
+        # 모니터링 이벤트 기록
+        if content_info:
+            log_monitoring_event(training_key, "content_status_changed", {
+                "lab_id": lab_id,
+                "content_id": content_id,
+                "subject": content_info['lab_content_subject'],
+                "new_status": "Active" if new_status == 1 else "Deactive"
+            })
+        
         return {"message": "콘텐츠 상태가 성공적으로 업데이트되었습니다."}
     finally:
         conn.close()
@@ -1342,8 +1886,6 @@ async def move_lab_content(
     new_lab_id = data.get("new_lab_id")
     if not new_lab_id:
         raise HTTPException(status_code=400, detail="new_lab_id가 필요합니다.")
-    
-    print(f"move_lab_content called: content_id={content_id}, training_key={training_key}, current_lab_id={lab_id}, new_lab_id={new_lab_id}")
     
     conn = get_mysql_conn()
     try:
@@ -1375,9 +1917,9 @@ async def move_lab_content(
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="콘텐츠 이동에 실패했습니다.")
             
+            conn.commit()
             return {"message": "콘텐츠가 성공적으로 이동되었습니다."}
     except Exception as e:
-        print(f"콘텐츠 이동 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=f"콘텐츠 이동 중 오류가 발생했습니다: {str(e)}")
     finally:
         conn.close()
@@ -1404,7 +1946,6 @@ async def update_lab_content_order(
             total_count_result = cursor.fetchone()
             total_content_count = total_count_result['cnt'] if total_count_result and total_count_result['cnt'] is not None else 0
             effective_max_view_number_for_validation = max(1, total_content_count)
-            print(f"[DEBUG] total_content_count: {total_content_count}, content_id: {content_id}, old_view_number: {old_view_number}, effective_max_view_number_for_validation: {effective_max_view_number_for_validation}, new_view_number: {new_view_number}")
             if new_view_number < 1 or new_view_number > effective_max_view_number_for_validation:
                 raise HTTPException(status_code=400, detail=f"유효하지 않은 순서 번호입니다. 1에서 {effective_max_view_number_for_validation} 사이의 값을 입력해주세요.")
             if old_view_number == new_view_number:
@@ -1431,7 +1972,6 @@ async def update_lab_content_order(
             )
             return {"message": "콘텐츠 순서가 성공적으로 업데이트되었습니다."}
     except Exception as e:
-        print(f"콘텐츠 순서 변경 중 오류 발생: {str(e)}")
         raise HTTPException(status_code=500, detail=f"콘텐츠 순서 변경 중 오류가 발생했습니다: {str(e)}")
     finally:
         conn.close()
@@ -1480,23 +2020,18 @@ async def get_public_labs(training_key: str = Query(...)):
                 """, (training_key,))
                 labs_result = cursor.fetchall()
                 
-                print(f"[DEBUG] public_labs - 조회된 공개 랩 개수: {len(labs_result)}")
-                
                 lab_list = []
                 for r in labs_result:
-                    print(f"[DEBUG] 공개 랩 데이터: lab_id={r['lab_id']}, lab_name={r['lab_name']}, lab_status={r['lab_status']}")
                     lab_list.append({
                         "lab_id": r['lab_id'],
                         "lab_name": r['lab_name'],
                         "lab_content": r['lab_content'],
                         "lab_status": r['lab_status'],
-                        "create_date": r['create_date'].strftime('%Y-%m-%d %H:%M') if r['create_date'] else '',
+                        "create_date": format_kst(r['create_date']),
                         "is_public": r['is_public']
                     })
                 
-                print(f"[DEBUG] 최종 반환할 공개 lab_list: {lab_list}")
             except Exception as e:
-                print(f"[ERROR] 공개 랩 목록 조회 실패: {e}")
                 lab_list = []
             
         return {
@@ -1506,7 +2041,6 @@ async def get_public_labs(training_key: str = Query(...)):
             "is_public": training_result['is_public']
         }
     except Exception as e:
-        print(f"[ERROR] public_labs 오류: {e}")
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
     finally:
         conn.close()
@@ -1544,13 +2078,12 @@ async def get_public_lab_contents(training_key: str = Query(...), lab_id: int = 
                     "lab_content": row['lab_content'],
                     "lab_content_type": row['lab_content_type'],
                     "lab_content_status": row['lab_content_status'],
-                    "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+                    "lab_content_create_date": format_kst(row['lab_content_create_date'])
                 }
                 for row in result
             ]
             return contents
     except Exception as e:
-        print(f"[ERROR] 공개 랩 콘텐츠 조회 실패: {e}")
         raise HTTPException(status_code=500, detail=f"콘텐츠 조회 실패: {str(e)}")
     finally:
         conn.close()
@@ -1581,13 +2114,229 @@ async def get_public_lab_content(content_id: int, training_key: str = Query(...)
                 "lab_content": row['lab_content'],
                 "lab_content_type": row['lab_content_type'],
                 "lab_content_status": row['lab_content_status'],
-                "lab_content_create_date": row['lab_content_create_date'].strftime('%Y-%m-%d %H:%M') if row['lab_content_create_date'] else ''
+                "lab_content_create_date": format_kst(row['lab_content_create_date'])
             }
     except Exception as e:
-        print(f"[ERROR] 공개 랩 콘텐츠 상세 조회 실패: {e}")
         raise HTTPException(status_code=500, detail=f"콘텐츠 조회 실패: {str(e)}")
     finally:
         conn.close()
 
+# SSE (Server-Sent Events) 엔드포인트
+@app.get("/api/admin/monitoring/stream")
+async def monitoring_stream(training_key: str = Query(...)):
+    """실시간 모니터링 이벤트 스트림"""
+    async def event_generator():
+        try:
+            # 초기 통계 전송
+            conn = get_mysql_conn()
+            try:
+                with conn.cursor() as cursor:
+                    # 전체 사용자 수
+                    cursor.execute("SELECT COUNT(*) as cnt FROM training_member WHERE training_key = %s", (training_key,))
+                    user_count_result = cursor.fetchone()
+                    user_count = user_count_result['cnt'] if user_count_result else 0
+                    
+                    # 전체 랩 수
+                    cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s", (training_key,))
+                    lab_count_result = cursor.fetchone()
+                    lab_count = lab_count_result['cnt'] if lab_count_result else 0
+                    
+                    # 전체 콘텐츠 수
+                    cursor.execute("""
+                        SELECT COUNT(*) as cnt FROM training_lab_contents tlc
+                        JOIN training_lab tl ON tlc.lab_id = tl.lab_id
+                        WHERE tl.training_key = %s
+                    """, (training_key,))
+                    content_count_result = cursor.fetchone()
+                    content_count = content_count_result['cnt'] if content_count_result else 0
+                    
+                    initial_data = {
+                        "type": "stats",
+                        "data": {
+                            "user_count": user_count,
+                            "lab_count": lab_count,
+                            "content_count": content_count
+                        }
+                    }
+                    yield f"data: {json.dumps(initial_data)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            finally:
+                conn.close()
+            
+            # 최근 이벤트 전송 (최근 10개만)
+            recent_events = [e for e in list(monitoring_events) if e.get('training_key') == training_key][-10:]
+            for event in recent_events:
+                yield f"data: {json.dumps(event)}\n\n"
+            last_event_index = len(monitoring_events)
+            
+            # 새 이벤트 체크 루프
+            while True:
+                await asyncio.sleep(2)  # 2초마다 체크
+                
+                # 새 이벤트 확인
+                current_events = list(monitoring_events)
+                if len(current_events) > last_event_index:
+                    new_events = current_events[last_event_index:]
+                    for event in new_events:
+                        if event.get('training_key') == training_key:
+                            yield f"data: {json.dumps(event)}\n\n"
+                    last_event_index = len(current_events)
+                else:
+                    # Keep-alive
+                    yield ": keep-alive\n\n"
+                
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Stream error: {str(e)}'})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+# 폴링 방식 모니터링 엔드포인트
+@app.get("/api/admin/monitoring/events")
+async def get_monitoring_events(
+    training_key: str = Query(...),
+    limit: int = Query(50, ge=1, le=500),
+    since_id: Optional[int] = Query(None),
+    category: Optional[str] = Query(None)
+):
+    """
+    폴링 방식으로 이벤트 로그를 조회하는 API
+    
+    Parameters:
+    - training_key: 과정 키
+    - limit: 가져올 이벤트 수 (기본값: 50, 최대: 500)
+    - since_id: 이 ID 이후의 이벤트만 조회 (증분 폴링용)
+    - category: 이벤트 카테고리 필터 (auth, user, lab, content 등)
+    """
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 통계 정보 조회
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_member WHERE training_key = %s", (training_key,))
+            user_count_result = cursor.fetchone()
+            user_count = user_count_result['cnt'] if user_count_result else 0
+            
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s", (training_key,))
+            lab_count_result = cursor.fetchone()
+            lab_count = lab_count_result['cnt'] if lab_count_result else 0
+            
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM training_lab_contents tlc
+                JOIN training_lab tl ON tlc.lab_id = tl.lab_id
+                WHERE tl.training_key = %s
+            """, (training_key,))
+            content_count_result = cursor.fetchone()
+            content_count = content_count_result['cnt'] if content_count_result else 0
+            
+            # 이벤트 로그 조회
+            query = """
+                SELECT id, training_key, event_type, event_category, user_id, user_name,
+                       target_type, target_id, target_name, description, details, create_date
+                FROM event_logs
+                                WHERE training_key = %s
+                                    AND create_date >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            """
+            params = [training_key]
+            
+            if since_id:
+                query += " AND id > %s"
+                params.append(since_id)
+            
+            if category:
+                query += " AND event_category = %s"
+                params.append(category)
+            
+            query += " ORDER BY id DESC LIMIT %s"
+            params.append(limit)
+            
+            cursor.execute(query, params)
+            events = cursor.fetchall()
+            
+            # JSON 문자열을 파싱
+            for event in events:
+                if event.get('details') and isinstance(event['details'], str):
+                    try:
+                        event['details'] = json.loads(event['details'])
+                    except:
+                        pass
+                event['create_date'] = format_kst(event['create_date'], '%Y-%m-%d %H:%M:%S')
+            
+            return {
+                "success": True,
+                "stats": {
+                    "user_count": user_count,
+                    "lab_count": lab_count,
+                    "content_count": content_count
+                },
+                "events": events,
+                "last_id": events[0]['id'] if events else None,
+                "count": len(events)
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이벤트 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/admin/monitoring/stats")
+async def get_monitoring_stats(training_key: str = Query(...)):
+    """모니터링 통계 정보 조회"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 사용자 수
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_member WHERE training_key = %s", (training_key,))
+            user_count = cursor.fetchone()['cnt']
+            
+            # 랩 수
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s", (training_key,))
+            lab_count = cursor.fetchone()['cnt']
+            
+            # 콘텐츠 수
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM training_lab_contents tlc
+                JOIN training_lab tl ON tlc.lab_id = tl.lab_id
+                WHERE tl.training_key = %s
+            """, (training_key,))
+            content_count = cursor.fetchone()['cnt']
+            
+            # 오늘의 이벤트 수
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM event_logs
+                WHERE training_key = %s AND DATE(create_date) = CURDATE()
+            """, (training_key,))
+            today_events = cursor.fetchone()['cnt']
+            
+            # 카테고리별 이벤트 수 (최근 24시간)
+            cursor.execute("""
+                SELECT event_category, COUNT(*) as cnt
+                FROM event_logs
+                WHERE training_key = %s AND create_date >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                GROUP BY event_category
+            """, (training_key,))
+            category_counts = {row['event_category']: row['cnt'] for row in cursor.fetchall()}
+            
+            return {
+                "user_count": user_count,
+                "lab_count": lab_count,
+                "content_count": content_count,
+                "today_events": today_events,
+                "category_counts": category_counts,
+                "timestamp": now_kst().isoformat()
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"통계 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

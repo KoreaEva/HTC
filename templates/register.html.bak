@@ -3,17 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>회원 가입</title>
     <style>
-        :root {
-            --bg: #f7f8fb;
-            --panel: #ffffff;
-            --muted: #6b7280;
-            --accent: #2563eb;
-            --text: #1f2937;
-            --border: #e5e7eb;
-            --hover: #f1f5f9;
-        }
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
         .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
         
@@ -43,14 +34,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>Register</h1>
+        <h1>회원 가입</h1>
         <div class="section">
             <form id="registerForm">
                 <div class="form-group">
                     <label for="trainingKey">트레이닝 키</label>
                     <input type="text" id="trainingKey" required>
                 </div>
-                <button type="button" id="checkTrainingKeyBtn">Check Training Key</button>
+                <button type="button" id="checkTrainingKeyBtn">트레이닝 키 확인</button>
                 <div id="trainingKeyError" class="error"></div>
 
                 <div id="registerFields" style="display:none; margin-top:20px;">
@@ -58,32 +49,13 @@
                         <label for="registerName">이름</label>
                         <input type="text" id="registerName" required>
                     </div>
-                    <button type="submit">Register</button>
+                    <button type="submit">회원 가입</button>
                     <div id="registerError" class="error"></div>
                 </div>
             </form>
-            
-            <!-- 가입 성공 화면 -->
-            <div id="registerResult" style="display:none; margin-top:20px; text-align:center;">
-                <h2 style="color:#4CAF50; margin-bottom:20px;">회원가입 성공!</h2>
-                <p style="font-size:18px; color:var(--text); margin-bottom:8px;">
-                    이름: <span id="resultName" style="font-weight:600; color:var(--accent); font-size:28px;"></span>
-                </p>
-                <p style="font-size:16px; color:var(--muted); margin-bottom:20px;">
-                    일련번호:
-                </p>
-                <div style="font-size:72px; font-weight:bold; color:#ff0000; margin:32px 0; line-height:1.2;">
-                    <span id="resultOrder"></span>
-                </div>
-                <div style="margin-top:30px; padding:15px; background-color:#e3f2fd; border-radius:8px; border:1px solid #2196f3;">
-                    <p style="font-size:16px; color:#1976d2; margin:0;">
-                        로그인할 때는 <strong style="font-size:20px; color:#d32f2f;" id="loginName"></strong> 으로 로그인하세요
-                    </p>
-                </div>
-            </div>
-            
-            <div id="goLoginDiv" style="display:none; margin-top:20px; text-align:center;">
-                <button onclick="window.location.href='/'">To Login Page</button>
+            <div id="registerResult" style="margin-top:15px;"></div>
+            <div id="goLoginDiv" style="display:none; margin-top:20px;">
+                <button onclick="window.location.href='/'">로그인 페이지로</button>
             </div>
         </div>
     </div>
@@ -125,10 +97,10 @@
             const trainingKey = trainingKeyInput.value.trim();
             const memberName = document.getElementById('registerName').value;
             const errorDiv = document.getElementById('registerError');
-            const registerResult = document.getElementById('registerResult');
+            const resultDiv = document.getElementById('registerResult');
             const goLoginDiv = document.getElementById('goLoginDiv');
             errorDiv.textContent = '';
-            registerResult.style.display = 'none';
+            resultDiv.textContent = '';
             goLoginDiv.style.display = 'none';
             if (!trainingKey) {
                 trainingKeyError.textContent = '트레이닝 키를 입력해 주세요.';
@@ -147,51 +119,13 @@
                 const data = await response.json();
                 if (response.ok) {
                     if (data.warning) {
-                        resultDiv.innerHTML = '<div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 15px; margin-bottom: 15px;"><h3 style="color: #856404; margin-top: 0;">⚠️ 이름 중복 경고</h3><p style="color: #856404; margin: 8px 0;">입력하신 이름 <strong>' + memberName + '</strong>은(는) 이미 존재합니다.</p><p style="color: #856404; margin: 8px 0;">다음 이름으로 등록됩니다: <strong style="color: var(--accent);">' + data.registered_name + '</strong></p><p style="color: #856404; margin-bottom: 0;">이 이름으로 가입하시겠습니까?</p></div><button type="button" onclick="finalizeRegistration(\'' + data.member_id + '\', \'' + data.name + '\', ' + data.order + ', \'' + data.registered_name + '\')">Confirm</button><button type="button" onclick="resetRegistration()" style="background-color: #6c757d; margin-left: 10px;">Cancel</button>';
-                    } else {
-                        finalizeRegistration(data.member_id, data.name, data.order, data.registered_name);
-                    }
-                } else {
+                        resultDiv.innerHTML = '<div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 15px; margin-bottom: 15px;"><h3 style="color: #856404; margin-top: 0;">⚠️ 이름 중복 경고</h3><p style="color: #856404; margin: 8px 0;">입력하신 이름 <strong>' + memberName + '</strong>은(는) 이미 존재합니다.</p><p style="color: #856404; margin: 8px 0;">다음 이름으로 등록됩니다: <strong style="color: var(--accent);">' + data.name + '</strong></p><p style="color: #856404; margin-bottom: 0;">이 이름으로 가입하시겠습니까?</p></div><button type="button" onclick="finalizeRegistration(\'' + data.name + '\')">확인</button><button type="button" onclick="resetRegistration()" style="background-color: #6c757d; margin-left: 10px;">취소</button>';\n                    } else {\n                        resultDiv.innerHTML = '<b>회원가입 성공!</b><br>이름: ' + data.name;\n                        goLoginDiv.style.display = '';\n                    }\n                } else {
                     errorDiv.textContent = data.detail;
                 }
             } catch (error) {
                 errorDiv.textContent = '서버 오류가 발생했습니다.';
             }
         });
-        
-        function finalizeRegistration(memberId, name, order, registeredName) {
-            const registerResult = document.getElementById('registerResult');
-            const resultName = document.getElementById('resultName');
-            const resultOrder = document.getElementById('resultOrder');
-            const loginName = document.getElementById('loginName');
-            const goLoginDiv = document.getElementById('goLoginDiv');
-            
-            // 첫 번째 줄: 이름만
-            resultName.textContent = name;
-            
-            // 두 번째 줄: 숫자(일련번호)만
-            resultOrder.textContent = order;
-            
-            // 로그인 시 사용할 이름
-            loginName.textContent = registeredName;
-            
-            registerResult.style.display = 'block';
-            goLoginDiv.style.display = 'block';
-        }
-        
-        function resetRegistration() {
-            const registerResult = document.getElementById('registerResult');
-            const registerFields = document.getElementById('registerFields');
-            const registerError = document.getElementById('registerError');
-            const goLoginDiv = document.getElementById('goLoginDiv');
-            registerResult.style.display = 'none';
-            goLoginDiv.style.display = 'none';
-            registerFields.style.display = 'none';
-            registerError.textContent = '';
-            document.getElementById('registerName').value = '';
-            document.getElementById('trainingKey').value = '';
-            document.getElementById('trainingKeyError').textContent = '';
-        }
     </script>
 </body>
 </html> 
