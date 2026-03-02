@@ -420,6 +420,10 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+        /* 마크다운 콘텐츠는 white-space 기본값 사용 */
+        .preview-body .markdown-content {
+            white-space: normal;
+        }
         .preview-code {
             margin: 0;
             white-space: pre-wrap;
@@ -608,6 +612,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 </head>
 <body>
     <!-- 페이지 로딩 상태 표시 -->
@@ -836,6 +841,31 @@
         </div>
     </div>
 
+    <!-- 랩 복사 모달 -->
+    <div id="copyLabModal" class="modal">
+        <div class="modal-content">
+            <h2>랩을 다른 과정으로 복사</h2>
+            <form id="copyLabForm">
+                <input type="hidden" id="copySourceLabId">
+                <div class="form-group">
+                    <label>원본 랩:</label>
+                    <input type="text" id="copySourceLabName" disabled style="background: #f0f0f0;">
+                </div>
+                <div class="form-group">
+                    <label for="copyTargetTrainingKey">복사할 과정:</label>
+                    <select id="copyTargetTrainingKey" required>
+                        <option value="">과정을 선택하세요</option>
+                        <!-- 과정 목록이 여기에 동적으로 추가됩니다 -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">Copy</button>
+                    <button type="button" class="button secondary" onclick="closeModal('copyLabModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         // ===== 전역 변수 선언 =====
         
@@ -1010,6 +1040,7 @@
                             <td>
                                 <div class="icon-actions">
                                     <button class="icon-btn" onclick="editLab(${lab.lab_id})" title="수정" aria-label="수정">✏️</button>
+                                    <button class="icon-btn" onclick="copyLab(${lab.lab_id}, '${labNameEscaped}')" title="다른 과정으로 복사" aria-label="복사">📋</button>
                                     <button class="icon-btn delete" onclick="deleteLab(${lab.lab_id})" title="삭제" aria-label="삭제">🗑️</button>
                                 </div>
                             </td>
@@ -1091,6 +1122,11 @@
                 document.getElementById('contentId').value = '';
                 document.getElementById('autoDetectedLabel').textContent = '';
                 manualTypeOverride = false; // 자동 감지 플래그 리셋
+            }
+            if (modalId === 'copyLabModal') {
+                document.getElementById('copyLabForm').reset();
+                document.getElementById('copySourceLabId').value = '';
+                document.getElementById('copySourceLabName').value = '';
             }
         }
         // 랩 수정 모달 열기
@@ -1221,7 +1257,7 @@
          // 랩 삭제
          async function deleteLab(labId) {
              if (confirm('정말로 이 랩을 삭제하시겠습니까?')) {
-                 const res = await fetch(`/api/admin/labs/${labId}`, { method: 'DELETE' });
+                 const res = await fetch(`/api/admin/labs/${labId}?training_key=${encodeURIComponent(trainingKey)}`, { method: 'DELETE' });
                  if (res.ok) loadLabs();
                  else alert('랩 삭제에 실패했습니다.');
              }
@@ -1469,19 +1505,47 @@
                     previewEl.innerHTML = '<div class="preview-empty">마크다운을 로드 중입니다...</div>';
                     
                     fetch(`/api/proxy-markdown?url=${encodeURIComponent(normalized)}`)
-                        .then(response => response.text())
-                        .then(html => {
-                            previewEl.innerHTML = `
-                                <div style="margin-bottom: 12px;">
-                                    <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(subject || '제목 없음')}</div>
-                                    <div style="color: #4b5563; font-size: 12px;">유형: 웹 마크다운 URL</div>
-                                </div>
-                                <div style="border-top: 1px solid #ddd; padding-top: 12px; margin-top: 12px;">
-                                    <div class="markdown-content" style="line-height: 1.6;">
-                                        ${html}
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            }
+                            return response.text();
+                        })
+                        .then(markdownText => {
+                            // marked.js를 사용하여 마크다운을 HTML로 변환
+                            if (typeof marked !== 'undefined') {
+                                marked.setOptions({
+                                    breaks: true,
+                                    gfm: true,
+                                    headerIds: true,
+                                    mangle: false
+                                });
+                                
+                                const html = marked.parse(markdownText);
+                                previewEl.innerHTML = `
+                                    <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                                        <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(subject || '제목 없음')}</div>
+                                        <div style="color: #6b7280; font-size: 12px;">유형: 웹 마크다운 URL</div>
+                                        <div style="color: #9ca3af; font-size: 11px; margin-top: 2px;">${escapeHtml(normalized)}</div>
                                     </div>
-                                </div>
-                            `;
+                                    <div class="markdown-content">${html}</div>
+                                `;
+                                
+                                // 코드 블록에 문법 강조 적용
+                                if (window.hljs) {
+                                    previewEl.querySelectorAll('pre code').forEach((block) => {
+                                        hljs.highlightElement(block);
+                                    });
+                                }
+                            } else {
+                                previewEl.innerHTML = `
+                                    <div style="margin-bottom: 12px;">
+                                        <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(subject || '제목 없음')}</div>
+                                        <div style="color: #4b5563; font-size: 12px;">유형: 웹 마크다운 URL (원본)</div>
+                                    </div>
+                                    <pre style="white-space: pre-wrap; word-break: break-word;">${escapeHtml(markdownText)}</pre>
+                                `;
+                            }
                         })
                         .catch(error => {
                             previewEl.innerHTML = `<div class="preview-empty" style="color: red;">마크다운 로드 실패: ${escapeHtml(error.message)}</div>`;
@@ -1538,14 +1602,46 @@
             }
 
             if (uiType === 'markdown') {
-                let markdownHtml = escapeHtml(body)
-                    .replace(/^###\s(.+)$/gm, '<h3>$1</h3>')
-                    .replace(/^##\s(.+)$/gm, '<h2>$1</h2>')
-                    .replace(/^#\s(.+)$/gm, '<h1>$1</h1>')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/`([^`]+)`/g, '<code>$1</code>')
-                    .replace(/\n/g, '<br>');
-                previewEl.innerHTML = markdownHtml;
+                try {
+                    // marked.js를 사용하여 마크다운 렌더링
+                    if (typeof marked !== 'undefined') {
+                        // marked 옵션 설정
+                        marked.setOptions({
+                            breaks: true,
+                            gfm: true,
+                            headerIds: true,
+                            mangle: false
+                        });
+                        
+                        const markdownHtml = marked.parse(body);
+                        previewEl.innerHTML = `
+                            <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(subject || '제목 없음')}</div>
+                                <div style="color: #6b7280; font-size: 12px;">유형: 마크다운</div>
+                            </div>
+                            <div class="markdown-content">${markdownHtml}</div>
+                        `;
+                        
+                        // 코드 블록에 문법 강조 적용
+                        if (window.hljs) {
+                            previewEl.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
+                        }
+                    } else {
+                        // marked.js가 로드되지 않은 경우 기본 렌더링
+                        let markdownHtml = escapeHtml(body)
+                            .replace(/^###\s(.+)$/gm, '<h3>$1</h3>')
+                            .replace(/^##\s(.+)$/gm, '<h2>$1</h2>')
+                            .replace(/^#\s(.+)$/gm, '<h1>$1</h1>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/`([^`]+)`/g, '<code>$1</code>')
+                            .replace(/\n/g, '<br>');
+                        previewEl.innerHTML = `<div class="markdown-content">${markdownHtml}</div>`;
+                    }
+                } catch (error) {
+                    previewEl.innerHTML = `<div class="preview-empty" style="color: red;">마크다운 렌더링 오류: ${escapeHtml(error.message)}</div>`;
+                }
                 return;
             }
 
@@ -1944,6 +2040,78 @@
                 alert('콘텐츠 이동 중 오류가 발생했습니다.');
             }
         };
+
+        // 랩 복사 모달 열기
+        async function copyLab(labId, labName) {
+            try {
+                // 과정 목록 가져오기
+                const response = await fetch('/api/admin/courses');
+                if (!response.ok) {
+                    throw new Error('과정 목록을 불러오는데 실패했습니다.');
+                }
+                const courses = await response.json();
+                
+                // 현재 과정을 제외한 과정 목록을 드롭다운에 추가
+                const select = document.getElementById('copyTargetTrainingKey');
+                select.innerHTML = '<option value="">과정을 선택하세요</option>';
+                
+                courses.forEach(course => {
+                    // 현재 과정은 제외
+                    if (course.training_key !== trainingKey) {
+                        const option = document.createElement('option');
+                        option.value = course.training_key;
+                        option.textContent = `${course.course_name} (${course.training_key})`;
+                        select.appendChild(option);
+                    }
+                });
+                
+                // 모달 정보 설정
+                document.getElementById('copySourceLabId').value = labId;
+                document.getElementById('copySourceLabName').value = labName;
+                
+                // 모달 표시
+                document.getElementById('copyLabModal').style.display = 'flex';
+            } catch (error) {
+                alert('과정 목록을 불러오는데 실패했습니다: ' + error.message);
+            }
+        }
+
+        // 랩 복사 폼 제출
+        document.getElementById('copyLabForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const labId = document.getElementById('copySourceLabId').value;
+            const targetTrainingKey = document.getElementById('copyTargetTrainingKey').value;
+            
+            if (!targetTrainingKey) {
+                alert('복사할 과정을 선택해주세요.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/labs/${labId}/copy?source_training_key=${encodeURIComponent(trainingKey)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        target_training_key: targetTrainingKey
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`랩이 성공적으로 복사되었습니다!\n- 랩 이름: ${result.lab_name}\n- 새 랩 ID: ${result.new_lab_id}\n- 복사된 콘텐츠: ${result.copied_contents}개`);
+                    closeModal('copyLabModal');
+                } else {
+                    const error = await response.json();
+                    alert(`복사 실패: ${error.detail}`);
+                }
+            } catch (error) {
+                alert('랩 복사 중 오류가 발생했습니다: ' + error.message);
+            }
+        });
+
         // 사용자 목록 로드
         async function loadUsers() {
             try {

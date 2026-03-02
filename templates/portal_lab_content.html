@@ -414,11 +414,19 @@
                         if (res.ok) {
                             const md = await res.text();
                             bodyDiv.innerHTML = marked.parse(md);
+                            
+                            // 코드 블록에 문법 강조 적용
+                            if (window.hljs) {
+                                bodyDiv.querySelectorAll('pre code').forEach((block) => {
+                                    hljs.highlightElement(block);
+                                });
+                            }
                         } else {
-                            bodyDiv.innerHTML = '<span style="color:red">마크다운 콘텐츠를 불러올 수 없습니다.</span>';
+                            const errorText = await res.text();
+                            bodyDiv.innerHTML = `<span style="color:red">마크다운 콘텐츠를 불러올 수 없습니다: ${errorText}</span>`;
                         }
                     } catch (e) {
-                        bodyDiv.innerHTML = '<span style="color:red">마크다운 콘텐츠를 불러오는 중 오류 발생.</span>';
+                        bodyDiv.innerHTML = `<span style="color:red">마크다운 콘텐츠를 불러오는 중 오류 발생: ${e.message}</span>`;
                     }
                 } else {
                     bodyDiv.innerHTML = '<span style="color:red">유효하지 않은 마크다운 URL입니다.</span>';
@@ -426,6 +434,13 @@
             } else if (content.lab_content_type === 2) {
                 // 타입 2: Text(Markdown) 처리 - 직접 입력된 마크다운 텍스트
                 bodyDiv.innerHTML = marked.parse(contentText);
+                
+                // 코드 블록에 문법 강조 적용
+                if (window.hljs) {
+                    bodyDiv.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                }
             } else if (content.lab_content_type === 1) {
                 // 타입 1: 웹페이지 링크 버튼
                 if (contentText.startsWith('http://') || contentText.startsWith('https://')) {

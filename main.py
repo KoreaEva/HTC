@@ -1249,11 +1249,15 @@ async def update_lab(lab_id: int, data: dict = Body(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            # 먼저 해당 랩이 존재하는지 확인하고 랩명 조회
-            cursor.execute("SELECT lab_name FROM training_lab WHERE lab_id = %s", (lab_id,))
+            # 먼저 해당 랩이 존재하는지 확인하고 랩명 조회 (training_key와 lab_id로 정확히 조회)
+            training_key = data.get("training_key")
+            if not training_key:
+                raise HTTPException(status_code=400, detail="training_key가 필요합니다.")
+            
+            cursor.execute("SELECT lab_name FROM training_lab WHERE training_key = %s AND lab_id = %s", (training_key, lab_id))
             lab_exists = cursor.fetchone()
             if not lab_exists:
-                raise HTTPException(status_code=404, detail=f"랩 ID {lab_id}를 찾을 수 없습니다.")
+                raise HTTPException(status_code=404, detail=f"해당 과정에서 랩 ID {lab_id}를 찾을 수 없습니다.")
             
             lab_name = data.get("lab_name", lab_exists['lab_name'])
             
@@ -1312,16 +1316,19 @@ async def update_lab(lab_id: int, data: dict = Body(...)):
         conn.close()
 
 @app.delete("/api/admin/labs/{lab_id}")
-async def delete_lab(lab_id: int):
+async def delete_lab(lab_id: int, training_key: str = Query(...)):
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            # 삭제 전 랩 정보 조회
-            cursor.execute("SELECT training_key, lab_name FROM training_lab WHERE lab_id = %s", (lab_id,))
+            # 삭제 전 랩 정보 조회 (training_key와 lab_id로 정확히 조회)
+            cursor.execute("SELECT training_key, lab_name FROM training_lab WHERE training_key = %s AND lab_id = %s", (training_key, lab_id))
             lab_info = cursor.fetchone()
             
+            if not lab_info:
+                raise HTTPException(status_code=404, detail="해당 과정에서 랩을 찾을 수 없습니다.")
+            
             try:
-                cursor.execute("DELETE FROM training_lab WHERE lab_id = %s", (lab_id,))
+                cursor.execute("DELETE FROM training_lab WHERE training_key = %s AND lab_id = %s", (training_key, lab_id))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"랩 삭제 실패: {str(e)}")
         conn.commit()
@@ -1345,6 +1352,116 @@ async def delete_lab(lab_id: int):
         return {"message": "랩이 삭제되었습니다."}
     finally:
         conn.close()
+
+@app.post("/api/admin/labs/{lab_id}/copy")
+async def copy_lab(lab_id: int, source_training_key: str = Query(...), data: dict = Body(...)):
+    """기존 랩을 다른 과정으로 복사하는 API"""
+    target_training_key = data.get("target_training_key")
+    
+    if not target_training_key:
+        raise HTTPException(status_code=400, detail="복사할 과정(target_training_key)이 필요합니다.")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 원본 랩 정보 조회 (training_key와 lab_id로 정확히 조회)
+            cursor.execute("SELECT * FROM training_lab WHERE training_key = %s AND lab_id = %s", (source_training_key, lab_id))
+            source_lab = cursor.fetchone()
+            
+            if not source_lab:
+                raise HTTPException(status_code=404, detail="복사할 랩을 찾을 수 없습니다.")
+            
+            # 2. 대상 과정이 존재하는지 확인
+            cursor.execute("SELECT is_public FROM training WHERE training_key = %s", (target_training_key,))
+            target_course = cursor.fetchone()
+            
+            if not target_course:
+                raise HTTPException(status_code=404, detail="대상 과정을 찾을 수 없습니다.")
+            
+            # 3. 대상 과정에서 새로운 lab_id 생성
+            cursor.execute("SELECT MAX(lab_id) as max_lab_id FROM training_lab WHERE training_key = %s", (target_training_key,))
+            result = cursor.fetchone()
+            new_lab_id = 1 if not result or result['max_lab_id'] is None else int(result['max_lab_id']) + 1
+            
+            now = now_kst_naive()
+            target_is_public = target_course['is_public']
+            
+            # 4. 랩 복사
+            cursor.execute(
+                "INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (
+                    new_lab_id,
+                    target_training_key,
+                    source_lab['lab_name'],
+                    source_lab['lab_content'],
+                    source_lab['lab_status'],
+                    target_is_public,
+                    now
+                )
+            )
+            
+            # 5. 원본 랩의 콘텐츠들 복사 (정확한 training_key와 lab_id 사용)
+            cursor.execute("SELECT * FROM training_lab_contents WHERE training_key = %s AND lab_id = %s ORDER BY view_number", (source_training_key, lab_id))
+            source_contents = cursor.fetchall()
+            
+            copied_contents = 0
+            for source_content in source_contents:
+                # 새로운 content_id 생성
+                cursor.execute("SELECT MAX(content_id) as max_content_id FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (target_training_key, new_lab_id))
+                result = cursor.fetchone()
+                new_content_id = 1 if not result or result['max_content_id'] is None else int(result['max_content_id']) + 1
+                
+                # 콘텐츠 복사
+                cursor.execute(
+                    "INSERT INTO training_lab_contents (training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date, is_public) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (
+                        target_training_key,
+                        new_lab_id,
+                        new_content_id,
+                        source_content['view_number'],
+                        source_content['lab_content_subject'],
+                        source_content['lab_content'],
+                        source_content['lab_content_type'],
+                        source_content['lab_content_status'],
+                        now,
+                        target_is_public
+                    )
+                )
+                copied_contents += 1
+            
+            # 모니터링 이벤트 기록
+            log_monitoring_event(
+                training_key=target_training_key,
+                event_type="lab_copy",
+                event_category="lab",
+                target_type="lab",
+                target_id=str(new_lab_id),
+                target_name=source_lab['lab_name'],
+                description=f"랩 '{source_lab['lab_name']}'이(가) 과정({source_training_key})에서 과정({target_training_key})으로 복사되었습니다",
+                details={
+                    "source_training_key": source_training_key,
+                    "source_lab_id": lab_id,
+                    "target_training_key": target_training_key,
+                    "new_lab_id": new_lab_id,
+                    "lab_name": source_lab['lab_name'],
+                    "copied_contents": copied_contents
+                }
+            )
+            
+            return {
+                "message": "랩이 성공적으로 복사되었습니다.",
+                "new_lab_id": new_lab_id,
+                "target_training_key": target_training_key,
+                "lab_name": source_lab['lab_name'],
+                "copied_contents": copied_contents
+            }
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"랩 복사 실패: {str(e)}")
+    finally:
+        if conn:
+            conn.commit()
+            conn.close()
 
 @app.get("/api/portal-info")
 async def portal_info(request: Request):
@@ -1978,12 +2095,27 @@ async def update_lab_content_order(
 
 @app.get("/api/proxy-markdown")
 async def proxy_markdown(url: str):
+    """외부 URL에서 마크다운 콘텐츠를 가져오는 프록시 API"""
     try:
-        resp = requests.get(url, timeout=10)
+        # User-Agent 헤더를 추가하여 일부 서버의 차단 방지
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        resp = requests.get(url, timeout=15, headers=headers)
         resp.raise_for_status()
-        return HTMLResponse(content=resp.text, status_code=200)
+        
+        # 텍스트 인코딩 자동 감지
+        resp.encoding = resp.apparent_encoding or 'utf-8'
+        
+        return HTMLResponse(content=resp.text, status_code=200, media_type="text/plain; charset=utf-8")
+    except requests.exceptions.Timeout:
+        return HTMLResponse(content="URL 요청 시간이 초과되었습니다. (15초)", status_code=408)
+    except requests.exceptions.HTTPError as e:
+        return HTMLResponse(content=f"HTTP 오류: {e.response.status_code} - {e.response.reason}", status_code=400)
+    except requests.exceptions.RequestException as e:
+        return HTMLResponse(content=f"URL에서 마크다운을 불러올 수 없습니다: {str(e)}", status_code=400)
     except Exception as e:
-        return HTMLResponse(content=f"URL에서 마크다운을 불러올 수 없습니다.\n{e}", status_code=400)
+        return HTMLResponse(content=f"마크다운 로드 중 오류 발생: {str(e)}", status_code=500)
 
 @app.get("/public-training-portal")
 async def public_training_portal():

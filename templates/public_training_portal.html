@@ -555,16 +555,24 @@
                                     <h1>${content.lab_content_subject || '제목 없음'}</h1>
                                     <div class="markdown-content">${marked.parse(markdownText)}</div>
                                 `;
+                                
+                                // 코드 블록에 문법 강조 적용
+                                if (window.hljs) {
+                                    contentViewer.querySelectorAll('pre code').forEach((block) => {
+                                        hljs.highlightElement(block);
+                                    });
+                                }
                             } else {
+                                const errorText = await markdownResponse.text();
                                 contentViewer.innerHTML = `
                                     <h1>${content.lab_content_subject || '제목 없음'}</h1>
-                                    <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러올 수 없습니다.</p>
+                                    <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러올 수 없습니다: ${errorText}</p>
                                 `;
                             }
                         } catch (e) {
                             contentViewer.innerHTML = `
                                 <h1>${content.lab_content_subject || '제목 없음'}</h1>
-                                <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러오는 중 오류 발생.</p>
+                                <p style="color:#FF6B6B;">마크다운 콘텐츠를 불러오는 중 오류 발생: ${e.message}</p>
                             `;
                         }
                     } else {
@@ -575,6 +583,13 @@
                                 <h1>${content.lab_content_subject || '제목 없음'}</h1>
                                 <div class="markdown-content">${parsedMarkdown}</div>
                             `;
+                            
+                            // 코드 블록에 문법 강조 적용
+                            if (window.hljs) {
+                                contentViewer.querySelectorAll('pre code').forEach((block) => {
+                                    hljs.highlightElement(block);
+                                });
+                            }
                         } catch (error) {
                             contentViewer.innerHTML = `
                                 <h1>${content.lab_content_subject || '제목 없음'}</h1>
@@ -590,6 +605,13 @@
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
                             <div class="markdown-content">${parsedMarkdown}</div>
                         `;
+                        
+                        // 코드 블록에 문법 강조 적용
+                        if (window.hljs) {
+                            contentViewer.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
+                        }
                     } catch (error) {
                         contentViewer.innerHTML = `
                             <h1>${content.lab_content_subject || '제목 없음'}</h1>
