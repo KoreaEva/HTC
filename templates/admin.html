@@ -249,22 +249,51 @@
         .status-active { background: #388E3C; color: white; }
         .status-completed { background: #1976D2; color: white; }
         .status-pending { background: #7B1FA2; color: white; }
+        
+        /* 로그인 탭 스타일 */
+        .login-tab-btn.active {
+            color: var(--accent) !important;
+            border-bottom-color: var(--accent) !important;
+        }
 
     </style>
 </head>
 <body>
     <div id="loginContainer" style="display:flex; align-items:center; justify-content:center; min-height:85vh;">
         <div style="background:var(--panel); padding:36px; border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:420px; border:1px solid var(--border);">
-            <h1 style="text-align:center; color:var(--accent); margin-bottom:24px; font-size:1.8em;">관리자 로그인</h1>
+            <h1 style="text-align:center; color:var(--accent); margin-bottom:16px; font-size:1.8em;">관리자 로그인</h1>
+            
+            <!-- 로그인 유형 선택 탭 -->
+            <div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:2px solid var(--border); padding-bottom:8px;">
+                <button type="button" id="adminLoginTab" class="login-tab-btn active" onclick="switchLoginMode('admin')" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.3s;">관리자</button>
+                <button type="button" id="supervisorLoginTab" class="login-tab-btn" onclick="switchLoginMode('supervisor')" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.3s;">감독자</button>
+            </div>
+            
+            <!-- 관리자 로그인 폼 -->
             <form id="loginForm" style="display:flex; flex-direction:column; gap:14px;">
-                <div>
-                    <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">아이디</label>
-                    <input type="text" id="username" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                <div id="adminLoginFields">
+                    <div>
+                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">아이디</label>
+                        <input type="text" id="username" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-top:14px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">비밀번호</label>
+                        <input type="password" id="password" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                    </div>
                 </div>
-                <div>
-                    <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">비밀번호</label>
-                    <input type="password" id="password" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                
+                <!-- 감독자 로그인 폼 -->
+                <div id="supervisorLoginFields" style="display:none;">
+                    <div>
+                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">과정 키</label>
+                        <input type="text" id="trainingKey" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-top:14px;">
+                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">이름</label>
+                        <input type="text" id="supervisorName" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
+                    </div>
                 </div>
+                
                 <button type="submit" class="button primary" style="width:100%; margin:4px 0 0 0;">Login</button>
                 <div id="loginError" style="color:#ef4444; text-align:center; display:none; font-size:14px;"></div>
             </form>
@@ -579,6 +608,9 @@
         function logout() {
             localStorage.removeItem('admin_logged_in');
             localStorage.removeItem('admin_id');
+            localStorage.removeItem('admin_role');
+            localStorage.removeItem('admin_training_key');
+            localStorage.removeItem('admin_course_name');
             document.getElementById('adminContainer').style.display = 'none';
             document.getElementById('loginContainer').style.display = 'flex';
             document.getElementById('loginForm').reset();
@@ -833,31 +865,102 @@
             label.textContent = this.checked ? '공개' : '비공개';
         });
         
+        // 로그인 모드 전환 함수
+        let currentLoginMode = 'admin';
+        
+        function switchLoginMode(mode) {
+            currentLoginMode = mode;
+            const adminTab = document.getElementById('adminLoginTab');
+            const supervisorTab = document.getElementById('supervisorLoginTab');
+            const adminFields = document.getElementById('adminLoginFields');
+            const supervisorFields = document.getElementById('supervisorLoginFields');
+            const loginError = document.getElementById('loginError');
+            
+            loginError.style.display = 'none';
+            
+            if (mode === 'admin') {
+                adminTab.classList.add('active');
+                supervisorTab.classList.remove('active');
+                adminFields.style.display = 'block';
+                supervisorFields.style.display = 'none';
+                document.getElementById('username').required = true;
+                document.getElementById('password').required = true;
+                document.getElementById('trainingKey').required = false;
+                document.getElementById('supervisorName').required = false;
+            } else {
+                supervisorTab.classList.add('active');
+                adminTab.classList.remove('active');
+                supervisorFields.style.display = 'block';
+                adminFields.style.display = 'none';
+                document.getElementById('username').required = false;
+                document.getElementById('password').required = false;
+                document.getElementById('trainingKey').required = true;
+                document.getElementById('supervisorName').required = true;
+            }
+        }
+        
         // 로그인 처리 및 초기 화면 처리
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value.trim();
             const loginError = document.getElementById('loginError');
             loginError.style.display = 'none';
 
             try {
-                const response = await fetch('/api/admin/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await response.json();
+                let response, data;
+                
+                if (currentLoginMode === 'admin') {
+                    const username = document.getElementById('username').value.trim();
+                    const password = document.getElementById('password').value.trim();
+                    
+                    response = await fetch('/api/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    data = await response.json();
 
-                if (response.ok) {
-                    localStorage.setItem('admin_logged_in', 'true');
-                    localStorage.setItem('admin_id', data.admin_id);
-                    document.getElementById('loginContainer').style.display = 'none';
-                    document.getElementById('adminContainer').style.display = 'block';
-                    loadCourses();
+                    if (response.ok) {
+                        localStorage.setItem('admin_logged_in', 'true');
+                        localStorage.setItem('admin_id', data.admin_id);
+                        localStorage.setItem('admin_role', 'admin');
+                        localStorage.removeItem('admin_training_key');
+                        document.getElementById('loginContainer').style.display = 'none';
+                        document.getElementById('adminContainer').style.display = 'block';
+                        loadCourses();
+                    } else {
+                        loginError.textContent = data.detail || '로그인에 실패했습니다.';
+                        loginError.style.display = 'block';
+                    }
                 } else {
-                    loginError.textContent = data.detail || '로그인에 실패했습니다.';
-                    loginError.style.display = 'block';
+                    // 감독자 로그인
+                    const trainingKey = document.getElementById('trainingKey').value.trim();
+                    const supervisorName = document.getElementById('supervisorName').value.trim();
+                    
+                    response = await fetch('/api/supervisor/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ training_key: trainingKey, supervisor_name: supervisorName })
+                    });
+                    data = await response.json();
+
+                    if (response.ok) {
+                        localStorage.setItem('admin_logged_in', 'true');
+                        localStorage.setItem('admin_id', data.supervisor_name);
+                        localStorage.setItem('admin_role', 'supervisor');
+                        localStorage.setItem('admin_training_key', data.training_key);
+                        localStorage.setItem('admin_course_name', data.course_name);
+                        
+                        // 감독자용 저장소에도 정보 저장 (supervisor.html에서 사용)
+                        localStorage.setItem('supervisor_training_key', data.training_key);
+                        localStorage.setItem('supervisor_name', data.supervisor_name);
+                        localStorage.setItem('supervisor_course_name', data.course_name);
+                        
+                        // 감독자는 모니터링 페이지로 이동
+                        window.location.href = `/supervisor/monitoring`;
+                    } else {
+                        loginError.textContent = data.detail || '로그인에 실패했습니다.';
+                        loginError.style.display = 'block';
+                    }
                 }
             } catch (error) {
                 loginError.textContent = '로그인 중 오류가 발생했습니다.';

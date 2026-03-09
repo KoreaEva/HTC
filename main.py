@@ -33,8 +33,10 @@ async def startup_event():
     try:
         ensure_event_logs_table()
         print("✅ 이벤트 로그 테이블 확인/생성 완료")
+        ensure_supervisors_table()
+        print("✅ 감독자 테이블 확인/생성 완료")
     except Exception as e:
-        print(f"⚠️ 이벤트 로그 테이블 생성 실패: {str(e)}")
+        print(f"⚠️ 테이블 생성 실패: {str(e)}")
 
 # CORS 설정
 app.add_middleware(
@@ -94,6 +96,29 @@ def ensure_event_logs_table():
                     INDEX idx_event_type (event_type),
                     INDEX idx_create_date (create_date)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_supervisors_table():
+    """감독자 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS training_supervisors (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL COLLATE utf8mb4_0900_ai_ci,
+                    supervisor_name VARCHAR(100) NOT NULL COLLATE utf8mb4_0900_ai_ci,
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_supervisor (training_key, supervisor_name),
+                    INDEX idx_training_key (training_key),
+                    INDEX idx_supervisor_name (supervisor_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
             """)
             conn.commit()
     finally:
@@ -396,6 +421,16 @@ class LoginRequest(BaseModel):
 
 class MoveContentRequest(BaseModel):
     new_lab_id: int
+
+class BulkMoveContentRequest(BaseModel):
+    content_ids: List[int]
+    new_lab_id: int
+    target_training_key: Optional[str] = None
+
+class BulkCopyContentRequest(BaseModel):
+    content_ids: List[int]
+    target_training_key: str
+    target_lab_id: int
 
 class ReorderContentRequest(BaseModel):
     new_view_number: int
@@ -708,6 +743,53 @@ async def admin_login(data: dict = Body(...)):
     finally:
         conn.close()
 
+@app.post("/api/supervisor/login")
+async def supervisor_login(data: dict = Body(...)):
+    """감독자 로그인: 트레이닝 키와 이름으로 인증"""
+    training_key = (data.get("training_key") or "").strip()
+    supervisor_name = (data.get("supervisor_name") or "").strip()
+
+    if not training_key or not supervisor_name:
+        raise HTTPException(status_code=400, detail="과정 키와 이름을 입력해 주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1) 과정이 존재하는지 확인
+            cursor.execute(
+                "SELECT training_key, course_name FROM training WHERE training_key = %s",
+                (training_key,)
+            )
+            training = cursor.fetchone()
+            
+            if not training:
+                raise HTTPException(status_code=401, detail="유효하지 않은 과정 키입니다.")
+            
+            # 2) 감독자 권한 확인
+            cursor.execute(
+                """
+                SELECT id, supervisor_name, is_active 
+                FROM training_supervisors 
+                WHERE training_key = %s AND supervisor_name = %s AND is_active = 1
+                """,
+                (training_key, supervisor_name)
+            )
+            supervisor = cursor.fetchone()
+
+            if not supervisor:
+                raise HTTPException(status_code=401, detail="감독자 권한이 없습니다. 관리자에게 문의하세요.")
+
+            return {
+                "success": True,
+                "message": "로그인 성공",
+                "role": "supervisor",
+                "training_key": training_key,
+                "supervisor_name": supervisor_name,
+                "course_name": training.get("course_name")
+            }
+    finally:
+        conn.close()
+
 @app.get("/admin/lab")
 async def lab_page():
     return FileResponse("templates/lab.html")
@@ -719,6 +801,10 @@ async def lab_test_page():
 @app.get("/admin/lab_content")
 async def lab_content_page():
     return FileResponse("templates/lab_content.html")
+
+@app.get("/supervisor/monitoring")
+async def supervisor_monitoring_page():
+    return FileResponse("templates/supervisor.html")
 
 
 
@@ -744,6 +830,7 @@ async def get_users_by_course(training_key: str):
     try:
         with conn.cursor() as cursor:
             # 사용자 정보와 마지막으로 본 콘텐츠 정보를 함께 조회
+            # MySQL 5.7 호환을 위해 ROW_NUMBER() 대신 서브쿼리 사용
             cursor.execute("""
                 SELECT 
                     tm.member_id, 
@@ -754,23 +841,26 @@ async def get_users_by_course(training_key: str):
                     tll.content_id,
                     tlc.lab_content_subject,
                     tl.lab_name,
-                    tll.create_date as last_view_date
+                    tll.create_date as last_view_date,
+                    ts.id as supervisor_id
                 FROM training_member tm
                 LEFT JOIN (
-                    SELECT 
-                        member_key, 
-                        lab_id, 
-                        content_id, 
-                        create_date,
-                        ROW_NUMBER() OVER (PARTITION BY member_key ORDER BY create_date DESC) as rn
-                    FROM training_lab_log 
-                    WHERE training_key = %s
-                ) tll ON tm.member_key = tll.member_key AND tll.rn = 1
+                    SELECT t1.member_key, t1.lab_id, t1.content_id, t1.create_date
+                    FROM training_lab_log t1
+                    INNER JOIN (
+                        SELECT member_key, MAX(create_date) as max_date
+                        FROM training_lab_log
+                        WHERE training_key = %s
+                        GROUP BY member_key
+                    ) t2 ON t1.member_key = t2.member_key AND t1.create_date = t2.max_date
+                    WHERE t1.training_key = %s
+                ) tll ON tm.member_key = tll.member_key
                 LEFT JOIN training_lab_contents tlc ON tll.lab_id = tlc.lab_id AND tll.content_id = tlc.content_id AND tlc.training_key = %s
                 LEFT JOIN training_lab tl ON tll.lab_id = tl.lab_id AND tl.training_key = %s
+                LEFT JOIN training_supervisors ts ON tm.training_key = ts.training_key AND tm.member_name = ts.supervisor_name AND ts.is_active = 1
                 WHERE tm.training_key = %s 
                 ORDER BY tm.create_date DESC
-            """, (training_key, training_key, training_key, training_key))
+            """, (training_key, training_key, training_key, training_key, training_key))
             result = cursor.fetchall()
             
             users = []
@@ -786,9 +876,15 @@ async def get_users_by_course(training_key: str):
                     "member_name": row['member_name'], 
                     "role": row['role'], 
                     "create_date": format_kst(row['create_date']),
-                    "last_content": last_content_info
+                    "last_content": last_content_info,
+                    "is_supervisor": row['supervisor_id'] is not None
                 })
         return users
+    except Exception as e:
+        print(f"get_users_by_course 오류: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"사용자 목록 조회 중 오류가 발생했습니다: {str(e)}")
     finally:
         conn.close()
 
@@ -802,6 +898,142 @@ async def delete_user(user_id: str):
         return {"message": "User deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
+    finally:
+        conn.close()
+
+# 감독자 관리 API
+@app.get("/api/admin/supervisors/{training_key}")
+async def get_supervisors(training_key: str):
+    """특정 과정의 감독자 목록 조회"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, supervisor_name, is_active, create_date 
+                FROM training_supervisors 
+                WHERE training_key = %s 
+                ORDER BY create_date DESC
+                """,
+                (training_key,)
+            )
+            result = cursor.fetchall()
+            supervisors = [
+                {
+                    "id": row['id'],
+                    "supervisor_name": row['supervisor_name'],
+                    "is_active": row['is_active'],
+                    "create_date": format_kst(row['create_date'])
+                }
+                for row in result
+            ]
+        return supervisors
+    finally:
+        conn.close()
+
+@app.post("/api/admin/supervisors")
+async def add_supervisor(data: dict = Body(...)):
+    """감독자 추가"""
+    training_key = data.get("training_key")
+    supervisor_name = data.get("supervisor_name")
+    
+    if not training_key or not supervisor_name:
+        raise HTTPException(status_code=400, detail="과정 키와 감독자 이름을 입력해주세요.")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO training_supervisors (training_key, supervisor_name, is_active) 
+                    VALUES (%s, %s, 1)
+                    """,
+                    (training_key, supervisor_name)
+                )
+                conn.commit()
+                return {"message": "감독자가 추가되었습니다."}
+            except pymysql.err.IntegrityError:
+                raise HTTPException(status_code=400, detail="이미 등록된 감독자입니다.")
+    finally:
+        conn.close()
+
+@app.delete("/api/admin/supervisors/{supervisor_id}")
+async def delete_supervisor(supervisor_id: int):
+    """감독자 삭제"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM training_supervisors WHERE id = %s", (supervisor_id,))
+            conn.commit()
+        return {"message": "감독자가 삭제되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"감독자 삭제 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/admin/assign-supervisor")
+async def assign_supervisor(data: dict = Body(...)):
+    """사용자를 운영자(감독자)로 지정"""
+    training_key = data.get("training_key")
+    member_name = data.get("member_name")
+    
+    if not training_key or not member_name:
+        raise HTTPException(status_code=400, detail="과정 키와 사용자 이름을 입력해주세요.")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 사용자가 존재하는지 확인
+            cursor.execute(
+                "SELECT member_id FROM training_member WHERE training_key = %s AND member_name = %s",
+                (training_key, member_name)
+            )
+            member = cursor.fetchone()
+            if not member:
+                raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+            
+            # 2. 이미 감독자인지 확인
+            cursor.execute(
+                "SELECT id FROM training_supervisors WHERE training_key = %s AND supervisor_name = %s",
+                (training_key, member_name)
+            )
+            existing = cursor.fetchone()
+            if existing:
+                raise HTTPException(status_code=400, detail="이미 운영자로 지정된 사용자입니다.")
+            
+            # 3. 감독자로 추가
+            cursor.execute(
+                "INSERT INTO training_supervisors (training_key, supervisor_name, is_active) VALUES (%s, %s, 1)",
+                (training_key, member_name)
+            )
+            conn.commit()
+            return {"message": "운영자로 지정되었습니다.", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"운영자 지정 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.delete("/api/admin/remove-supervisor/{training_key}/{member_name}")
+async def remove_supervisor(training_key: str, member_name: str):
+    """사용자의 운영자 권한 해제"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM training_supervisors WHERE training_key = %s AND supervisor_name = %s",
+                (training_key, member_name)
+            )
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="운영자 권한이 없습니다.")
+            conn.commit()
+            return {"message": "운영자 권한이 해제되었습니다.", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"운영자 권한 해제 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -1490,12 +1722,21 @@ async def portal_info(request: Request):
             labs_result = cursor.fetchall()
             lab_list = []
             for r in labs_result:
+                # 해당 랩의 감독자 여부 확인
+                cursor.execute("""
+                    SELECT ts.id FROM training_supervisors ts
+                    WHERE ts.training_key = %s AND ts.supervisor_name = %s AND ts.is_active = 1
+                """, (training_key, member_name))
+                supervisor_result = cursor.fetchone()
+                is_supervisor_of_lab = supervisor_result is not None
+                
                 lab_list.append({
                     "lab_id": r['lab_id'],
                     "lab_name": r['lab_name'],
                     "lab_content": r['lab_content'],
                     "lab_status": r['lab_status'],
-                    "create_date": format_kst(r['create_date'])
+                    "create_date": format_kst(r['create_date']),
+                    "is_supervisor": is_supervisor_of_lab
                 })
         return {
             "member_id": member_id,
@@ -1511,6 +1752,8 @@ async def portal_info(request: Request):
 @app.get("/api/portal-labs")
 async def portal_labs(request: Request):
     training_key = request.query_params.get("training_key")
+    member_id = request.query_params.get("member_id")
+    
     if not training_key:
         raise HTTPException(status_code=400, detail="training_key가 필요합니다.")
     
@@ -1528,6 +1771,17 @@ async def portal_labs(request: Request):
             if not training_result:
                 return {"labs": [], "message": "트레이닝을 찾을 수 없습니다."}
             
+            # member_id가 있으면 member_name 조회
+            member_name = None
+            if member_id:
+                cursor.execute("""
+                    SELECT member_name FROM training_member 
+                    WHERE training_key = %s AND member_id = %s
+                """, (training_key, member_id))
+                member_result = cursor.fetchone()
+                if member_result:
+                    member_name = member_result['member_name']
+            
             # 랩 목록 조회 (모든 랩)
             try:
                 cursor.execute("""
@@ -1541,12 +1795,23 @@ async def portal_labs(request: Request):
                 
                 lab_list = []
                 for r in labs_result:
+                    # member_name이 있으면 감독자 여부 확인
+                    is_supervisor = False
+                    if member_name:
+                        cursor.execute("""
+                            SELECT ts.id FROM training_supervisors ts
+                            WHERE ts.training_key = %s AND ts.supervisor_name = %s AND ts.is_active = 1
+                        """, (training_key, member_name))
+                        supervisor_result = cursor.fetchone()
+                        is_supervisor = supervisor_result is not None
+                    
                     lab_list.append({
                         "lab_id": r['lab_id'],
                         "lab_name": r['lab_name'],
                         "lab_content": r['lab_content'],
                         "lab_status": r['lab_status'],
-                        "create_date": format_kst(r['create_date'])
+                        "create_date": format_kst(r['create_date']),
+                        "is_supervisor": is_supervisor
                     })
                 
             except Exception as e:
@@ -2041,6 +2306,273 @@ async def move_lab_content(
     finally:
         conn.close()
 
+@app.put("/api/admin/lab_contents/actions/bulk-move")
+async def bulk_move_lab_contents(
+    training_key: str = Query(...),
+    lab_id: int = Query(...),
+    data: BulkMoveContentRequest = Body(...)
+):
+    """여러 콘텐츠를 한번에 같은 과정의 다른 랩으로 이동"""
+    content_ids = data.content_ids
+    new_lab_id = data.new_lab_id
+    target_training_key = data.target_training_key or training_key
+    
+    if not content_ids or len(content_ids) == 0:
+        raise HTTPException(status_code=400, detail="이동할 콘텐츠를 선택해주세요.")
+    
+    if not new_lab_id:
+        raise HTTPException(status_code=400, detail="new_lab_id가 필요합니다.")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            if target_training_key != training_key:
+                raise HTTPException(status_code=400, detail="다른 과정 선택 시 이동이 아닌 복사를 사용해주세요.")
+
+            # 1. 대상 랩 존재 확인
+            cursor.execute("SELECT is_public FROM training_lab WHERE training_key = %s AND lab_id = %s", (target_training_key, new_lab_id))
+            target_lab = cursor.fetchone()
+            if not target_lab:
+                raise HTTPException(status_code=400, detail="해당 랩이 대상 과정에 존재하지 않습니다.")
+
+            # 2. 같은 과정/같은 랩으로 이동하려는 경우 체크
+            if target_training_key == training_key and int(new_lab_id) == int(lab_id):
+                return {"message": "이미 해당 랩에 있는 콘텐츠입니다.", "moved_count": 0}
+
+            # 3. 대상 랩의 시작 view_number 계산
+            cursor.execute("SELECT MAX(view_number) as max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (target_training_key, new_lab_id))
+            result_view = cursor.fetchone()
+            next_view_number = 1 if not result_view or result_view['max_view_number'] is None else int(result_view['max_view_number']) + 1
+            moved_count = 0
+            # 4. 각 콘텐츠를 이동
+            for content_id in content_ids:
+                # 콘텐츠가 현재 랩에 존재하는지 확인
+                cursor.execute("SELECT content_id FROM training_lab_contents WHERE content_id = %s AND training_key = %s AND lab_id = %s", (content_id, training_key, lab_id))
+                result = cursor.fetchone()
+                
+                if result:
+                    # 동일 과정 내 이동
+                    cursor.execute(
+                        "UPDATE training_lab_contents SET lab_id = %s, view_number = %s WHERE content_id = %s AND training_key = %s AND lab_id = %s",
+                        (new_lab_id, next_view_number, content_id, training_key, lab_id)
+                    )
+                    
+                    if cursor.rowcount > 0:
+                        moved_count += 1
+                        next_view_number += 1
+            
+            if moved_count == 0:
+                raise HTTPException(status_code=404, detail="이동할 수 있는 콘텐츠를 찾을 수 없습니다.")
+            
+            conn.commit()
+            return {"message": f"{moved_count}개의 콘텐츠가 성공적으로 이동되었습니다.", "moved_count": moved_count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"콘텐츠 이동 중 오류가 발생했습니다: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/admin/lab_contents/actions/bulk-copy")
+async def bulk_copy_lab_contents(
+    training_key: str = Query(...),
+    lab_id: int = Query(...),
+    data: BulkCopyContentRequest = Body(...)
+):
+    """여러 콘텐츠를 한번에 다른 과정/랩으로 복사"""
+    content_ids = data.content_ids
+    target_training_key = data.target_training_key
+    target_lab_id = data.target_lab_id
+
+    if not content_ids:
+        raise HTTPException(status_code=400, detail="복사할 콘텐츠를 선택해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 대상 랩 확인
+            cursor.execute(
+                "SELECT lab_name, is_public FROM training_lab WHERE training_key = %s AND lab_id = %s",
+                (target_training_key, target_lab_id)
+            )
+            target_lab = cursor.fetchone()
+            if not target_lab:
+                raise HTTPException(status_code=404, detail="대상 랩을 찾을 수 없습니다.")
+
+            # 대상 랩의 시작 번호 계산
+            cursor.execute(
+                "SELECT MAX(content_id) as max_content_id, MAX(view_number) as max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s",
+                (target_training_key, target_lab_id)
+            )
+            max_result = cursor.fetchone()
+            next_content_id = 1 if not max_result or max_result['max_content_id'] is None else int(max_result['max_content_id']) + 1
+            next_view_number = 1 if not max_result or max_result['max_view_number'] is None else int(max_result['max_view_number']) + 1
+
+            copied_count = 0
+            for source_content_id in content_ids:
+                cursor.execute(
+                    "SELECT lab_content_subject, lab_content, lab_content_type, lab_content_status FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s",
+                    (training_key, lab_id, source_content_id)
+                )
+                source_content = cursor.fetchone()
+                if not source_content:
+                    continue
+
+                cursor.execute(
+                    """
+                    INSERT INTO training_lab_contents (
+                        training_key, lab_id, content_id, view_number, lab_content_subject, lab_content,
+                        lab_content_type, lab_content_status, lab_content_create_date, is_public
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        target_training_key,
+                        target_lab_id,
+                        next_content_id,
+                        next_view_number,
+                        source_content['lab_content_subject'],
+                        source_content['lab_content'],
+                        source_content['lab_content_type'],
+                        source_content['lab_content_status'],
+                        now_kst_naive(),
+                        target_lab['is_public'] if target_lab.get('is_public') is not None else 0
+                    )
+                )
+
+                copied_count += 1
+                next_content_id += 1
+                next_view_number += 1
+
+            if copied_count == 0:
+                raise HTTPException(status_code=404, detail="복사할 수 있는 콘텐츠를 찾을 수 없습니다.")
+
+            conn.commit()
+            return {"message": f"{copied_count}개의 콘텐츠가 성공적으로 복사되었습니다.", "copied_count": copied_count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"콘텐츠 복사 중 오류가 발생했습니다: {str(e)}")
+    finally:
+        conn.close()
+
+@app.post("/api/admin/lab_contents/{content_id}/copy")
+async def copy_lab_content(
+    content_id: int,
+    training_key: str = Query(...),
+    lab_id: int = Query(...),
+    data: dict = Body(...)
+):
+    """콘텐츠를 다른 과정의 다른 랩으로 복사"""
+    target_training_key = data.get("target_training_key")
+    target_lab_id = data.get("target_lab_id")
+    
+    if not target_training_key or not target_lab_id:
+        raise HTTPException(status_code=400, detail="target_training_key와 target_lab_id가 필요합니다.")
+    
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 원본 콘텐츠 정보 조회
+            cursor.execute("""
+                SELECT * FROM training_lab_contents 
+                WHERE training_key = %s AND lab_id = %s AND content_id = %s
+            """, (training_key, lab_id, content_id))
+            source_content = cursor.fetchone()
+            
+            if not source_content:
+                raise HTTPException(status_code=404, detail="원본 콘텐츠를 찾을 수 없습니다.")
+            
+            # 2. 대상 랩이 존재하는지 확인
+            cursor.execute("""
+                SELECT lab_name FROM training_lab 
+                WHERE training_key = %s AND lab_id = %s
+            """, (target_training_key, target_lab_id))
+            target_lab = cursor.fetchone()
+            
+            if not target_lab:
+                raise HTTPException(status_code=404, detail="대상 랩을 찾을 수 없습니다.")
+            
+            # 3. 대상 랩에서의 content_id 계산
+            cursor.execute("""
+                SELECT MAX(content_id) as max_content_id 
+                FROM training_lab_contents 
+                WHERE training_key = %s AND lab_id = %s
+            """, (target_training_key, target_lab_id))
+            result_content = cursor.fetchone()
+            next_content_id = 1 if not result_content or result_content['max_content_id'] is None else int(result_content['max_content_id']) + 1
+            
+            # 4. 대상 랩에서의 view_number 계산
+            cursor.execute("""
+                SELECT MAX(view_number) as max_view_number 
+                FROM training_lab_contents 
+                WHERE training_key = %s AND lab_id = %s
+            """, (target_training_key, target_lab_id))
+            result_view = cursor.fetchone()
+            next_view_number = 1 if not result_view or result_view['max_view_number'] is None else int(result_view['max_view_number']) + 1
+            
+            # 5. 대상 랩의 is_public 값 확인
+            cursor.execute("""
+                SELECT is_public FROM training_lab 
+                WHERE training_key = %s AND lab_id = %s
+            """, (target_training_key, target_lab_id))
+            target_lab_info = cursor.fetchone()
+            is_public = target_lab_info['is_public'] if target_lab_info else 0
+            
+            # 6. 콘텐츠 복사
+            cursor.execute("""
+                INSERT INTO training_lab_contents (
+                    training_key, lab_id, content_id, view_number, lab_content_subject, lab_content,
+                    lab_content_type, lab_content_status, lab_content_create_date, is_public
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                target_training_key,
+                target_lab_id,
+                                next_content_id,
+                                next_view_number,
+                source_content['lab_content_subject'],
+                source_content['lab_content'],
+                source_content['lab_content_type'],
+                source_content['lab_content_status'],
+                now_kst_naive(),
+                is_public
+            ))
+            conn.commit()
+            
+            # 7. 모니터링 이벤트 기록
+            log_monitoring_event(
+                training_key=target_training_key,
+                event_type="content_copy",
+                event_category="content",
+                target_type="content",
+                target_id=str(next_content_id),
+                target_name=source_content['lab_content_subject'],
+                description=f"콘텐츠 '{source_content['lab_content_subject']}'이(가) 과정({training_key})에서 과정({target_training_key})의 랩({target_lab['lab_name']})으로 복사되었습니다",
+                details={
+                    "source_training_key": training_key,
+                    "source_lab_id": lab_id,
+                    "source_content_id": content_id,
+                    "target_training_key": target_training_key,
+                    "target_lab_id": target_lab_id,
+                    "new_content_id": next_content_id
+                }
+            )
+            
+            return {
+                "message": "콘텐츠가 성공적으로 복사되었습니다.",
+                "content_subject": source_content['lab_content_subject'],
+                "new_content_id": next_content_id,
+                "target_lab_name": target_lab['lab_name']
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"콘텐츠 복사 실패: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"콘텐츠 복사 실패: {str(e)}")
+    finally:
+        conn.close()
+
 @app.put("/api/admin/lab_contents/{content_id}/reorder")
 async def update_lab_content_order(
     content_id: int,
@@ -2465,6 +2997,179 @@ async def get_monitoring_stats(training_key: str = Query(...)):
                 "category_counts": category_counts,
                 "timestamp": now_kst().isoformat()
             }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"통계 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+# ============================================================
+# 감독자(Supervisor) 모니터링 엔드포인트
+# ============================================================
+
+@app.get("/api/supervisor/monitoring/events")
+async def get_supervisor_monitoring_events(
+    training_key: str = Query(...),
+    supervisor_name: str = Query(...),
+    limit: int = Query(50, ge=1, le=500),
+    since_id: Optional[int] = Query(None),
+    category: Optional[str] = Query(None)
+):
+    """
+    감독자용 폴링 방식 이벤트 로그 조회
+    
+    Parameters:
+    - training_key: 과정 키
+    - supervisor_name: 감독자 이름 (권한 확인용)
+    - limit: 가져올 이벤트 수 (기본값: 50, 최대: 500)
+    - since_id: 이 ID 이후의 이벤트만 조회 (증분 폴링용)
+    - category: 이벤트 카테고리 필터
+    """
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 1) 감독자 권한 확인
+            cursor.execute(
+                """
+                SELECT id FROM training_supervisors 
+                WHERE training_key = %s AND supervisor_name = %s AND is_active = 1
+                """,
+                (training_key, supervisor_name)
+            )
+            supervisor = cursor.fetchone()
+            if not supervisor:
+                raise HTTPException(status_code=403, detail="감독자 권한이 없습니다.")
+            
+            # 2) 통계 정보 조회
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_member WHERE training_key = %s", (training_key,))
+            user_count_result = cursor.fetchone()
+            user_count = user_count_result['cnt'] if user_count_result else 0
+            
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s", (training_key,))
+            lab_count_result = cursor.fetchone()
+            lab_count = lab_count_result['cnt'] if lab_count_result else 0
+            
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM training_lab_contents tlc
+                JOIN training_lab tl ON tlc.lab_id = tl.lab_id
+                WHERE tl.training_key = %s
+            """, (training_key,))
+            content_count_result = cursor.fetchone()
+            content_count = content_count_result['cnt'] if content_count_result else 0
+            
+            # 3) 이벤트 로그 조회
+            query = """
+                SELECT id, training_key, event_type, event_category, user_id, user_name,
+                       target_type, target_id, target_name, description, details, create_date
+                FROM event_logs
+                WHERE training_key = %s
+                    AND create_date >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            """
+            params = [training_key]
+            
+            if since_id:
+                query += " AND id > %s"
+                params.append(since_id)
+            
+            if category:
+                query += " AND event_category = %s"
+                params.append(category)
+            
+            query += " ORDER BY id DESC LIMIT %s"
+            params.append(limit)
+            
+            cursor.execute(query, params)
+            events = cursor.fetchall()
+            
+            # JSON 문자열을 파싱
+            for event in events:
+                if event.get('details') and isinstance(event['details'], str):
+                    try:
+                        event['details'] = json.loads(event['details'])
+                    except:
+                        pass
+                event['create_date'] = format_kst(event['create_date'], '%Y-%m-%d %H:%M:%S')
+            
+            return {
+                "success": True,
+                "stats": {
+                    "user_count": user_count,
+                    "lab_count": lab_count,
+                    "content_count": content_count
+                },
+                "events": events,
+                "last_id": events[0]['id'] if events else None,
+                "count": len(events)
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이벤트 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+@app.get("/api/supervisor/monitoring/stats")
+async def get_supervisor_monitoring_stats(
+    training_key: str = Query(...),
+    supervisor_name: str = Query(...)
+):
+    """감독자용 모니터링 통계 정보 조회"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            # 감독자 권한 확인
+            cursor.execute(
+                """
+                SELECT id FROM training_supervisors 
+                WHERE training_key = %s AND supervisor_name = %s AND is_active = 1
+                """,
+                (training_key, supervisor_name)
+            )
+            supervisor = cursor.fetchone()
+            if not supervisor:
+                raise HTTPException(status_code=403, detail="감독자 권한이 없습니다.")
+            
+            # 사용자 수
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_member WHERE training_key = %s", (training_key,))
+            user_count = cursor.fetchone()['cnt']
+            
+            # 랩 수
+            cursor.execute("SELECT COUNT(*) as cnt FROM training_lab WHERE training_key = %s", (training_key,))
+            lab_count = cursor.fetchone()['cnt']
+            
+            # 콘텐츠 수
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM training_lab_contents tlc
+                JOIN training_lab tl ON tlc.lab_id = tl.lab_id
+                WHERE tl.training_key = %s
+            """, (training_key,))
+            content_count = cursor.fetchone()['cnt']
+            
+            # 오늘의 이벤트 수
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM event_logs
+                WHERE training_key = %s AND DATE(create_date) = CURDATE()
+            """, (training_key,))
+            today_events = cursor.fetchone()['cnt']
+            
+            # 카테고리별 이벤트 수 (최근 24시간)
+            cursor.execute("""
+                SELECT event_category, COUNT(*) as cnt
+                FROM event_logs
+                WHERE training_key = %s AND create_date >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                GROUP BY event_category
+            """, (training_key,))
+            category_counts = {row['event_category']: row['cnt'] for row in cursor.fetchall()}
+            
+            return {
+                "user_count": user_count,
+                "lab_count": lab_count,
+                "content_count": content_count,
+                "today_events": today_events,
+                "category_counts": category_counts,
+                "timestamp": now_kst().isoformat()
+            }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"통계 조회 실패: {str(e)}")
     finally:

@@ -80,6 +80,19 @@
         .button.secondary:hover {
             background: #5a6268;
         }
+        .button.success {
+            background: #28a745;
+        }
+        .button.success:hover {
+            background: #218838;
+        }
+        .button.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        .button.warning:hover {
+            background: #e0a800;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -252,13 +265,18 @@
         <div class="header">
             <h1 id="labTitle">랩 콘텐츠 관리</h1>
             <div>
-                <button class="button" onclick="goBackToLabList()" style="margin-right: 10px;">Back</button>
-                <button class="button" onclick="showAddContentModal()">Add Content</button>
+                <button class="button secondary" onclick="goBackToLabList()" style="margin-right: 10px;">Back</button>
+                <button class="button warning" id="multiSelectToggle" onclick="toggleMultiSelectMode()">다중선택 활성화</button>
+                <button class="button success" id="bulkMoveBtn" onclick="showBulkMoveModal()" style="display:none; margin-left: 10px;">선택 항목 이동</button>
+                <button class="button" onclick="showAddContentModal()" style="margin-left: 10px;">Add Content</button>
             </div>
         </div>
         <table>
             <thead>
                 <tr>
+                    <th id="checkboxHeader" style="width: 50px; display: none;">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" />
+                    </th>
                     <th>콘텐츠 ID</th>
                     <th>순서</th>
                     <th>제목</th>
@@ -349,6 +367,8 @@
         let currentLabId = new URLSearchParams(window.location.search).get('lab_id');
         let currentTrainingKey = new URLSearchParams(window.location.search).get('training_key');
         let currentContentToMoveId = null;
+        let isMultiSelectMode = false;
+        let selectedContentIds = new Set();
 
         document.addEventListener('DOMContentLoaded', () => {
             if (!currentLabId || !currentTrainingKey) {
@@ -419,7 +439,14 @@
                     .map(num => `<option value="${num}" ${num === content.view_number ? 'selected' : ''}>${num}</option>`)
                     .join('');
 
-                row.innerHTML = `
+                const checkboxCell = isMultiSelectMode 
+                    ? `<td class="checkbox-cell" style="text-align: center;">
+                        <input type="checkbox" class="content-checkbox" data-content-id="${content.content_id}" 
+                               onchange="updateSelectedCount()" ${selectedContentIds.has(content.content_id) ? 'checked' : ''} />
+                       </td>` 
+                    : '';
+
+                row.innerHTML = checkboxCell + `
                     <td>${content.content_id}</td>
                     <td>
                         <select onchange="updateViewNumber(this, ${content.content_id}, '${content.training_key}', ${content.lab_id})" style="width: 60px;">
@@ -658,23 +685,59 @@
                 return;
             }
 
-            try {
-                const response = await fetch(`/api/admin/lab_contents/${currentContentToMoveId}/move?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ new_lab_id: parseInt(newLabId) })
-                });
+            // 대량 이동 모드 (다중선택 모드에서 여러 콘텐츠 선택)
+            if (currentContentToMoveId === null && selectedContentIds.size > 0) {
+                try {
+                    const response = await fetch(`/api/admin/lab_contents/bulk-move?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            content_ids: Array.from(selectedContentIds),
+                            new_lab_id: parseInt(newLabId)
+                        })
+                    });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(getErrorMessage(errorData) || '콘텐츠 이동 실패');
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(getErrorMessage(errorData) || '콘텐츠 이동 실패');
+                    }
+                    
+                    const result = await response.json();
+                    alert(result.message);
+                    closeMoveModal();
+                    selectedContentIds.clear();
+                    isMultiSelectMode = false;
+                    toggleMultiSelectMode(); // 다중선택 모드 종료
+                    fetchLabContents(); // 목록 새로고침
+                } catch (error) {
+                    alert(`콘텐츠 이동 실패: ${error.message}`);
                 }
-                closeMoveModal();
-                fetchLabContents(); // Refresh the list after moving
-            } catch (error) {
-                alert(`콘텐츠 이동 실패: ${error.message}`);
+            } 
+            // 단일 이동 모드 (개별 이동 버튼 클릭)
+            else if (currentContentToMoveId !== null) {
+                try {
+                    const response = await fetch(`/api/admin/lab_contents/${currentContentToMoveId}/move?training_key=${currentTrainingKey}&lab_id=${currentLabId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ new_lab_id: parseInt(newLabId) })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(getErrorMessage(errorData) || '콘텐츠 이동 실패');
+                    }
+                    
+                    const result = await response.json();
+                    alert(result.message || '콘텐츠가 성공적으로 이동되었습니다.');
+                    closeMoveModal();
+                    fetchLabContents(); // 목록 새로고침
+                } catch (error) {
+                    alert(`콘텐츠 이동 실패: ${error.message}`);
+                }
             }
         }
 
@@ -717,6 +780,86 @@
         // 돌아가기 버튼 함수
         function goBackToLabList() {
             window.location.href = `/admin/lab?training_key=${currentTrainingKey}`;
+        }
+
+        // 다중선택 모드 토글
+        function toggleMultiSelectMode() {
+            isMultiSelectMode = !isMultiSelectMode;
+            const toggleBtn = document.getElementById('multiSelectToggle');
+            const bulkMoveBtn = document.getElementById('bulkMoveBtn');
+            const checkboxHeader = document.getElementById('checkboxHeader');
+            const selectAllCheckbox = document.getElementById('selectAll');
+            
+            if (isMultiSelectMode) {
+                toggleBtn.textContent = '다중선택 비활성화';
+                toggleBtn.classList.remove('warning');
+                toggleBtn.classList.add('secondary');
+                checkboxHeader.style.display = '';
+                bulkMoveBtn.style.display = selectedContentIds.size > 0 ? 'inline-block' : 'none';
+            } else {
+                toggleBtn.textContent = '다중선택 활성화';
+                toggleBtn.classList.remove('secondary');
+                toggleBtn.classList.add('warning');
+                checkboxHeader.style.display = 'none';
+                bulkMoveBtn.style.display = 'none';
+                selectedContentIds.clear();
+                selectAllCheckbox.checked = false;
+            }
+            
+            fetchLabContents(); // 테이블 다시 그리기
+        }
+
+        // 전체 선택/해제
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.content-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+                const contentId = parseInt(checkbox.dataset.contentId);
+                if (selectAllCheckbox.checked) {
+                    selectedContentIds.add(contentId);
+                } else {
+                    selectedContentIds.delete(contentId);
+                }
+            });
+            
+            updateSelectedCount();
+        }
+
+        // 선택된 항목 수 업데이트
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.content-checkbox:checked');
+            selectedContentIds.clear();
+            
+            checkboxes.forEach(checkbox => {
+                selectedContentIds.add(parseInt(checkbox.dataset.contentId));
+            });
+            
+            const bulkMoveBtn = document.getElementById('bulkMoveBtn');
+            const selectAllCheckbox = document.getElementById('selectAll');
+            
+            if (selectedContentIds.size > 0) {
+                bulkMoveBtn.style.display = 'inline-block';
+                bulkMoveBtn.textContent = `선택 항목 이동 (${selectedContentIds.size})`;
+            } else {
+                bulkMoveBtn.style.display = 'none';
+            }
+            
+            // 전체 선택 체크박스 상태 업데이트
+            const allCheckboxes = document.querySelectorAll('.content-checkbox');
+            selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+        }
+
+        // 대량 이동 모달 표시
+        function showBulkMoveModal() {
+            if (selectedContentIds.size === 0) {
+                alert('이동할 콘텐츠를 선택해주세요.');
+                return;
+            }
+            fetchLabsForMove();
+            moveModal.style.display = 'flex';
+            currentContentToMoveId = null; // 대량 이동 모드 표시
         }
 
     </script>
