@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, HTTPException, Body, Query, Request, Form
+from fastapi import FastAPI, HTTPException, Body, Query, Request, Form, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
@@ -16,7 +16,14 @@ import hashlib
 import random
 import asyncio
 import json
+import re
 from collections import deque
+
+try:
+    from azure.storage.blob import BlobServiceClient, ContentSettings
+except Exception:
+    BlobServiceClient = None
+    ContentSettings = None
 
 load_dotenv()
 
@@ -35,6 +42,14 @@ async def startup_event():
         print("✅ 이벤트 로그 테이블 확인/생성 완료")
         ensure_supervisors_table()
         print("✅ 감독자 테이블 확인/생성 완료")
+        ensure_test_categories_table()
+        print("✅ 테스트 종목 테이블 확인/생성 완료")
+        ensure_question_categories_table()
+        print("✅ 문제 카테고리 테이블 확인/생성 완료")
+        ensure_test_questions_table()
+        print("✅ 테스트 문제 테이블 확인/생성 완료")
+        ensure_generated_tests_table()
+        print("✅ 랜덤 테스트 테이블 확인/생성 완료")
     except Exception as e:
         print(f"⚠️ 테이블 생성 실패: {str(e)}")
 
@@ -120,6 +135,143 @@ def ensure_supervisors_table():
                     INDEX idx_supervisor_name (supervisor_name)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
             """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_test_categories_table():
+    """테스트 종목 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS test_categories (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    category_name VARCHAR(100) NOT NULL,
+                    description VARCHAR(500),
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_category_name (category_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_question_categories_table():
+    """문제 카테고리 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS question_categories (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    category_name VARCHAR(100) NOT NULL,
+                    description VARCHAR(500),
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_question_category_name (category_name)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_test_questions_table():
+    """테스트 문제 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS test_questions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    test_category_id INT NOT NULL,
+                    question_category_id INT NULL,
+                    course_code VARCHAR(100) NULL,
+                    question_number INT NULL,
+                    question_category_name VARCHAR(100) NULL,
+                    question_title VARCHAR(255) NOT NULL,
+                    question_text TEXT,
+                    image_urls_json LONGTEXT,
+                    options_json LONGTEXT,
+                    answer VARCHAR(50),
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_test_category_id (test_category_id),
+                    INDEX idx_question_category_id (question_category_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            alter_statements = [
+                "ALTER TABLE test_questions ADD COLUMN course_code VARCHAR(100) NULL AFTER question_category_id",
+                "ALTER TABLE test_questions ADD COLUMN question_number INT NULL AFTER question_category_id",
+                "ALTER TABLE test_questions ADD COLUMN question_type VARCHAR(50) NULL AFTER question_number",
+                "ALTER TABLE test_questions ADD COLUMN question_category_name VARCHAR(100) NULL AFTER question_type",
+                "ALTER TABLE test_questions ADD COLUMN image_urls_json LONGTEXT NULL AFTER question_text",
+                "ALTER TABLE test_questions ADD COLUMN options_json LONGTEXT NULL AFTER question_text",
+                "ALTER TABLE test_questions ADD COLUMN answer VARCHAR(50) NULL AFTER options_json"
+            ]
+
+            for statement in alter_statements:
+                try:
+                    cursor.execute(statement)
+                except Exception as e:
+                    if "Duplicate column name" not in str(e):
+                        raise
+
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_generated_tests_table():
+    """랜덤 생성 테스트 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS generated_tests (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    test_category_id INT NOT NULL,
+                    generated_name VARCHAR(255) NOT NULL,
+                    question_count INT NOT NULL DEFAULT 0,
+                    selected_category_ids_json LONGTEXT,
+                    selected_category_names_json LONGTEXT,
+                    questions_json LONGTEXT,
+                    is_random_order TINYINT DEFAULT 0,
+                    is_full_selection TINYINT DEFAULT 0,
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_generated_tests_category_id (test_category_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            alter_statements = [
+                "ALTER TABLE generated_tests ADD COLUMN question_count INT NOT NULL DEFAULT 0 AFTER generated_name",
+                "ALTER TABLE generated_tests ADD COLUMN selected_category_ids_json LONGTEXT NULL AFTER question_count",
+                "ALTER TABLE generated_tests ADD COLUMN selected_category_names_json LONGTEXT NULL AFTER selected_category_ids_json",
+                "ALTER TABLE generated_tests ADD COLUMN questions_json LONGTEXT NULL AFTER selected_category_names_json",
+                "ALTER TABLE generated_tests ADD COLUMN is_random_order TINYINT DEFAULT 0 AFTER questions_json",
+                "ALTER TABLE generated_tests ADD COLUMN is_full_selection TINYINT DEFAULT 0 AFTER is_random_order",
+                "ALTER TABLE generated_tests ADD COLUMN is_active TINYINT DEFAULT 1 AFTER questions_json"
+            ]
+
+            for statement in alter_statements:
+                try:
+                    cursor.execute(statement)
+                except Exception as e:
+                    if "Duplicate column name" not in str(e):
+                        raise
+
             conn.commit()
     finally:
         conn.close()
@@ -236,6 +388,54 @@ def normalize_lab_content_type(raw_type):
         return int(value)
     except Exception:
         return 4
+
+
+def sanitize_filename_part(value: str, default_value: str = "none") -> str:
+    text = (value or "").strip()
+    if not text:
+        return default_value
+    text = re.sub(r"\s+", "_", text)
+    text = re.sub(r"[^\w\-]", "_", text, flags=re.UNICODE)
+    text = re.sub(r"_+", "_", text).strip("_")
+    return text or default_value
+
+
+def get_blob_service_client():
+    if BlobServiceClient is None:
+        raise HTTPException(status_code=500, detail="azure-storage-blob 패키지가 설치되지 않았습니다.")
+
+    conn_str = (
+        os.getenv("STORAGE_CONNECTION_STRING")
+        or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+        or os.getenv("BLOB_STORAGE_CONNECTION_STRING")
+    )
+    if conn_str:
+        # Some .env files accidentally include an extra '=' after the key assignment.
+        conn_str = conn_str.lstrip("=")
+        return BlobServiceClient.from_connection_string(conn_str)
+
+    account_name = os.getenv("STORAGE_ACCOUNT_NAME")
+    account_url = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
+    if not account_url and account_name:
+        account_url = f"https://{account_name}.blob.core.windows.net"
+
+    account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY") or os.getenv("STORAGE_ACCOUNT_KEY")
+    sas_token = os.getenv("AZURE_STORAGE_SAS_TOKEN")
+
+    credential = account_key or sas_token
+    if account_url and credential:
+        return BlobServiceClient(account_url=account_url, credential=credential)
+
+    raise HTTPException(
+        status_code=500,
+        detail="Blob Storage 연결 정보가 없습니다. STORAGE_CONNECTION_STRING 또는 AZURE_STORAGE_CONNECTION_STRING을 설정해주세요."
+    )
+
+
+def get_blob_container_name(default_name: str = "question") -> str:
+    container_name = os.getenv("STORAGE_CONTAINER_NAME", default_name)
+    container_name = (container_name or default_name).strip().lower()
+    return container_name or default_name
 
 def get_mysql_conn():
     try:
@@ -1201,6 +1401,1340 @@ async def delete_course(training_key: str):
                 raise HTTPException(status_code=500, detail=f"코스 삭제 실패: {str(e)}")
         conn.commit()
         return {"message": "코스가 삭제되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/test-categories")
+@app.get("/api/admin/test-categories/")
+async def get_test_categories():
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, category_name, description, is_active, create_date, update_date
+                FROM test_categories
+                ORDER BY create_date DESC, id DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "category_name": row["category_name"],
+                    "description": row["description"] or "",
+                    "is_active": int(row["is_active"] or 0),
+                    "create_date": format_kst(row["create_date"]),
+                    "update_date": format_kst(row["update_date"]),
+                }
+                for row in rows
+            ]
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/test-categories/{category_id}")
+@app.get("/api/admin/test-categories/{category_id}/")
+async def get_test_category(category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, category_name, description, is_active, create_date, update_date
+                FROM test_categories
+                WHERE id = %s
+                """,
+                (category_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+            return {
+                "id": row["id"],
+                "category_name": row["category_name"],
+                "description": row["description"] or "",
+                "is_active": int(row["is_active"] or 0),
+                "create_date": format_kst(row["create_date"]),
+                "update_date": format_kst(row["update_date"]),
+            }
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/test-categories")
+@app.post("/api/admin/test-categories/")
+async def add_test_category(data: dict = Body(...)):
+    category_name = (data.get("category_name") or "").strip()
+    description = (data.get("description") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    if not category_name:
+        raise HTTPException(status_code=400, detail="테스트 종목명을 입력해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO test_categories (category_name, description, is_active)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (category_name, description, is_active)
+                )
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                raise HTTPException(status_code=400, detail="이미 존재하는 테스트 종목명입니다.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"테스트 종목 추가 실패: {str(e)}")
+        return {"message": "테스트 종목이 추가되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.put("/api/admin/test-categories/{category_id}")
+@app.put("/api/admin/test-categories/{category_id}/")
+async def update_test_category(category_id: int, data: dict = Body(...)):
+    category_name = (data.get("category_name") or "").strip()
+    description = (data.get("description") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    if not category_name:
+        raise HTTPException(status_code=400, detail="테스트 종목명을 입력해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM test_categories WHERE id = %s", (category_id,))
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+
+            try:
+                cursor.execute(
+                    """
+                    UPDATE test_categories
+                    SET category_name = %s, description = %s, is_active = %s
+                    WHERE id = %s
+                    """,
+                    (category_name, description, is_active, category_id)
+                )
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                raise HTTPException(status_code=400, detail="이미 존재하는 테스트 종목명입니다.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"테스트 종목 수정 실패: {str(e)}")
+
+        return {"message": "테스트 종목이 수정되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/test-categories/{category_id}")
+@app.delete("/api/admin/test-categories/{category_id}/")
+async def delete_test_category(category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM test_categories WHERE id = %s", (category_id,))
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+
+            try:
+                cursor.execute("DELETE FROM test_questions WHERE test_category_id = %s", (category_id,))
+                cursor.execute("DELETE FROM test_categories WHERE id = %s", (category_id,))
+                conn.commit()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"테스트 종목 삭제 실패: {str(e)}")
+
+        return {"message": "테스트 종목이 삭제되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/question-categories")
+@app.get("/api/admin/question-categories/")
+async def get_question_categories():
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, category_name, description, is_active, create_date, update_date
+                FROM question_categories
+                ORDER BY create_date DESC, id DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "category_name": row["category_name"],
+                    "description": row["description"] or "",
+                    "is_active": int(row["is_active"] or 0),
+                    "create_date": format_kst(row["create_date"]),
+                    "update_date": format_kst(row["update_date"]),
+                }
+                for row in rows
+            ]
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/question-categories/{question_category_id}")
+@app.get("/api/admin/question-categories/{question_category_id}/")
+async def get_question_category(question_category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, category_name, description, is_active, create_date, update_date
+                FROM question_categories
+                WHERE id = %s
+                """,
+                (question_category_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="문제 카테고리를 찾을 수 없습니다.")
+            return {
+                "id": row["id"],
+                "category_name": row["category_name"],
+                "description": row["description"] or "",
+                "is_active": int(row["is_active"] or 0),
+                "create_date": format_kst(row["create_date"]),
+                "update_date": format_kst(row["update_date"]),
+            }
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/question-categories")
+@app.post("/api/admin/question-categories/")
+async def add_question_category(data: dict = Body(...)):
+    category_name = (data.get("category_name") or "").strip()
+    description = (data.get("description") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    if not category_name:
+        raise HTTPException(status_code=400, detail="문제 카테고리명을 입력해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO question_categories (category_name, description, is_active)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (category_name, description, is_active)
+                )
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                raise HTTPException(status_code=400, detail="이미 존재하는 문제 카테고리명입니다.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 카테고리 추가 실패: {str(e)}")
+        return {"message": "문제 카테고리가 추가되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.put("/api/admin/question-categories/{question_category_id}")
+@app.put("/api/admin/question-categories/{question_category_id}/")
+async def update_question_category(question_category_id: int, data: dict = Body(...)):
+    category_name = (data.get("category_name") or "").strip()
+    description = (data.get("description") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    if not category_name:
+        raise HTTPException(status_code=400, detail="문제 카테고리명을 입력해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM question_categories WHERE id = %s", (question_category_id,))
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="문제 카테고리를 찾을 수 없습니다.")
+
+            try:
+                cursor.execute(
+                    """
+                    UPDATE question_categories
+                    SET category_name = %s, description = %s, is_active = %s
+                    WHERE id = %s
+                    """,
+                    (category_name, description, is_active, question_category_id)
+                )
+                conn.commit()
+            except pymysql.err.IntegrityError:
+                raise HTTPException(status_code=400, detail="이미 존재하는 문제 카테고리명입니다.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 카테고리 수정 실패: {str(e)}")
+
+        return {"message": "문제 카테고리가 수정되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/question-categories/{question_category_id}")
+@app.delete("/api/admin/question-categories/{question_category_id}/")
+async def delete_question_category(question_category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM question_categories WHERE id = %s", (question_category_id,))
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="문제 카테고리를 찾을 수 없습니다.")
+
+            try:
+                cursor.execute(
+                    "UPDATE test_questions SET question_category_id = NULL WHERE question_category_id = %s",
+                    (question_category_id,)
+                )
+                cursor.execute("DELETE FROM question_categories WHERE id = %s", (question_category_id,))
+                conn.commit()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 카테고리 삭제 실패: {str(e)}")
+
+        return {"message": "문제 카테고리가 삭제되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/test-categories/{category_id}/questions")
+@app.get("/api/admin/test-categories/{category_id}/questions/")
+async def get_test_questions(category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, category_name FROM test_categories WHERE id = %s", (category_id,))
+            category = cursor.fetchone()
+            if not category:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+
+            cursor.execute(
+                """
+                SELECT
+                    tq.id,
+                    tq.test_category_id,
+                    tq.question_category_id,
+                    tq.course_code,
+                    tq.question_number,
+                    tq.question_type,
+                    tq.question_category_name,
+                    tq.question_title,
+                    tq.question_text,
+                    tq.image_urls_json,
+                    tq.options_json,
+                    tq.answer,
+                    tq.is_active,
+                    tq.create_date,
+                    tq.update_date,
+                    qc.category_name AS linked_question_category_name
+                FROM test_questions tq
+                LEFT JOIN question_categories qc ON tq.question_category_id = qc.id
+                WHERE tq.test_category_id = %s
+                ORDER BY tq.create_date DESC, tq.id DESC
+                """,
+                (category_id,)
+            )
+            rows = cursor.fetchall()
+            return {
+                "test_category": {
+                    "id": category["id"],
+                    "category_name": category["category_name"]
+                },
+                "questions": [
+                    {
+                        "id": row["id"],
+                        "test_category_id": row["test_category_id"],
+                        "question_category_id": row["question_category_id"],
+                        "course_code": row.get("course_code") or "",
+                        "question_number": row["question_number"],
+                        "question_type": row.get("question_type") or "",
+                        "question_category_name": row.get("linked_question_category_name") or row.get("question_category_name") or None,
+                        "question_title": row["question_title"],
+                        "question_text": row["question_text"] or "",
+                        "image_urls": json.loads(row["image_urls_json"]) if row.get("image_urls_json") else [],
+                        "options": json.loads(row["options_json"]) if row.get("options_json") else {},
+                        "answer": row["answer"] or "",
+                        "is_active": int(row["is_active"] or 0),
+                        "create_date": format_kst(row["create_date"]),
+                        "update_date": format_kst(row["update_date"]),
+                    }
+                    for row in rows
+                ]
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/test-categories/{category_id}/question-summary")
+@app.get("/api/admin/test-categories/{category_id}/question-summary/")
+async def get_test_question_summary(category_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, category_name FROM test_categories WHERE id = %s",
+                (category_id,)
+            )
+            category = cursor.fetchone()
+            if not category:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+
+            cursor.execute(
+                """
+                SELECT
+                    qc.id AS question_category_id,
+                    qc.category_name AS question_category_name,
+                    COUNT(tq.id) AS question_count
+                FROM test_questions tq
+                INNER JOIN question_categories qc ON tq.question_category_id = qc.id
+                WHERE tq.test_category_id = %s AND tq.is_active = 1
+                GROUP BY qc.id, qc.category_name
+                ORDER BY qc.category_name ASC
+                """,
+                (category_id,)
+            )
+            summary_rows = cursor.fetchall()
+            total_available = sum(int(row["question_count"] or 0) for row in summary_rows)
+            return {
+                "test_category": {
+                    "id": category["id"],
+                    "category_name": category["category_name"],
+                },
+                "available_question_count": total_available,
+                "question_categories": [
+                    {
+                        "id": row["question_category_id"],
+                        "category_name": row["question_category_name"],
+                        "question_count": int(row["question_count"] or 0),
+                    }
+                    for row in summary_rows
+                ]
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/generated-tests")
+@app.get("/api/admin/generated-tests/")
+async def get_generated_tests():
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    gt.id,
+                    gt.test_category_id,
+                    gt.generated_name,
+                    gt.question_count,
+                    gt.selected_category_ids_json,
+                    gt.selected_category_names_json,
+                    gt.is_random_order,
+                    gt.is_full_selection,
+                    gt.is_active,
+                    gt.create_date,
+                    gt.update_date,
+                    tc.category_name AS test_category_name
+                FROM generated_tests gt
+                INNER JOIN test_categories tc ON gt.test_category_id = tc.id
+                ORDER BY gt.create_date DESC, gt.id DESC
+                """
+            )
+            rows = cursor.fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "test_category_id": row["test_category_id"],
+                    "test_category_name": row["test_category_name"],
+                    "generated_name": row["generated_name"],
+                    "question_count": int(row["question_count"] or 0),
+                    "selected_category_ids": json.loads(row["selected_category_ids_json"]) if row.get("selected_category_ids_json") else [],
+                    "selected_category_names": json.loads(row["selected_category_names_json"]) if row.get("selected_category_names_json") else [],
+                    "is_random_order": int(row.get("is_random_order") or 0),
+                    "is_full_selection": int(row.get("is_full_selection") or 0),
+                    "is_active": int(row["is_active"] or 0),
+                    "create_date": format_kst(row["create_date"]),
+                    "update_date": format_kst(row["update_date"]),
+                }
+                for row in rows
+            ]
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/generated-tests/{generated_test_id}")
+@app.get("/api/admin/generated-tests/{generated_test_id}/")
+async def get_generated_test(generated_test_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    gt.id,
+                    gt.test_category_id,
+                    gt.generated_name,
+                    gt.question_count,
+                    gt.selected_category_ids_json,
+                    gt.selected_category_names_json,
+                    gt.questions_json,
+                    gt.is_random_order,
+                    gt.is_full_selection,
+                    gt.is_active,
+                    gt.create_date,
+                    tc.category_name AS test_category_name
+                FROM generated_tests gt
+                INNER JOIN test_categories tc ON gt.test_category_id = tc.id
+                WHERE gt.id = %s
+                """,
+                (generated_test_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="생성된 테스트를 찾을 수 없습니다.")
+
+            return {
+                "id": row["id"],
+                "test_category_id": row["test_category_id"],
+                "test_category_name": row["test_category_name"],
+                "generated_name": row["generated_name"],
+                "question_count": int(row["question_count"] or 0),
+                "selected_category_ids": json.loads(row["selected_category_ids_json"]) if row.get("selected_category_ids_json") else [],
+                "selected_category_names": json.loads(row["selected_category_names_json"]) if row.get("selected_category_names_json") else [],
+                "questions": json.loads(row["questions_json"]) if row.get("questions_json") else [],
+                "is_random_order": int(row.get("is_random_order") or 0),
+                "is_full_selection": int(row.get("is_full_selection") or 0),
+                "is_active": int(row["is_active"] or 0),
+                "create_date": format_kst(row["create_date"]),
+            }
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/generated-tests")
+@app.post("/api/admin/generated-tests/")
+async def create_generated_test(data: dict = Body(...)):
+    test_category_id = data.get("test_category_id")
+    question_category_ids = data.get("question_category_ids") or []
+    question_count = data.get("question_count")
+    include_all_questions = bool(data.get("include_all_questions", False))
+    random_order = bool(data.get("random_order", False))
+
+    try:
+        test_category_id = int(test_category_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="올바른 테스트 종목을 선택해주세요.")
+
+    if not isinstance(question_category_ids, list):
+        raise HTTPException(status_code=400, detail="문제 카테고리 값이 올바르지 않습니다.")
+
+    try:
+        normalized_category_ids = sorted({int(category_id) for category_id in question_category_ids if category_id is not None and str(category_id).strip() != ""})
+    except Exception:
+        raise HTTPException(status_code=400, detail="문제 카테고리 값이 올바르지 않습니다.")
+
+    if not include_all_questions and not normalized_category_ids:
+        raise HTTPException(status_code=400, detail="최소 1개 이상의 문제 카테고리를 선택해주세요.")
+
+    if not include_all_questions:
+        try:
+            question_count = int(question_count)
+        except Exception:
+            raise HTTPException(status_code=400, detail="총 문항수는 숫자여야 합니다.")
+
+        if question_count <= 0:
+            raise HTTPException(status_code=400, detail="총 문항수는 1 이상이어야 합니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, category_name FROM test_categories WHERE id = %s AND is_active = 1",
+                (test_category_id,)
+            )
+            test_category = cursor.fetchone()
+            if not test_category:
+                raise HTTPException(status_code=404, detail="활성 테스트 종목을 찾을 수 없습니다.")
+
+            category_rows = []
+            selected_category_names = []
+            query_params = [test_category_id]
+            category_filter_sql = ""
+
+            if normalized_category_ids:
+                placeholders = ", ".join(["%s"] * len(normalized_category_ids))
+                cursor.execute(
+                    f"""
+                    SELECT id, category_name
+                    FROM question_categories
+                    WHERE id IN ({placeholders}) AND is_active = 1
+                    ORDER BY category_name ASC
+                    """,
+                    tuple(normalized_category_ids)
+                )
+                category_rows = cursor.fetchall()
+                if len(category_rows) != len(normalized_category_ids):
+                    raise HTTPException(status_code=400, detail="선택한 문제 카테고리 중 사용할 수 없는 항목이 있습니다.")
+
+                selected_category_names = [row["category_name"] for row in category_rows]
+                category_filter_sql = f" AND tq.question_category_id IN ({placeholders})"
+                query_params.extend(normalized_category_ids)
+            elif include_all_questions:
+                selected_category_names = ["전체"]
+
+            cursor.execute(
+                f"""
+                SELECT
+                    tq.id,
+                    tq.question_number,
+                    tq.question_type,
+                    tq.question_title,
+                    tq.question_text,
+                    tq.question_category_id,
+                    tq.question_category_name,
+                    tq.image_urls_json,
+                    tq.options_json,
+                    tq.answer,
+                    qc.category_name AS linked_question_category_name
+                FROM test_questions tq
+                LEFT JOIN question_categories qc ON tq.question_category_id = qc.id
+                WHERE tq.test_category_id = %s
+                  AND tq.is_active = 1
+                  {category_filter_sql}
+                ORDER BY
+                    CASE WHEN tq.question_number IS NULL THEN 1 ELSE 0 END,
+                    tq.question_number ASC,
+                    tq.id ASC
+                """,
+                tuple(query_params)
+            )
+            question_rows = cursor.fetchall()
+            if not question_rows:
+                raise HTTPException(status_code=400, detail="선택한 조건에 맞는 활성 문제가 없습니다.")
+
+            if include_all_questions:
+                chosen_rows = list(question_rows)
+                question_count = len(chosen_rows)
+                if random_order:
+                    random.shuffle(chosen_rows)
+            else:
+                if len(question_rows) < question_count:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"선택한 조건에서 생성 가능한 문항은 {len(question_rows)}개입니다."
+                    )
+
+                if random_order:
+                    chosen_rows = random.sample(question_rows, question_count)
+                else:
+                    chosen_rows = question_rows[:question_count]
+
+            question_snapshots = []
+            for row in chosen_rows:
+                raw_options = json.loads(row["options_json"]) if row.get("options_json") else {}
+                question_type = (row.get("question_type") or "multiple_choice").strip().lower()
+                if question_type == "yes_no":
+                    options_out = {}
+                    items_out = raw_options.get("items", [])
+                elif question_type == "matching":
+                    options_out = raw_options.get("options", [])
+                    items_out = raw_options.get("items", [])
+                else:
+                    options_out = raw_options
+                    items_out = []
+
+                question_snapshots.append(
+                    {
+                        "id": row["id"],
+                        "question_number": row.get("question_number"),
+                        "question_type": question_type,
+                        "question_title": row.get("question_title") or "",
+                        "question_text": row.get("question_text") or "",
+                        "question_category_id": row.get("question_category_id"),
+                        "question_category_name": row.get("linked_question_category_name") or row.get("question_category_name") or "None",
+                        "image_urls": json.loads(row["image_urls_json"]) if row.get("image_urls_json") else [],
+                        "options": options_out,
+                        "items": items_out,
+                        "answer": row.get("answer") or "",
+                    }
+                )
+
+            mode_label = "랜덤" if random_order else "순차"
+            scope_label = "전체" if include_all_questions else "선택"
+            generated_name = f"{test_category['category_name']} 테스트 ({scope_label}/{mode_label}) {now_kst().strftime('%Y-%m-%d %H:%M')}"
+
+            cursor.execute(
+                """
+                INSERT INTO generated_tests (
+                    test_category_id,
+                    generated_name,
+                    question_count,
+                    selected_category_ids_json,
+                    selected_category_names_json,
+                    questions_json,
+                    is_random_order,
+                    is_full_selection,
+                    is_active
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
+                """,
+                (
+                    test_category_id,
+                    generated_name,
+                    question_count,
+                    json.dumps(normalized_category_ids, ensure_ascii=False),
+                    json.dumps(selected_category_names, ensure_ascii=False),
+                    json.dumps(question_snapshots, ensure_ascii=False),
+                    1 if random_order else 0,
+                    1 if include_all_questions else 0,
+                )
+            )
+            generated_test_id = cursor.lastrowid
+            conn.commit()
+
+            return {
+                "message": "테스트가 생성되었습니다.",
+                "generated_test_id": generated_test_id,
+                "generated_name": generated_name,
+                "question_count": question_count,
+            }
+    finally:
+        conn.close()
+
+
+def build_generated_test_markdown(generated_name: str, test_category_name: str, questions: list) -> str:
+    lines = [
+        f"# {generated_name}",
+        "",
+        f"- 테스트 종목: {test_category_name}",
+        f"- 문항 수: {len(questions)}",
+        "",
+        "---",
+        "",
+    ]
+
+    for index, question in enumerate(questions, start=1):
+        question_type = str(question.get("question_type") or "multiple_choice").strip().lower()
+        question_text = (question.get("question_text") or question.get("question_title") or "").strip()
+        question_category = question.get("question_category_name") or "None"
+
+        lines.append(f"## {index}. {question_text}")
+        lines.append(f"- 카테고리: {question_category}")
+        lines.append(f"- 유형: {question_type}")
+
+        if question_type == "yes_no":
+            items = question.get("items") or []
+            for sub_index, item in enumerate(items, start=1):
+                sub_text = str(item.get("text") or "").strip()
+                sub_answer = str(item.get("answer") or "").strip()
+                lines.append(f"- {sub_index}) {sub_text} (정답: {sub_answer})")
+        elif question_type == "matching":
+            options = question.get("options") or []
+            items = question.get("items") or []
+            if options:
+                lines.append("- 보기")
+                for option_index, option_value in enumerate(options, start=1):
+                    lines.append(f"  - {option_index}. {str(option_value)}")
+            if items:
+                lines.append("- 매칭 정답")
+                for sub_index, item in enumerate(items, start=1):
+                    sub_text = str(item.get("text") or "").strip()
+                    sub_answer = str(item.get("answer") or "").strip()
+                    lines.append(f"  - {sub_index}) {sub_text} -> {sub_answer}")
+        else:
+            options = question.get("options") or {}
+            answer = str(question.get("answer") or "").strip()
+            if isinstance(options, dict):
+                for key in sorted(options.keys()):
+                    lines.append(f"- {key}. {str(options.get(key) or '')}")
+            lines.append(f"- 정답: {answer}")
+
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
+
+@app.post("/api/admin/generated-tests/{generated_test_id}/assign-to-lab")
+@app.post("/api/admin/generated-tests/{generated_test_id}/assign-to-lab/")
+async def assign_generated_test_to_lab(generated_test_id: int, data: dict = Body(...)):
+    training_key = (data.get("training_key") or "").strip()
+    lab_content_subject = (data.get("lab_content_subject") or "").strip()
+
+    try:
+        lab_content_status = int(data.get("lab_content_status", 1))
+    except Exception:
+        lab_content_status = 1
+
+    if not training_key:
+        raise HTTPException(status_code=400, detail="과정 키를 선택해주세요.")
+
+    if lab_content_status not in (0, 1):
+        lab_content_status = 1
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    gt.id,
+                    gt.generated_name,
+                    gt.questions_json,
+                    tc.category_name AS test_category_name
+                FROM generated_tests gt
+                INNER JOIN test_categories tc ON gt.test_category_id = tc.id
+                WHERE gt.id = %s
+                """,
+                (generated_test_id,)
+            )
+            generated_test = cursor.fetchone()
+            if not generated_test:
+                raise HTTPException(status_code=404, detail="생성된 테스트를 찾을 수 없습니다.")
+
+            questions = json.loads(generated_test.get("questions_json") or "[]")
+            if not questions:
+                raise HTTPException(status_code=400, detail="할당할 문제 데이터가 없습니다.")
+
+            # 과정 내 '테스트 센터' 랩이 없으면 마지막 순서로 생성
+            cursor.execute(
+                "SELECT lab_id, lab_name, is_public FROM training_lab WHERE training_key = %s AND lab_name = %s ORDER BY lab_id DESC LIMIT 1",
+                (training_key, "테스트 센터")
+            )
+            lab = cursor.fetchone()
+            created_test_center = False
+
+            if not lab:
+                cursor.execute(
+                    "SELECT COALESCE(MAX(lab_id), 0) AS max_lab_id FROM training_lab WHERE training_key = %s",
+                    (training_key,)
+                )
+                max_lab_row = cursor.fetchone()
+                next_lab_id = int(max_lab_row.get("max_lab_id") or 0) + 1
+
+                cursor.execute(
+                    "SELECT COALESCE(is_public, 0) AS is_public FROM training WHERE training_key = %s",
+                    (training_key,)
+                )
+                training_row = cursor.fetchone()
+                is_public = int((training_row or {}).get("is_public") or 0)
+
+                now = now_kst_naive()
+                cursor.execute(
+                    """
+                    INSERT INTO training_lab (lab_id, training_key, lab_name, lab_content, lab_status, is_public, create_date)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        next_lab_id,
+                        training_key,
+                        "테스트 센터",
+                        "자동 생성된 테스트 전용 랩",
+                        1,
+                        is_public,
+                        now,
+                    )
+                )
+                lab = {
+                    "lab_id": next_lab_id,
+                    "lab_name": "테스트 센터",
+                    "is_public": is_public,
+                }
+                created_test_center = True
+
+            lab_id = int(lab.get("lab_id"))
+
+            cursor.execute(
+                "SELECT MAX(content_id) as max_content_id, MAX(view_number) as max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s",
+                (training_key, lab_id)
+            )
+            max_result = cursor.fetchone()
+            next_content_id = 1 if not max_result or max_result["max_content_id"] is None else int(max_result["max_content_id"]) + 1
+            next_view_number = 1 if not max_result or max_result["max_view_number"] is None else int(max_result["max_view_number"]) + 1
+
+            if not lab_content_subject:
+                lab_content_subject = f"{generated_test['generated_name']}"
+
+            lab_content = json.dumps(
+                {
+                    "content_kind": "generated_test_center",
+                    "generated_test_id": generated_test_id,
+                    "generated_name": generated_test.get("generated_name") or "",
+                    "test_category_name": generated_test.get("test_category_name") or "",
+                    "question_count": len(questions),
+                },
+                ensure_ascii=False,
+            )
+
+            now = now_kst_naive()
+            cursor.execute(
+                """
+                INSERT INTO training_lab_contents (
+                    training_key, lab_id, content_id, view_number, lab_content_subject, lab_content,
+                    lab_content_type, lab_content_status, lab_content_create_date, is_public
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    training_key,
+                    lab_id,
+                    next_content_id,
+                    next_view_number,
+                    lab_content_subject,
+                    lab_content,
+                    4,
+                    lab_content_status,
+                    now,
+                    int(lab.get("is_public") or 0),
+                )
+            )
+            conn.commit()
+
+            return {
+                "message": "생성된 테스트가 랩 콘텐츠로 할당되었습니다.",
+                "training_key": training_key,
+                "lab_id": lab_id,
+                "lab_name": lab.get("lab_name"),
+                "created_test_center": created_test_center,
+                "content_id": next_content_id,
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"테스트 랩 할당 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/generated-tests/{generated_test_id}")
+@app.delete("/api/admin/generated-tests/{generated_test_id}/")
+async def delete_generated_test(generated_test_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM generated_tests WHERE id = %s", (generated_test_id,))
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="생성된 테스트를 찾을 수 없습니다.")
+
+            cursor.execute("DELETE FROM generated_tests WHERE id = %s", (generated_test_id,))
+            conn.commit()
+            return {"message": "생성된 테스트가 삭제되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/test-questions/upload-image")
+@app.post("/api/admin/test-questions/upload-image/")
+async def upload_test_question_image(
+    file: UploadFile = File(...),
+    test_category_name: str = Form("None"),
+    category_name: str = Form("None"),
+    question_number: int = Form(...)
+):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="업로드할 이미지 파일이 필요합니다.")
+
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="이미지 파일만 업로드할 수 있습니다.")
+
+    ext = "png"
+    if "/" in content_type:
+        ext = content_type.split("/")[-1].lower() or "png"
+    if ext == "jpeg":
+        ext = "jpg"
+
+    safe_course = sanitize_filename_part(test_category_name, "None")
+    safe_category = sanitize_filename_part(category_name, "None")
+    safe_number = sanitize_filename_part(str(question_number), "0")
+    timestamp = now_kst_str("%Y%m%d%H%M%S")
+    blob_name = f"{safe_course}-{safe_category}-{safe_number}-{timestamp}.{ext}"
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
+
+    blob_service_client = get_blob_service_client()
+    container_name = get_blob_container_name("question")
+    container_client = blob_service_client.get_container_client(container_name)
+    try:
+        container_client.create_container()
+    except Exception:
+        pass
+
+    blob_client = container_client.get_blob_client(blob_name)
+    try:
+        if ContentSettings:
+            blob_client.upload_blob(
+                data,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type)
+            )
+        else:
+            blob_client.upload_blob(data, overwrite=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이미지 업로드 실패: {str(e)}")
+
+    return {
+        "message": "이미지가 업로드되었습니다.",
+        "file_name": blob_name,
+        "url": blob_client.url,
+    }
+
+
+@app.get("/api/admin/test-categories/{category_id}/questions/{question_id}")
+@app.get("/api/admin/test-categories/{category_id}/questions/{question_id}/")
+async def get_test_question(category_id: int, question_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, test_category_id, question_category_id, course_code, question_number, question_type, question_category_name, question_title, question_text, image_urls_json, options_json, answer, is_active, create_date, update_date
+                FROM test_questions
+                WHERE test_category_id = %s AND id = %s
+                """,
+                (category_id, question_id)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="문제를 찾을 수 없습니다.")
+
+            _q_type = row.get("question_type") or ""
+            _options_raw = json.loads(row["options_json"]) if row.get("options_json") else {}
+            if _q_type == "yes_no":
+                _items = _options_raw.get("items", [])
+                _options_out = {}
+            elif _q_type == "matching":
+                _items = _options_raw.get("items", [])
+                _options_out = _options_raw.get("options", [])
+            else:
+                _items = []
+                _options_out = _options_raw
+            return {
+                "id": row["id"],
+                "test_category_id": row["test_category_id"],
+                "question_category_id": row["question_category_id"],
+                "course_code": row.get("course_code") or "",
+                "question_number": row["question_number"],
+                "question_type": _q_type,
+                "question_category_name": row["question_category_name"] or None,
+                "question_title": row["question_title"],
+                "question_text": row["question_text"] or "",
+                "image_urls": json.loads(row["image_urls_json"]) if row.get("image_urls_json") else [],
+                "options": _options_out,
+                "items": _items,
+                "answer": row["answer"] or "",
+                "question_payload": {
+                    "course_code": row.get("course_code") or "",
+                    "question_number": row["question_number"],
+                    "question_type": _q_type,
+                    "question": row["question_text"] or row["question_title"] or "",
+                    "image_urls": json.loads(row["image_urls_json"]) if row.get("image_urls_json") else [],
+                    "options": _options_out,
+                    "items": _items,
+                    "answer": row["answer"] or ""
+                },
+                "is_active": int(row["is_active"] or 0),
+                "create_date": format_kst(row["create_date"]),
+                "update_date": format_kst(row["update_date"]),
+            }
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/test-categories/{category_id}/questions")
+@app.post("/api/admin/test-categories/{category_id}/questions/")
+async def add_test_question(category_id: int, data: dict = Body(...)):
+    raw_question_json = data.get("question_json")
+    selected_question_category_id = data.get("question_category_id")
+    course_code = (data.get("course_code") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    parsed_question = None
+    if isinstance(raw_question_json, str) and raw_question_json.strip():
+        try:
+            parsed_question = json.loads(raw_question_json)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"문제 JSON 파싱 실패: {str(e)}")
+    elif isinstance(raw_question_json, dict):
+        parsed_question = raw_question_json
+
+    if parsed_question is None:
+        parsed_question = data
+
+    if not course_code:
+        course_code = (parsed_question.get("course_code") or "").strip()
+
+    question_number = parsed_question.get("question_number")
+    if question_number in ("", None):
+        question_number = None
+    else:
+        try:
+            question_number = int(question_number)
+        except Exception:
+            raise HTTPException(status_code=400, detail="question_number는 숫자여야 합니다.")
+
+    question_text = (parsed_question.get("question") or parsed_question.get("question_text") or "").strip()
+    question_title = (parsed_question.get("question_title") or question_text or "").strip()
+    image_urls = data.get("image_urls")
+    if image_urls is None:
+        image_urls = parsed_question.get("image_urls")
+    if image_urls is None:
+        image_urls = []
+    if not isinstance(image_urls, list):
+        raise HTTPException(status_code=400, detail="image_urls는 배열이어야 합니다.")
+    image_urls = [str(u).strip() for u in image_urls if str(u).strip()]
+    question_type = (parsed_question.get("question_type") or "").strip().lower() or "multiple_choice"
+    if question_type == "yes_no":
+        items = parsed_question.get("items") or []
+        if not isinstance(items, list):
+            raise HTTPException(status_code=400, detail="yes_no 타입의 items는 배열이어야 합니다.")
+        options = {"items": items}
+        answer = None
+    elif question_type == "matching":
+        items = parsed_question.get("items") or []
+        options_list = parsed_question.get("options") or []
+        if not isinstance(items, list):
+            raise HTTPException(status_code=400, detail="matching 타입의 items는 배열이어야 합니다.")
+        if not isinstance(options_list, list):
+            raise HTTPException(status_code=400, detail="matching 타입의 options는 배열이어야 합니다.")
+        options = {"items": items, "options": options_list}
+        answer = None
+    else:
+        options = parsed_question.get("options") or {}
+        answer = (parsed_question.get("answer") or "").strip() or None
+        if not isinstance(options, dict):
+            raise HTTPException(status_code=400, detail="options는 JSON 객체여야 합니다.")
+
+    if not question_text:
+        raise HTTPException(status_code=400, detail="question 값을 입력해주세요.")
+
+    question_category_id = None
+    question_category_name = None
+
+    if selected_question_category_id in ("", None, "null"):
+        selected_question_category_id = None
+    elif selected_question_category_id is not None:
+        try:
+            selected_question_category_id = int(selected_question_category_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="선택한 문제 카테고리 값이 올바르지 않습니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM test_categories WHERE id = %s", (category_id,))
+            category = cursor.fetchone()
+            if not category:
+                raise HTTPException(status_code=404, detail="테스트 종목을 찾을 수 없습니다.")
+
+            if selected_question_category_id is not None:
+                cursor.execute(
+                    "SELECT id, category_name FROM question_categories WHERE id = %s",
+                    (selected_question_category_id,)
+                )
+                question_category = cursor.fetchone()
+                if not question_category:
+                    raise HTTPException(status_code=404, detail="문제 카테고리를 찾을 수 없습니다.")
+                question_category_id = question_category["id"]
+                question_category_name = question_category["category_name"]
+
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO test_questions (test_category_id, question_category_id, course_code, question_number, question_category_name, question_title, question_text, image_urls_json, options_json, answer, is_active, question_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        category_id,
+                        question_category_id,
+                        course_code,
+                        question_number,
+                        question_category_name,
+                        question_title,
+                        question_text,
+                        json.dumps(image_urls, ensure_ascii=False),
+                        json.dumps(options, ensure_ascii=False),
+                        answer,
+                        is_active,
+                        question_type
+                    )
+                )
+                conn.commit()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 추가 실패: {str(e)}")
+
+        return {"message": "문제가 추가되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.put("/api/admin/test-categories/{category_id}/questions/{question_id}")
+@app.put("/api/admin/test-categories/{category_id}/questions/{question_id}/")
+async def update_test_question(category_id: int, question_id: int, data: dict = Body(...)):
+    raw_question_json = data.get("question_json")
+    selected_question_category_id = data.get("question_category_id")
+    course_code = (data.get("course_code") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1)) == 1 else 0
+
+    parsed_question = None
+    if isinstance(raw_question_json, str) and raw_question_json.strip():
+        try:
+            parsed_question = json.loads(raw_question_json)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"문제 JSON 파싱 실패: {str(e)}")
+    elif isinstance(raw_question_json, dict):
+        parsed_question = raw_question_json
+
+    if parsed_question is None:
+        parsed_question = data
+
+    if not course_code:
+        course_code = (parsed_question.get("course_code") or "").strip()
+
+    question_number = parsed_question.get("question_number")
+    if question_number in ("", None):
+        question_number = None
+    else:
+        try:
+            question_number = int(question_number)
+        except Exception:
+            raise HTTPException(status_code=400, detail="question_number는 숫자여야 합니다.")
+
+    question_text = (parsed_question.get("question") or parsed_question.get("question_text") or "").strip()
+    question_title = (parsed_question.get("question_title") or question_text or "").strip()
+    image_urls = data.get("image_urls")
+    if image_urls is None:
+        image_urls = parsed_question.get("image_urls")
+    if image_urls is None:
+        image_urls = []
+    if not isinstance(image_urls, list):
+        raise HTTPException(status_code=400, detail="image_urls는 배열이어야 합니다.")
+    image_urls = [str(u).strip() for u in image_urls if str(u).strip()]
+    question_type = (parsed_question.get("question_type") or "").strip().lower() or "multiple_choice"
+    if question_type == "yes_no":
+        items = parsed_question.get("items") or []
+        if not isinstance(items, list):
+            raise HTTPException(status_code=400, detail="yes_no 타입의 items는 배열이어야 합니다.")
+        options = {"items": items}
+        answer = None
+    elif question_type == "matching":
+        items = parsed_question.get("items") or []
+        options_list = parsed_question.get("options") or []
+        if not isinstance(items, list):
+            raise HTTPException(status_code=400, detail="matching 타입의 items는 배열이어야 합니다.")
+        if not isinstance(options_list, list):
+            raise HTTPException(status_code=400, detail="matching 타입의 options는 배열이어야 합니다.")
+        options = {"items": items, "options": options_list}
+        answer = None
+    else:
+        options = parsed_question.get("options") or {}
+        answer = (parsed_question.get("answer") or "").strip() or None
+        if not isinstance(options, dict):
+            raise HTTPException(status_code=400, detail="options는 JSON 객체여야 합니다.")
+
+    if not question_text:
+        raise HTTPException(status_code=400, detail="question 값을 입력해주세요.")
+
+    question_category_id = None
+    question_category_name = None
+
+    if selected_question_category_id in ("", None, "null"):
+        selected_question_category_id = None
+    elif selected_question_category_id is not None:
+        try:
+            selected_question_category_id = int(selected_question_category_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail="선택한 문제 카테고리 값이 올바르지 않습니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM test_questions WHERE test_category_id = %s AND id = %s",
+                (category_id, question_id)
+            )
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="문제를 찾을 수 없습니다.")
+
+            if selected_question_category_id is not None:
+                cursor.execute(
+                    "SELECT id, category_name FROM question_categories WHERE id = %s",
+                    (selected_question_category_id,)
+                )
+                question_category = cursor.fetchone()
+                if not question_category:
+                    raise HTTPException(status_code=404, detail="문제 카테고리를 찾을 수 없습니다.")
+                question_category_id = question_category["id"]
+                question_category_name = question_category["category_name"]
+
+            try:
+                cursor.execute(
+                    """
+                    UPDATE test_questions
+                    SET question_category_id = %s, course_code = %s, question_number = %s, question_category_name = %s, question_title = %s, question_text = %s, image_urls_json = %s, options_json = %s, answer = %s, is_active = %s, question_type = %s
+                    WHERE test_category_id = %s AND id = %s
+                    """,
+                    (
+                        question_category_id,
+                        course_code,
+                        question_number,
+                        question_category_name,
+                        question_title,
+                        question_text,
+                        json.dumps(image_urls, ensure_ascii=False),
+                        json.dumps(options, ensure_ascii=False),
+                        answer,
+                        is_active,
+                        question_type,
+                        category_id,
+                        question_id
+                    )
+                )
+                conn.commit()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 수정 실패: {str(e)}")
+
+        return {"message": "문제가 수정되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/test-categories/{category_id}/questions/{question_id}")
+@app.delete("/api/admin/test-categories/{category_id}/questions/{question_id}/")
+async def delete_test_question(category_id: int, question_id: int):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM test_questions WHERE test_category_id = %s AND id = %s",
+                (category_id, question_id)
+            )
+            exists = cursor.fetchone()
+            if not exists:
+                raise HTTPException(status_code=404, detail="문제를 찾을 수 없습니다.")
+
+            try:
+                cursor.execute(
+                    "DELETE FROM test_questions WHERE test_category_id = %s AND id = %s",
+                    (category_id, question_id)
+                )
+                conn.commit()
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"문제 삭제 실패: {str(e)}")
+
+        return {"message": "문제가 삭제되었습니다."}
     finally:
         conn.close()
 
@@ -3176,4 +4710,4 @@ async def get_supervisor_monitoring_stats(
         conn.close()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

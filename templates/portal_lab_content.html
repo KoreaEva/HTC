@@ -171,6 +171,26 @@
             box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
         }
         .button:hover { background: #1e4ed8; }
+        .test-next-btn {
+            transition: all 0.2s ease;
+        }
+        .test-next-btn.enabled {
+            background: #2563eb;
+            color: #ffffff;
+            cursor: pointer;
+            opacity: 1;
+            box-shadow: 0 8px 16px rgba(37, 99, 235, 0.35);
+        }
+        .test-next-btn.enabled:hover {
+            background: #1e4ed8;
+        }
+        .test-next-btn.disabled {
+            background: #cbd5e1;
+            color: #475569;
+            cursor: not-allowed;
+            opacity: 0.85;
+            box-shadow: none;
+        }
         .back-btn { margin-bottom: 16px; }
         .external-link { text-align: center; padding: 36px 20px; }
         .external-link .desc { font-size: 1.02em; color: var(--text); margin-bottom: 8px; }
@@ -263,6 +283,205 @@
             display: block;
             white-space: pre;
         }
+        .test-center-wrap {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            background: var(--panel);
+        }
+        .test-center-meta {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+        .test-question-card {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--hover);
+            padding: 24px;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+        .test-question-title {
+            font-size: 24px;
+            color: var(--text);
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.35;
+        }
+        .test-question-badge {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 6px;
+            margin-bottom: 8px;
+            background: #eff6ff;
+            color: var(--accent);
+        }
+        .test-option {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            background: var(--panel);
+            margin-bottom: 10px;
+            display: flex;
+            gap: 8px;
+            line-height: 1.75;
+            font-size: 18px;
+        }
+        .choice-correct-highlight {
+            border-color: #16a34a !important;
+            background: #ecfdf5 !important;
+            box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.2);
+        }
+        .matching-board {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .matching-column {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .matching-column-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .matching-option-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: #fff;
+            cursor: grab;
+            font-size: 14px;
+            user-select: none;
+        }
+        .matching-option-card.selected {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        .matching-drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-top: 8px;
+            background: #fff;
+            min-height: 24px;
+            font-size: 14px;
+            color: #475569;
+        }
+        .matching-drop-zone.drag-over {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+        .matching-drop-zone.filled {
+            border-style: solid;
+            border-color: #94a3b8;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+        .test-question-image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .test-question-image-item {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+        }
+        .test-question-image-item img {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            border-radius: 10px;
+            display: block;
+        }
+        .test-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+        .test-nav-info {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .test-center-landing {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--panel);
+            padding: 18px;
+            text-align: center;
+        }
+        .test-center-start-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.26);
+        }
+        .test-center-start-btn:hover {
+            background: #1e4ed8;
+        }
+        .test-center-modal {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.68);
+            z-index: 1200;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+        .test-center-modal-card {
+            width: min(900px, 96vw);
+            max-height: 90vh;
+            overflow: auto;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+            padding: 20px;
+        }
+        .test-center-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .test-center-close-btn {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 7px 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
         .hljs {
             background: #22272e !important;
             padding: 16px !important;
@@ -300,6 +519,17 @@
             <div id="contentBody" class="markdown-body" style="margin-top:20px;"></div>
         </div>
     </div>
+
+    <div id="testCenterModal" class="test-center-modal" onclick="handleTestCenterBackdropClick(event)">
+        <div class="test-center-modal-card">
+            <div class="test-center-modal-header">
+                <div id="testCenterModalMeta" class="test-center-meta" style="margin:0;"></div>
+                <button type="button" class="test-center-close-btn" onclick="closeTestCenterModal()">닫기</button>
+            </div>
+            <div id="testCenterModalBody"></div>
+        </div>
+    </div>
+
     <script>
         function getQueryParam(name) {
             const url = new URL(window.location.href);
@@ -310,6 +540,564 @@
         const memberId = getQueryParam('member_id'); // Assuming member_id is also passed as a query parameter
         let contents = [];
         let selectedIdx = -1; // 초기 선택 인덱스를 -1로 설정
+        let testCenterState = { questions: [], index: 0, meta: '', solved: [] };
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function normalizeChoiceToken(value) {
+            return String(value || '')
+                .trim()
+                .toUpperCase()
+                .replace(/\.$/, '');
+        }
+
+        function normalizeAnswerTokens(answerValue) {
+            const raw = String(answerValue || '').trim();
+            if (!raw) {
+                return [];
+            }
+
+            let normalized = [];
+            if (raw.startsWith('[') && raw.endsWith(']')) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        normalized = parsed
+                            .map(token => normalizeChoiceToken(token))
+                            .filter(token => token !== '');
+                    }
+                } catch (error) {
+                    // Fallback to delimiter parsing below.
+                }
+            }
+
+            if (!normalized.length) {
+                normalized = raw
+                    .replace(/，/g, ',')
+                    .replace(/[\[\]"']/g, ' ')
+                    .split(/[\s,;|/]+/)
+                    .map(normalizeChoiceToken)
+                    .filter(token => token !== '');
+            }
+
+            return Array.from(new Set(normalized));
+        }
+
+        function normalizeYesNo(value) {
+            const token = String(value || '').trim().toUpperCase();
+            if (['Y', 'YES', 'O', 'TRUE', '1'].includes(token)) return 'YES';
+            if (['N', 'NO', 'X', 'FALSE', '0'].includes(token)) return 'NO';
+            return token;
+        }
+
+        function getExpectedChoiceAnswerKeys(question) {
+            const options = (question && question.options && typeof question.options === 'object') ? question.options : {};
+            const expectedTokens = normalizeAnswerTokens(question && question.answer ? question.answer : '');
+            if (!expectedTokens.length) {
+                return [];
+            }
+
+            const keyTokenMap = new Map();
+            const valueTokenMap = new Map();
+            Object.keys(options).forEach(rawKey => {
+                const keyToken = normalizeChoiceToken(rawKey);
+                const valueToken = normalizeChoiceToken(options[rawKey]);
+                if (keyToken) {
+                    keyTokenMap.set(keyToken, keyToken);
+                }
+                if (valueToken && !valueTokenMap.has(valueToken)) {
+                    valueTokenMap.set(valueToken, keyToken);
+                }
+            });
+
+            const mapped = expectedTokens
+                .map(token => keyTokenMap.get(token) || valueTokenMap.get(token) || token)
+                .filter(Boolean);
+
+            return Array.from(new Set(mapped));
+        }
+
+        function highlightCorrectChoiceOptions(question) {
+            const expectedKeys = getExpectedChoiceAnswerKeys(question);
+            const expectedSet = new Set(expectedKeys);
+            const inputs = Array.from(document.querySelectorAll('input[data-answer-input="choice"]'));
+
+            inputs.forEach(input => {
+                const optionEl = input.closest('label');
+                if (!optionEl) {
+                    return;
+                }
+                optionEl.classList.remove('choice-correct-highlight');
+                const key = normalizeChoiceToken(input.value || '');
+                if (expectedSet.has(key)) {
+                    optionEl.classList.add('choice-correct-highlight');
+                }
+            });
+        }
+
+        function initMatchingDragDrop(containerEl, question) {
+            const questionType = String(question.question_type || 'multiple_choice').toLowerCase();
+            if (questionType !== 'matching' || !containerEl) {
+                return;
+            }
+
+            const options = Array.isArray(question.options) ? question.options : [];
+            const optionCards = Array.from(containerEl.querySelectorAll('.matching-option-card'));
+            const dropZones = Array.from(containerEl.querySelectorAll('.matching-drop-zone'));
+            let selectedOptionIndex = null;
+
+            const clearSelection = () => {
+                selectedOptionIndex = null;
+                optionCards.forEach(card => card.classList.remove('selected'));
+            };
+
+            const clearDuplicateAssignments = (optionIndex, exceptZone) => {
+                dropZones.forEach(zone => {
+                    if (zone === exceptZone) {
+                        return;
+                    }
+                    const input = zone.querySelector('input[data-answer-input="matching"]');
+                    const valueEl = zone.querySelector('.matching-drop-value');
+                    if (input && String(input.value) === String(optionIndex)) {
+                        input.value = '';
+                        zone.classList.remove('filled');
+                        if (valueEl) {
+                            valueEl.textContent = '여기에 드롭';
+                        }
+                    }
+                });
+            };
+
+            const assignOption = (zone, optionIndex) => {
+                const normalized = Number(optionIndex);
+                if (!normalized || normalized < 1 || normalized > options.length) {
+                    return;
+                }
+                const input = zone.querySelector('input[data-answer-input="matching"]');
+                const valueEl = zone.querySelector('.matching-drop-value');
+                if (!input || !valueEl) {
+                    return;
+                }
+                clearDuplicateAssignments(normalized, zone);
+                input.value = String(normalized);
+                valueEl.textContent = `${normalized}. ${options[normalized - 1] || ''}`;
+                zone.classList.add('filled');
+            };
+
+            optionCards.forEach(card => {
+                const optionIndex = Number(card.getAttribute('data-match-option-index'));
+                card.setAttribute('draggable', 'true');
+
+                card.addEventListener('dragstart', event => {
+                    if (event.dataTransfer) {
+                        event.dataTransfer.setData('text/plain', String(optionIndex));
+                        event.dataTransfer.effectAllowed = 'move';
+                    }
+                });
+
+                card.addEventListener('click', () => {
+                    const wasSelected = selectedOptionIndex === optionIndex;
+                    clearSelection();
+                    if (!wasSelected) {
+                        selectedOptionIndex = optionIndex;
+                        card.classList.add('selected');
+                    }
+                });
+            });
+
+            dropZones.forEach(zone => {
+                const input = zone.querySelector('input[data-answer-input="matching"]');
+                const valueEl = zone.querySelector('.matching-drop-value');
+                if (input && valueEl && input.value) {
+                    const preset = Number(input.value);
+                    if (preset && options[preset - 1]) {
+                        valueEl.textContent = `${preset}. ${options[preset - 1]}`;
+                        zone.classList.add('filled');
+                    }
+                }
+
+                zone.addEventListener('dragover', event => {
+                    event.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', event => {
+                    event.preventDefault();
+                    zone.classList.remove('drag-over');
+                    const dropped = event.dataTransfer ? Number(event.dataTransfer.getData('text/plain')) : NaN;
+                    assignOption(zone, dropped);
+                    clearSelection();
+                });
+
+                zone.addEventListener('click', () => {
+                    if (selectedOptionIndex) {
+                        assignOption(zone, selectedOptionIndex);
+                        clearSelection();
+                        return;
+                    }
+                    const zoneInput = zone.querySelector('input[data-answer-input="matching"]');
+                    if (!zoneInput || !zoneInput.value) {
+                        return;
+                    }
+                    zoneInput.value = '';
+                    zone.classList.remove('filled');
+                    if (valueEl) {
+                        valueEl.textContent = '여기에 드롭';
+                    }
+                });
+            });
+        }
+
+        function unorderedEquals(left, right) {
+            if (left.length !== right.length) {
+                return false;
+            }
+            const leftSorted = [...left].sort();
+            const rightSorted = [...right].sort();
+            for (let idx = 0; idx < leftSorted.length; idx += 1) {
+                if (leftSorted[idx] !== rightSorted[idx]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function showCorrectCelebrationPopup() {
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.inset = '0';
+            popup.style.zIndex = '3000';
+            popup.style.display = 'flex';
+            popup.style.alignItems = 'center';
+            popup.style.justifyContent = 'center';
+            popup.style.background = 'rgba(2, 6, 23, 0.45)';
+            popup.innerHTML = `
+                <div style="background:#ffffff; border-radius:18px; border:2px solid #10b981; box-shadow:0 20px 55px rgba(2,6,23,0.3); padding:24px 30px; text-align:center; min-width:320px; transform:scale(0.92); transition:transform 0.18s ease;">
+                    <div style="font-size:42px; line-height:1;">🎉✨✅</div>
+                    <div style="margin-top:10px; font-size:28px; font-weight:900; color:#065f46;">정답입니다!</div>
+                    <div style="margin-top:8px; color:#334155; font-size:16px;">훌륭해요! 다음 문제를 풀어보세요.</div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            const card = popup.firstElementChild;
+            setTimeout(() => {
+                if (card) card.style.transform = 'scale(1)';
+            }, 10);
+            setTimeout(() => {
+                popup.remove();
+            }, 1200);
+        }
+
+        function renderTestCenterQuestion(question) {
+            const questionType = String(question.question_type || 'multiple_choice').toLowerCase();
+            const categoryName = question.question_category_name || 'None';
+            const numberText = question.question_number ? `문항 ${question.question_number}` : '문항';
+            const questionText = question.question_text || question.question_title || '';
+            const expectedAnswers = getExpectedChoiceAnswerKeys(question);
+            const isMultiAnswer = expectedAnswers.length > 1;
+            let bodyHtml = '';
+
+            if (questionType === 'yes_no') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                bodyHtml = items.map((item, idx) => `
+                    <div class="test-option" style="display:block;">
+                        <div><strong>${idx + 1}.</strong> ${escapeHtml(item.text || '')}</div>
+                        <div style="margin-top:8px;">
+                            <label style="margin-right:14px;"><input type="radio" data-answer-input="yesno" data-item-index="${idx}" name="yesno_${idx}" value="YES"> Yes</label>
+                            <label><input type="radio" data-answer-input="yesno" data-item-index="${idx}" name="yesno_${idx}" value="NO"> No</label>
+                        </div>
+                    </div>
+                `).join('');
+            } else if (questionType === 'matching') {
+                const options = Array.isArray(question.options) ? question.options : [];
+                const items = Array.isArray(question.items) ? question.items : [];
+                bodyHtml = `
+                    <div class="matching-board">
+                        <div class="matching-column">
+                            <div class="matching-column-title">보기 (드래그 또는 클릭 선택)</div>
+                            ${options.map((option, idx) => `
+                                <div class="matching-option-card" data-match-option-index="${idx + 1}">${idx + 1}. ${escapeHtml(option || '')}</div>
+                            `).join('') || '<div style="color:var(--muted); font-size:13px;">보기가 없습니다.</div>'}
+                        </div>
+                        <div class="matching-column">
+                            <div class="matching-column-title">문제 (드롭하거나 클릭으로 배치)</div>
+                            ${items.map((item, idx) => `
+                                <div class="test-option" style="display:block; margin-bottom:10px;">
+                                    <div><strong>${idx + 1}.</strong> ${escapeHtml(item.text || '')}</div>
+                                    <div class="matching-drop-zone" data-match-item-index="${idx}">
+                                        <input type="hidden" data-answer-input="matching" data-item-index="${idx}" value="">
+                                        <span class="matching-drop-value">여기에 드롭</span>
+                                    </div>
+                                </div>
+                            `).join('') || '<div style="color:var(--muted); font-size:13px;">문제가 없습니다.</div>'}
+                        </div>
+                    </div>
+                `;
+            } else {
+                const options = (question.options && typeof question.options === 'object') ? question.options : {};
+                const keys = Object.keys(options);
+                bodyHtml = keys.map(key => `
+                    <label class="test-option" style="cursor:pointer;">
+                        <input type="${isMultiAnswer ? 'checkbox' : 'radio'}" name="test_choice" value="${escapeHtml(key)}" data-answer-input="choice" style="transform:scale(1.12); margin-right:8px;">
+                        <strong>${escapeHtml(key)}.</strong>
+                        <span>${escapeHtml(options[key] || '')}</span>
+                    </label>
+                `).join('');
+            }
+
+            const images = Array.isArray(question.image_urls) ? question.image_urls : [];
+            const imageHtml = images.length ? `
+                <div class="test-question-image-grid">
+                    ${images.map(url => `
+                        <div class="test-question-image-item">
+                            <img src="${url}" onerror="this.closest('.test-question-image-item').style.display='none'">
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div>
+                    <span class="test-question-badge">${numberText}</span>
+                    <span class="test-question-badge">${questionType}</span>
+                    <span class="test-question-badge">${categoryName}</span>
+                </div>
+                ${imageHtml}
+                <div class="test-question-title">${questionText}</div>
+                ${bodyHtml || '<div style="color:var(--muted);">표시할 보기가 없습니다.</div>'}
+            `;
+        }
+
+        function isCurrentQuestionCorrect(question) {
+            const questionType = String(question.question_type || 'multiple_choice').toLowerCase();
+
+            if (questionType === 'yes_no') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                if (!items.length) return false;
+                for (let idx = 0; idx < items.length; idx += 1) {
+                    const selected = document.querySelector(`input[data-answer-input="yesno"][data-item-index="${idx}"]:checked`);
+                    if (!selected) return false;
+                    const expected = normalizeYesNo(items[idx].answer || '');
+                    if (!expected || normalizeYesNo(selected.value) !== expected) return false;
+                }
+                return true;
+            }
+
+            if (questionType === 'matching') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                const options = Array.isArray(question.options) ? question.options : [];
+                if (!items.length) return false;
+                for (let idx = 0; idx < items.length; idx += 1) {
+                    const selected = document.querySelector(`input[data-answer-input="matching"][data-item-index="${idx}"]`);
+                    if (!selected || !selected.value) return false;
+                    const expectedRaw = String(items[idx].answer || '').trim();
+                    let expected = expectedRaw;
+                    if (expectedRaw && Number.isNaN(Number(expectedRaw))) {
+                        const mappedIndex = options.findIndex(option => normalizeChoiceToken(option || '') === normalizeChoiceToken(expectedRaw));
+                        if (mappedIndex >= 0) {
+                            expected = String(mappedIndex + 1);
+                        }
+                    }
+                    if (!expected || String(selected.value).trim() !== expected) return false;
+                }
+                return true;
+            }
+
+            const expectedAnswers = getExpectedChoiceAnswerKeys(question);
+            if (!expectedAnswers.length) return false;
+            const selectedAnswers = Array.from(document.querySelectorAll('input[data-answer-input="choice"]:checked'))
+                .map(node => normalizeChoiceToken(node.value || ''))
+                .filter(Boolean);
+            return unorderedEquals(selectedAnswers, expectedAnswers);
+        }
+
+        function updateTestCenterView() {
+            const modalBody = document.getElementById('testCenterModalBody');
+            const modalMeta = document.getElementById('testCenterModalMeta');
+            const questions = testCenterState.questions || [];
+            if (!modalBody || !modalMeta) {
+                return;
+            }
+
+            modalMeta.textContent = testCenterState.meta || '';
+            if (!questions.length) {
+                modalBody.innerHTML = '<div class="test-center-wrap"><p style="color:var(--muted);">표시할 문제가 없습니다.</p></div>';
+                return;
+            }
+
+            const currentIndex = Math.max(0, Math.min(testCenterState.index, questions.length - 1));
+            testCenterState.index = currentIndex;
+            const currentQuestion = questions[currentIndex];
+
+            modalBody.innerHTML = `
+                <div class="test-center-wrap">
+                    <div class="test-question-card">${renderTestCenterQuestion(currentQuestion)}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
+                        <button class="button" id="testCheckBtn" style="background:#0f766e;">정답 확인</button>
+                        <div id="testCheckMsg" style="font-size:14px; font-weight:700; color:var(--muted);"></div>
+                    </div>
+                    <div class="test-nav">
+                        <div class="test-nav-info">문제 ${currentIndex + 1} / ${questions.length}</div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="button" id="testPrevBtn" ${currentIndex <= 0 ? 'disabled' : ''}>이전</button>
+                            <button class="button test-next-btn ${(currentIndex >= questions.length - 1 || !testCenterState.solved[currentIndex]) ? 'disabled' : 'enabled'}" id="testNextBtn" ${(currentIndex >= questions.length - 1 || !testCenterState.solved[currentIndex]) ? 'disabled' : ''}>다음</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            initMatchingDragDrop(modalBody, currentQuestion);
+
+            const prevBtn = document.getElementById('testPrevBtn');
+            const nextBtn = document.getElementById('testNextBtn');
+            const checkBtn = document.getElementById('testCheckBtn');
+            const checkMsg = document.getElementById('testCheckMsg');
+
+            if (nextBtn) {
+                const nextEnabled = (currentIndex < questions.length - 1) && Boolean(testCenterState.solved[currentIndex]);
+                nextBtn.disabled = !nextEnabled;
+                nextBtn.classList.toggle('enabled', nextEnabled);
+                nextBtn.classList.toggle('disabled', !nextEnabled);
+            }
+
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    if (testCenterState.index > 0) {
+                        testCenterState.index -= 1;
+                        updateTestCenterView();
+                    }
+                };
+            }
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    if (testCenterState.index < questions.length - 1) {
+                        testCenterState.index += 1;
+                        updateTestCenterView();
+                    }
+                };
+            }
+            if (checkBtn) {
+                checkBtn.onclick = () => {
+                    const ok = isCurrentQuestionCorrect(currentQuestion);
+                    if (ok) {
+                        testCenterState.solved[currentIndex] = true;
+                        if (checkMsg) {
+                            checkMsg.textContent = '정답입니다! 다음 문제로 이동할 수 있습니다.';
+                            checkMsg.style.color = '#0f766e';
+                        }
+                        highlightCorrectChoiceOptions(currentQuestion);
+                        if (nextBtn) {
+                            const nextEnabled = currentIndex < questions.length - 1;
+                            nextBtn.disabled = !nextEnabled;
+                            nextBtn.classList.toggle('enabled', nextEnabled);
+                            nextBtn.classList.toggle('disabled', !nextEnabled);
+                        }
+                        showCorrectCelebrationPopup();
+                    } else if (checkMsg) {
+                        checkMsg.textContent = '오답입니다. 다시 선택해 주세요.';
+                        checkMsg.style.color = '#dc2626';
+                    }
+                };
+            }
+        }
+
+        function openTestCenterModal() {
+            const modalEl = document.getElementById('testCenterModal');
+            if (!modalEl) {
+                return;
+            }
+            modalEl.style.display = 'flex';
+            updateTestCenterView();
+        }
+
+        function closeTestCenterModal() {
+            const modalEl = document.getElementById('testCenterModal');
+            if (!modalEl) {
+                return;
+            }
+            modalEl.style.display = 'none';
+        }
+
+        function handleTestCenterBackdropClick(event) {
+            if (event.target && event.target.id === 'testCenterModal') {
+                closeTestCenterModal();
+            }
+        }
+
+        async function renderGeneratedTestCenter(parsed, contentSubject) {
+            const bodyDiv = document.getElementById('contentBody');
+            let questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+
+            // New payloads keep lab_content lightweight and fetch question list on demand.
+            if (!questions.length && parsed.generated_test_id) {
+                try {
+                    const response = await fetch(`/api/admin/generated-tests/${parsed.generated_test_id}`);
+                    const data = await response.json();
+                    if (response.ok && Array.isArray(data.questions)) {
+                        questions = data.questions.map(question => {
+                            const questionType = String(question.question_type || 'multiple_choice').toLowerCase();
+                            const base = {
+                                id: question.id,
+                                question_number: question.question_number,
+                                question_type: questionType,
+                                question_title: question.question_title || '',
+                                question_text: question.question_text || '',
+                                question_category_name: question.question_category_name || 'None',
+                                image_urls: Array.isArray(question.image_urls) ? question.image_urls : [],
+                                answer: question.answer || ''
+                            };
+
+                            if (questionType === 'yes_no') {
+                                base.items = (Array.isArray(question.items) ? question.items : []).map(item => ({
+                                    id: item.id,
+                                    text: item.text || '',
+                                    answer: item.answer || ''
+                                }));
+                            } else if (questionType === 'matching') {
+                                base.options = Array.isArray(question.options) ? question.options : [];
+                                base.items = (Array.isArray(question.items) ? question.items : []).map(item => ({
+                                    id: item.id,
+                                    text: item.text || '',
+                                    answer: item.answer || ''
+                                }));
+                            } else {
+                                base.options = (question.options && typeof question.options === 'object') ? question.options : {};
+                            }
+
+                            return base;
+                        });
+                    }
+                } catch (error) {
+                    // Keep fallback message below.
+                }
+            }
+
+            const totalCount = parsed.question_count || questions.length;
+            const meta = `${parsed.generated_name || contentSubject || '테스트'} | ${parsed.test_category_name || ''} | 총 ${totalCount}문항`;
+            testCenterState = { questions, index: 0, meta, solved: questions.map(() => false) };
+
+            if (!questions.length) {
+                bodyDiv.innerHTML = '<div class="test-center-wrap"><p style="color:var(--muted);">문제 데이터를 불러오지 못했습니다.</p></div>';
+                return;
+            }
+
+            bodyDiv.innerHTML = `
+                <div class="test-center-landing">
+                    <div class="test-center-meta" style="margin-bottom:14px;">${meta}</div>
+                    <button type="button" class="test-center-start-btn" onclick="openTestCenterModal()">테스트 시작</button>
+                </div>
+            `;
+        }
 
         // Function to load user info and then titles and contents
         async function fetchUserInfoAndLoadContents() {
@@ -480,6 +1268,18 @@
                 const codeBlock = bodyDiv.querySelector('code');
                 if (codeBlock && window.hljs) {
                     hljs.highlightElement(codeBlock);
+                }
+            } else if (content.lab_content_type === 4) {
+                // 타입 4: 테스트 센터 JSON 콘텐츠
+                try {
+                    const parsed = JSON.parse(contentText);
+                    if (parsed && parsed.content_kind === 'generated_test_center') {
+                        await renderGeneratedTestCenter(parsed, content.lab_content_subject);
+                    } else {
+                        bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
+                    }
+                } catch (error) {
+                    bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
                 }
             } else {
                 // 기타 타입: 기본 텍스트 처리

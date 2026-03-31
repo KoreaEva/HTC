@@ -242,9 +242,7 @@
             background-color: #9ca3af;
             transform: translateY(-1px);
         }
-            font-size: 0.8em;
-            font-weight: 600;
-        }
+
         .status-ready { background: #F57C00; color: white; }
         .status-active { background: #388E3C; color: white; }
         .status-completed { background: #1976D2; color: white; }
@@ -254,6 +252,107 @@
         .login-tab-btn.active {
             color: var(--accent) !important;
             border-bottom-color: var(--accent) !important;
+        }
+
+        .management-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .management-tab-btn {
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .management-tab-btn:hover {
+            color: var(--text);
+            background: var(--hover);
+            border-radius: 6px;
+        }
+
+        .management-tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .test-sub-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .test-sub-tab-btn {
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .test-sub-tab-btn:hover {
+            color: var(--text);
+            background: var(--hover);
+            border-radius: 6px;
+        }
+
+        .test-sub-tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .test-category-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .test-category-note {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .selected-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .plain-link-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            color: #16a34a;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .plain-link-btn:hover {
+            text-decoration: underline;
         }
 
     </style>
@@ -306,8 +405,12 @@
         <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
 
+    <div class="management-tabs">
+        <button type="button" id="courseTabBtn" class="management-tab-btn active" onclick="switchManagementTab('course')">Course Management</button>
+        <button type="button" id="testTabBtn" class="management-tab-btn" onclick="switchManagementTab('test')">Test Management</button>
+    </div>
+
     <div class="admin-section" id="courseManagementSection">
-        <h2>Course Management</h2>
         <p style="color: var(--muted); margin-bottom: 10px;">과정명을 클릭하면 해당 과정의 사용자 관리 / 랩 관리 / 모니터링 화면으로 이동합니다.</p>
         <button class="button" onclick="showAddCourseModal()">Add Course</button>
         <table class="user-list" style="margin-top:10px;">
@@ -327,16 +430,353 @@
         </table>
     </div>
 
+    <div class="admin-section" id="testManagementSection" style="display:none;">
+        <div class="test-sub-tabs">
+            <button type="button" id="testSubTabTestBtn" class="test-sub-tab-btn active" onclick="switchTestSubTab('test')">테스트 관리</button>
+            <button type="button" id="testSubTabQuestionBtn" class="test-sub-tab-btn" onclick="switchTestSubTab('question')">문제관리</button>
+        </div>
+        <div id="testSubTabTestPanel">
+            <div style="display:grid; grid-template-columns:minmax(320px, 420px) minmax(0, 1fr); gap:18px; align-items:start;">
+                <div style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:var(--shadow);">
+                    <div style="font-size:18px; font-weight:700; color:var(--accent); margin-bottom:10px;">테스트 생성</div>
+                    <div style="color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.6;">종목과 문제 카테고리를 선택한 뒤 출제 방식(순차/랜덤)과 전체 출제 여부를 설정해 테스트를 생성합니다.</div>
+                    <form id="generatedTestForm" style="display:flex; flex-direction:column; gap:14px;">
+                        <div>
+                            <label style="display:block; margin-bottom:6px; color:var(--text); font-weight:600; font-size:14px;">테스트 종목</label>
+                            <select id="generatedTestCategorySelect" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                                <option value="">종목을 선택하세요</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
+                                <label style="color:var(--text); font-weight:600; font-size:14px;">문제 카테고리</label>
+                                <span id="generatedTestAvailability" style="font-size:12px; color:var(--muted);"></span>
+                            </div>
+                            <div id="generatedTestCategoryChecks" style="min-height:80px; max-height:240px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:10px; background:var(--hover);"></div>
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:6px; color:var(--text); font-weight:600; font-size:14px;">총 문항수</label>
+                            <input type="number" id="generatedTestQuestionCount" min="1" placeholder="예: 20" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr; gap:8px; background:var(--hover); border:1px solid var(--border); border-radius:8px; padding:10px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text);">
+                                <input type="checkbox" id="generatedTestIncludeAll" style="width:14px; height:14px;">
+                                출제 문제 전체 선택
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text);">
+                                <input type="checkbox" id="generatedTestRandomOrder" style="width:14px; height:14px;">
+                                랜덤 출제 (미선택 시 문제 순서대로 출제)
+                            </label>
+                        </div>
+                        <button type="submit" class="button primary">테스트 생성</button>
+                    </form>
+                </div>
+                <div style="background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow:var(--shadow); min-width:0;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:18px; font-weight:700; color:var(--accent);">생성된 테스트 목록</div>
+                            <div style="font-size:13px; color:var(--muted); margin-top:4px;">생성된 테스트는 저장되며 언제든 다시 열어 확인할 수 있습니다.</div>
+                        </div>
+                        <button type="button" class="button secondary" onclick="loadGeneratedTests()">새로고침</button>
+                    </div>
+                    <table class="user-list" style="margin-top:10px;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>테스트명</th>
+                                <th>종목</th>
+                                <th>카테고리</th>
+                                <th>문항수</th>
+                                <th>출제 방식</th>
+                                <th>생성일</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="generatedTestTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="testSubTabQuestionPanel" style="display:none;">
+            <div id="testCategoryListView">
+                <div class="test-category-toolbar">
+                    <div class="test-category-note">테스트 종목명을 클릭하면 해당 종목의 문제를 관리할 수 있습니다.</div>
+                    <button class="button primary" onclick="showAddTestCategoryModal()">종목 추가</button>
+                </div>
+                <table class="user-list" style="margin-top:10px;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>테스트 종목명</th>
+                            <th>설명</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testCategoryTableBody"></tbody>
+                </table>
+            </div>
+            <div id="testQuestionDetailView" style="display:none;">
+                <div class="test-category-toolbar">
+                    <div>
+                        <button class="button secondary" onclick="backToTestCategoryList()">목록으로</button>
+                        <span class="selected-title" id="selectedTestCategoryName" style="margin-left:10px;"></span>
+                        <span id="selectedTestCategoryCount" style="margin-left:8px; display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; background:#eff6ff; color:var(--accent); font-size:12px; font-weight:700;"></span>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button class="button secondary" onclick="showQuestionCategoryManager()">카테고리 관리</button>
+                        <button class="button primary" onclick="showAddTestQuestionModal()">문제 추가</button>
+                    </div>
+                </div>
+                <div class="test-category-note" style="margin-bottom:10px;">문제 추가 시 카테고리를 선택하지 않으면 None으로 저장됩니다.</div>
+                <table class="user-list" style="margin-top:10px;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>문제명</th>
+                            <th>문제 카테고리</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="testQuestionTableBody"></tbody>
+                </table>
+                <div id="testQuestionPagination" style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="testCategoryModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:32px 26px 24px 26px; border-radius:16px; min-width:340px; max-width:95vw; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <h2 id="testCategoryModalTitle" style="margin-bottom:20px; color:var(--accent); text-align:center; font-size:1.35em;">테스트 종목 추가</h2>
+            <form id="testCategoryForm">
+                <input type="hidden" id="testCategoryId">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">테스트 종목명</label>
+                    <input type="text" id="testCategoryName" required maxlength="100" style="font-size:15px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">설명</label>
+                    <textarea id="testCategoryDescription" rows="3" maxlength="500" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <label style="font-size:14px; color:var(--text); font-weight:600;">상태</label>
+                        <div style="display:flex; align-items:center;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="testCategoryActiveToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label" id="testCategoryActiveLabel">활성</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align:center;">
+                    <button type="submit" class="button" style="min-width:90px; margin-right:10px;">Save</button>
+                    <button type="button" class="button secondary" onclick="closeTestCategoryModal()" style="min-width:90px;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="testQuestionModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:32px 26px 24px 26px; border-radius:16px; min-width:360px; max-width:95vw; width:560px; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <h2 id="testQuestionModalTitle" style="margin-bottom:20px; color:var(--accent); text-align:center; font-size:1.35em;">문제 추가</h2>
+            <form id="testQuestionForm">
+                <input type="hidden" id="testQuestionId">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 카테고리</label>
+                    <select id="testQuestionCategorySelect" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                        <option value="">None</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 유형</label>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <input type="hidden" id="questionEditorType" value="multiple_choice">
+                        <button type="button" id="qTypeBtnMc" class="button" onclick="setQuestionEditorType('multiple_choice')" style="min-width:90px;">객관식</button>
+                        <button type="button" id="qTypeBtnYn" class="button secondary" onclick="setQuestionEditorType('yes_no')" style="min-width:90px;">Yes/No</button>
+                        <button type="button" id="qTypeBtnMatching" class="button secondary" onclick="setQuestionEditorType('matching')" style="min-width:90px;">매칭형</button>
+                    </div>
+                </div>
+                <div id="mcEditorSection">
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 JSON</label>
+                        <textarea id="testQuestionJsonInput" rows="14" style="font-size:13px; line-height:1.5; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box; resize:vertical; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;"></textarea>
+                        <div style="margin-top:8px; color:var(--muted); font-size:12px;">선택한 문제 유형에 맞는 기본 JSON이 자동으로 채워집니다.</div>
+                    </div>
+                </div>
+                <div id="ynEditorSection" style="display:none;">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 번호</label>
+                        <input type="number" id="ynQuestionNumber" min="1" placeholder="번호 (숫자)" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 본문</label>
+                        <textarea id="ynQuestionText" rows="3" placeholder="문제 본문을 입력하세요." style="font-size:14px; line-height:1.5; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <label style="font-size:14px; color:var(--text); font-weight:600;">하위 항목</label>
+                            <button type="button" class="button primary" onclick="addYnItem()" style="padding:5px 12px; font-size:13px;">+ 항목 추가</button>
+                        </div>
+                        <div id="ynItemsList" style="max-height:280px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">문제 이미지</label>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <input type="file" id="testQuestionImageInput" accept="image/*" multiple style="display:none;">
+                        <button type="button" class="button secondary" onclick="document.getElementById('testQuestionImageInput').click()">이미지 추가</button>
+                        <span style="color:var(--muted); font-size:12px;">여러 장 선택 가능</span>
+                    </div>
+                    <div id="questionImagePasteZone" tabindex="0" style="margin-top:8px; border:2px dashed var(--border); border-radius:8px; padding:14px; text-align:center; color:var(--muted); font-size:13px; cursor:pointer; outline:none; transition:border-color 0.2s, background 0.2s;" onclick="this.focus()" onfocus="this.style.borderColor='var(--accent)';this.style.background='#eff6ff'" onblur="this.style.borderColor='var(--border)';this.style.background=''">
+                        📋 여기를 클릭한 후 <strong>Ctrl+V</strong> (Mac: <strong>⌘+V</strong>) 로 클립보드 이미지를 붙여넣기 하세요
+                    </div>
+                    <div id="testQuestionImageList" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <label style="font-size:14px; color:var(--text); font-weight:600;">상태</label>
+                        <div style="display:flex; align-items:center;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="testQuestionActiveToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label" id="testQuestionActiveLabel">활성</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align:center;">
+                    <button type="submit" class="button" style="min-width:90px; margin-right:10px;">Save</button>
+                    <button type="button" class="button secondary" onclick="closeTestQuestionModal()" style="min-width:90px;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 문제 미리보기 모달 -->
+    <div id="questionPreviewModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:1100; align-items:center; justify-content:center; overflow-y:auto;">
+        <div style="background:var(--panel); padding:32px 28px 26px 28px; border-radius:16px; min-width:340px; max-width:680px; width:95vw; margin:60px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0; color:var(--accent); font-size:1.25em;">문제 미리보기</h2>
+                <div style="display:flex; gap:8px;">
+                    <button class="button" id="previewEditBtn" onclick="openEditFromPreview()" style="min-width:70px;">✏️ 수정</button>
+                    <button class="button secondary" onclick="closeQuestionPreview()" style="min-width:70px;">닫기</button>
+                </div>
+            </div>
+            <div id="questionPreviewContent"></div>
+        </div>
+    </div>
+
+    <div id="generatedTestPreviewModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:1110; align-items:center; justify-content:center; overflow-y:auto;">
+        <div style="background:var(--panel); padding:30px 26px 24px 26px; border-radius:16px; min-width:340px; max-width:900px; width:95vw; margin:60px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+                <div>
+                    <h2 style="margin:0; color:var(--accent); font-size:1.25em;">생성된 테스트 미리보기</h2>
+                    <div id="generatedTestPreviewMeta" style="margin-top:6px; font-size:13px; color:var(--muted);"></div>
+                </div>
+                <button class="button secondary" onclick="closeGeneratedTestPreview()">닫기</button>
+            </div>
+            <div id="generatedTestPreviewContent"></div>
+        </div>
+    </div>
+
+    <div id="generatedTestAssignModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1115; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:28px 24px 22px 24px; border-radius:16px; min-width:340px; max-width:95vw; width:520px; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <h2 style="margin-bottom:16px; color:var(--accent); text-align:center; font-size:1.2em;">생성 테스트 랩 할당</h2>
+            <form id="generatedTestAssignForm" style="display:flex; flex-direction:column; gap:12px;">
+                <input type="hidden" id="generatedTestAssignId">
+                <div>
+                    <label style="display:block; margin-bottom:6px; color:var(--text); font-weight:600; font-size:14px;">과정</label>
+                    <select id="generatedTestAssignCourse" required style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;"></select>
+                </div>
+                <div style="font-size:12px; color:var(--muted); background:var(--hover); border:1px solid var(--border); border-radius:8px; padding:10px;">
+                    과정을 선택하면 해당 과정의 마지막에 <strong>테스트 센터</strong> 랩이 자동 생성(또는 기존 랩 사용)되어 그 안에 테스트가 할당됩니다.
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; color:var(--text); font-weight:600; font-size:14px;">랩 항목 제목</label>
+                    <input type="text" id="generatedTestAssignSubject" maxlength="200" required style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom:6px; color:var(--text); font-weight:600; font-size:14px;">상태</label>
+                    <select id="generatedTestAssignStatus" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                        <option value="1">활성화</option>
+                        <option value="0">비활성화</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
+                    <button type="button" class="button secondary" onclick="closeGeneratedTestAssignModal()">취소</button>
+                    <button type="submit" class="button primary">할당</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="questionCategoryManagerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:28px 24px 22px 24px; border-radius:16px; min-width:360px; max-width:95vw; width:760px; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <div class="test-category-toolbar" style="margin-bottom:16px;">
+                <div class="selected-title" style="font-size:1.2em;">문제 카테고리 관리</div>
+                <div class="toolbar-actions">
+                    <button class="button primary" onclick="showAddQuestionCategoryModal()">카테고리 추가</button>
+                    <button class="button secondary" onclick="closeQuestionCategoryManager()">닫기</button>
+                </div>
+            </div>
+            <table class="user-list" style="margin-top:10px;">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>카테고리명</th>
+                        <th>설명</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="questionCategoryTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="questionCategoryModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1001; align-items:center; justify-content:center;">
+        <div style="background:var(--panel); padding:32px 26px 24px 26px; border-radius:16px; min-width:340px; max-width:95vw; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
+            <h2 id="questionCategoryModalTitle" style="margin-bottom:20px; color:var(--accent); text-align:center; font-size:1.35em;">문제 카테고리 추가</h2>
+            <form id="questionCategoryForm">
+                <input type="hidden" id="questionCategoryId">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">카테고리명</label>
+                    <input type="text" id="questionCategoryName" required maxlength="100" style="font-size:15px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-size:14px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">설명</label>
+                    <textarea id="questionCategoryDescription" rows="3" maxlength="500" style="font-size:14px; padding:10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <label style="font-size:14px; color:var(--text); font-weight:600;">상태</label>
+                        <div style="display:flex; align-items:center;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="questionCategoryActiveToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label" id="questionCategoryActiveLabel">활성</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align:center;">
+                    <button type="submit" class="button" style="min-width:90px; margin-right:10px;">Save</button>
+                    <button type="button" class="button secondary" onclick="closeQuestionCategoryModal()" style="min-width:90px;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="courseModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center;">
         <div style="background:var(--panel); padding:40px 30px 30px 30px; border-radius:16px; min-width:350px; max-width:95vw; margin:100px auto; box-shadow:var(--shadow); position:relative; border:1px solid var(--border);">
             <h2 id="courseModalTitle" style="margin-bottom:24px; color:var(--accent); text-align:center; font-size:1.5em;">코스 추가/수정</h2>
             <form id="courseForm">
                 <input type="hidden" id="modalTrainingKey">
-                <div class="form-group" style="margin-bottom:18px;">
-                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">코스명</label>
-                    <input type="text" id="modalCourseName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
-                </div>
-
                 <div class="form-group" style="margin-bottom:18px;">
                     <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">최대인원</label>
                     <input type="number" id="modalMaxMember" min="1" style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
@@ -434,6 +874,17 @@
         let monitoringInterval = null;
         let currentPollingInterval = 30000;
         let lastEventCount = 0;
+        let currentQuestionTestCategoryId = null;
+        let currentQuestionTestCategoryName = '';
+        let currentQuestionList = [];
+        let currentQuestionPage = 1;
+        const QUESTION_PAGE_SIZE = 10;
+        let generatedTestSummary = null;
+        let generatedTestsList = [];
+        let questionCategoriesCache = [];
+        let currentQuestionImageUrls = [];
+        const LAST_QUESTION_CATEGORY_KEY = 'last_selected_question_category_id';
+        let lastSelectedQuestionCategoryId = localStorage.getItem(LAST_QUESTION_CATEGORY_KEY) || '';
 
         function updateMonitoringStatus(message, isRunning = false) {
             const statusEl = document.getElementById('monitoringStatus');
@@ -898,6 +1349,1316 @@
                 document.getElementById('supervisorName').required = true;
             }
         }
+
+        function switchManagementTab(tab) {
+            const courseTabBtn = document.getElementById('courseTabBtn');
+            const testTabBtn = document.getElementById('testTabBtn');
+            const courseSection = document.getElementById('courseManagementSection');
+            const testSection = document.getElementById('testManagementSection');
+
+            if (!courseTabBtn || !testTabBtn || !courseSection || !testSection) {
+                return;
+            }
+
+            const showCourse = tab === 'course';
+
+            courseSection.style.display = showCourse ? 'block' : 'none';
+            testSection.style.display = showCourse ? 'none' : 'block';
+
+            courseTabBtn.classList.toggle('active', showCourse);
+            testTabBtn.classList.toggle('active', !showCourse);
+
+            if (!showCourse) {
+                switchTestSubTab('test');
+            }
+        }
+
+        function switchTestSubTab(tab) {
+            const testBtn = document.getElementById('testSubTabTestBtn');
+            const questionBtn = document.getElementById('testSubTabQuestionBtn');
+            const testPanel = document.getElementById('testSubTabTestPanel');
+            const questionPanel = document.getElementById('testSubTabQuestionPanel');
+
+            if (!testBtn || !questionBtn || !testPanel || !questionPanel) {
+                return;
+            }
+
+            const showTest = tab === 'test';
+
+            testPanel.style.display = showTest ? 'block' : 'none';
+            questionPanel.style.display = showTest ? 'none' : 'block';
+
+            testBtn.classList.toggle('active', showTest);
+            questionBtn.classList.toggle('active', !showTest);
+
+            if (showTest) {
+                loadGeneratedTestBuilder();
+                loadGeneratedTests();
+            } else {
+                backToTestCategoryList();
+                loadTestCategories();
+            }
+        }
+
+        async function loadGeneratedTestBuilder() {
+            const selectEl = document.getElementById('generatedTestCategorySelect');
+            const checkWrapEl = document.getElementById('generatedTestCategoryChecks');
+            const availabilityEl = document.getElementById('generatedTestAvailability');
+            if (!selectEl || !checkWrapEl || !availabilityEl) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/test-categories');
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '테스트 종목 목록 조회에 실패했습니다.');
+                }
+
+                const activeCategories = Array.isArray(data) ? data.filter(item => item.is_active === 1) : [];
+                const previousValue = selectEl.value;
+                selectEl.innerHTML = '<option value="">종목을 선택하세요</option>';
+                activeCategories.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = String(item.id);
+                    option.textContent = item.category_name;
+                    selectEl.appendChild(option);
+                });
+
+                if (previousValue && activeCategories.some(item => String(item.id) === previousValue)) {
+                    selectEl.value = previousValue;
+                }
+
+                if (selectEl.value) {
+                    await handleGeneratedTestCategoryChange();
+                } else {
+                    generatedTestSummary = null;
+                    checkWrapEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">종목을 선택하면 카테고리 목록이 표시됩니다.</div>';
+                    availabilityEl.textContent = '';
+                }
+            } catch (error) {
+                checkWrapEl.innerHTML = `<div style="color:#ef4444; font-size:13px;">${escapeHtml(error.message)}</div>`;
+                availabilityEl.textContent = '';
+            }
+        }
+
+        function renderGeneratedTestCategoryChecks() {
+            const checkWrapEl = document.getElementById('generatedTestCategoryChecks');
+            const availabilityEl = document.getElementById('generatedTestAvailability');
+            if (!checkWrapEl || !availabilityEl) {
+                return;
+            }
+
+            const categories = Array.isArray(generatedTestSummary?.question_categories) ? generatedTestSummary.question_categories : [];
+            const totalAvailable = generatedTestSummary?.available_question_count || 0;
+            availabilityEl.textContent = `선택 가능 문항 ${totalAvailable}개`;
+
+            if (!categories.length) {
+                checkWrapEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">이 종목에는 활성 문제 카테고리가 없습니다.</div>';
+                return;
+            }
+
+            checkWrapEl.innerHTML = categories.map(category => `
+                <label style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:8px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px; cursor:pointer;">
+                    <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+                        <input type="checkbox" class="generated-test-category-checkbox" value="${category.id}" checked>
+                        <span style="font-size:14px; color:var(--text);">${escapeHtml(category.category_name)}</span>
+                    </span>
+                    <span style="font-size:12px; color:var(--muted); flex-shrink:0;">${category.question_count}문항</span>
+                </label>
+            `).join('');
+        }
+
+        async function handleGeneratedTestCategoryChange() {
+            const selectEl = document.getElementById('generatedTestCategorySelect');
+            const checkWrapEl = document.getElementById('generatedTestCategoryChecks');
+            const availabilityEl = document.getElementById('generatedTestAvailability');
+            if (!selectEl || !checkWrapEl || !availabilityEl) {
+                return;
+            }
+
+            if (!selectEl.value) {
+                generatedTestSummary = null;
+                checkWrapEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">종목을 선택하면 카테고리 목록이 표시됩니다.</div>';
+                availabilityEl.textContent = '';
+                return;
+            }
+
+            checkWrapEl.innerHTML = '<div style="color:var(--muted); font-size:13px;">카테고리 불러오는 중...</div>';
+            availabilityEl.textContent = '';
+
+            try {
+                const response = await fetch(`/api/admin/test-categories/${selectEl.value}/question-summary`);
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 카테고리 정보를 불러오지 못했습니다.');
+                }
+                generatedTestSummary = data;
+                renderGeneratedTestCategoryChecks();
+            } catch (error) {
+                generatedTestSummary = null;
+                checkWrapEl.innerHTML = `<div style="color:#ef4444; font-size:13px;">${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function loadGeneratedTests() {
+            const tableBody = document.getElementById('generatedTestTableBody');
+            if (!tableBody) {
+                return;
+            }
+
+            tableBody.innerHTML = '<tr><td colspan="8" style="color: var(--muted);">불러오는 중...</td></tr>';
+            try {
+                const response = await fetch('/api/admin/generated-tests');
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '생성된 테스트 목록 조회에 실패했습니다.');
+                }
+
+                generatedTestsList = Array.isArray(data) ? data : [];
+                if (!generatedTestsList.length) {
+                    tableBody.innerHTML = '<tr><td colspan="8" style="color: var(--muted);">생성된 테스트가 없습니다.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                generatedTestsList.forEach(item => {
+                    const categoryNames = Array.isArray(item.selected_category_names) ? item.selected_category_names.join(', ') : '';
+                    const scopeText = item.is_full_selection === 1 ? '전체' : '선택';
+                    const orderText = item.is_random_order === 1 ? '랜덤' : '순차';
+                    const modeText = `${scopeText}/${orderText}`;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td title="${escapeHtml(item.generated_name)}">${escapeHtml(truncateText(item.generated_name, 28))}</td>
+                        <td>${escapeHtml(item.test_category_name || '')}</td>
+                        <td title="${escapeHtml(categoryNames)}">${escapeHtml(truncateText(categoryNames, 24))}</td>
+                        <td>${item.question_count}</td>
+                        <td>${modeText}</td>
+                        <td>${item.create_date || ''}</td>
+                        <td>
+                            <div class="icon-actions">
+                                <button class="icon-btn" onclick="openGeneratedTestAssignModal(${item.id})" title="랩 할당" aria-label="랩 할당">📌</button>
+                                <button class="icon-btn" onclick="showGeneratedTestPreview(${item.id})" title="미리보기" aria-label="미리보기">👁️</button>
+                                <button class="icon-btn delete" onclick="deleteGeneratedTest(${item.id})" title="삭제" aria-label="삭제">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                tableBody.innerHTML = `<tr><td colspan="8" style="color: #ef4444;">${error.message}</td></tr>`;
+            }
+        }
+
+        async function showGeneratedTestPreview(generatedTestId) {
+            const modalEl = document.getElementById('generatedTestPreviewModal');
+            const metaEl = document.getElementById('generatedTestPreviewMeta');
+            const contentEl = document.getElementById('generatedTestPreviewContent');
+            if (!modalEl || !metaEl || !contentEl) {
+                return;
+            }
+
+            modalEl.style.display = 'flex';
+            metaEl.textContent = '';
+            contentEl.innerHTML = '<p style="color:var(--muted);">불러오는 중...</p>';
+
+            try {
+                const response = await fetch(`/api/admin/generated-tests/${generatedTestId}`);
+                const item = await response.json();
+                if (!response.ok) {
+                    throw new Error(item.detail || '생성된 테스트 정보를 불러오지 못했습니다.');
+                }
+
+                const modeText = `${item.is_full_selection === 1 ? '전체' : '선택'}/${item.is_random_order === 1 ? '랜덤' : '순차'}`;
+                metaEl.textContent = `${item.generated_name} | ${item.test_category_name} | ${item.question_count}문항 | ${modeText}`;
+                const questions = Array.isArray(item.questions) ? item.questions : [];
+                contentEl.innerHTML = questions.map((question, index) => {
+                    const type = String(question.question_type || '').toLowerCase();
+                    let bodyHtml = '';
+                    if (type === 'yes_no') {
+                        bodyHtml = (question.items || []).map(subItem => `
+                            <div style="padding:8px 10px; border-radius:8px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px;">
+                                <div style="font-size:14px; color:var(--text); margin-bottom:6px;">${escapeHtml(String(subItem.text || ''))}</div>
+                                <div style="font-size:12px; color:#166534; font-weight:700;">정답: ${escapeHtml(String(subItem.answer || ''))}</div>
+                            </div>
+                        `).join('');
+                    } else if (type === 'matching') {
+                        const optionsHtml = (question.options || []).map(option => `<li>${escapeHtml(String(option || ''))}</li>`).join('');
+                        const itemsHtml = (question.items || []).map(subItem => `<li>${escapeHtml(String(subItem.text || ''))} <strong style="color:#166534;">→ ${escapeHtml(String(subItem.answer || ''))}</strong></li>`).join('');
+                        bodyHtml = `
+                            <div style="display:grid; grid-template-columns:minmax(160px, 220px) minmax(0, 1fr); gap:14px;">
+                                <div><div style="font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700;">OPTIONS</div><ol style="margin:0; padding-left:18px; line-height:1.8;">${optionsHtml}</ol></div>
+                                <div><div style="font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700;">문제와 정답</div><ol style="margin:0; padding-left:18px; line-height:1.8;">${itemsHtml}</ol></div>
+                            </div>`;
+                    } else {
+                        const options = question.options || {};
+                        bodyHtml = Object.keys(options).map(key => `
+                            <div style="display:flex; gap:8px; padding:8px 10px; border-radius:8px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px;">
+                                <strong style="color:var(--accent);">${escapeHtml(String(key))}.</strong>
+                                <span style="flex:1;">${escapeHtml(String(options[key]))}</span>
+                                ${String(question.answer || '').toUpperCase() === String(key).toUpperCase() ? '<strong style="color:#166534;">정답</strong>' : ''}
+                            </div>
+                        `).join('');
+                    }
+
+                    return `
+                        <div style="padding:16px; border-radius:12px; border:1px solid var(--border); background:var(--hover); margin-bottom:12px;">
+                            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:999px; background:var(--accent); color:#fff; font-size:12px; font-weight:700;">${index + 1}</span>
+                                <span style="font-size:12px; color:var(--muted); font-weight:700;">${escapeHtml(question.question_category_name || 'None')}</span>
+                                <span style="font-size:12px; color:#854d0e; background:#fef3c7; padding:3px 8px; border-radius:999px; font-weight:700;">${escapeHtml(type || 'multiple_choice')}</span>
+                            </div>
+                            <div style="font-size:15px; color:var(--text); font-weight:600; line-height:1.6; margin-bottom:12px;">${escapeHtml(question.question_text || question.question_title || '')}</div>
+                            ${bodyHtml}
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                contentEl.innerHTML = `<p style="color:#ef4444;">${escapeHtml(error.message)}</p>`;
+            }
+        }
+
+        function closeGeneratedTestPreview() {
+            const modalEl = document.getElementById('generatedTestPreviewModal');
+            if (modalEl) {
+                modalEl.style.display = 'none';
+            }
+        }
+
+        function handleGeneratedTestIncludeAllToggle() {
+            const includeAllEl = document.getElementById('generatedTestIncludeAll');
+            const countEl = document.getElementById('generatedTestQuestionCount');
+            if (!includeAllEl || !countEl) {
+                return;
+            }
+
+            if (includeAllEl.checked) {
+                countEl.dataset.previousValue = countEl.value;
+                countEl.value = '';
+                countEl.disabled = true;
+                countEl.placeholder = '전체 출제 선택 시 자동 계산';
+            } else {
+                countEl.disabled = false;
+                countEl.placeholder = '예: 20';
+                countEl.value = countEl.dataset.previousValue || '';
+            }
+        }
+
+        async function loadGeneratedTestAssignCourses() {
+            const courseSelectEl = document.getElementById('generatedTestAssignCourse');
+            if (!courseSelectEl) {
+                return;
+            }
+
+            courseSelectEl.innerHTML = '<option value="">과정을 선택하세요</option>';
+            const response = await fetch('/api/admin/courses');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || '과정 목록을 불러오지 못했습니다.');
+            }
+
+            (Array.isArray(data) ? data : []).forEach(course => {
+                const option = document.createElement('option');
+                option.value = String(course.training_key || '');
+                option.textContent = `${course.course_name || ''} (${course.training_key || ''})`;
+                courseSelectEl.appendChild(option);
+            });
+        }
+
+        async function openGeneratedTestAssignModal(generatedTestId) {
+            const modalEl = document.getElementById('generatedTestAssignModal');
+            const idEl = document.getElementById('generatedTestAssignId');
+            const subjectEl = document.getElementById('generatedTestAssignSubject');
+            const statusEl = document.getElementById('generatedTestAssignStatus');
+            const courseEl = document.getElementById('generatedTestAssignCourse');
+            if (!modalEl || !idEl || !subjectEl || !statusEl || !courseEl) {
+                return;
+            }
+
+            const target = generatedTestsList.find(item => Number(item.id) === Number(generatedTestId));
+            idEl.value = String(generatedTestId);
+            subjectEl.value = target?.generated_name || '생성 테스트';
+            statusEl.value = '1';
+
+            try {
+                await loadGeneratedTestAssignCourses();
+                courseEl.value = '';
+                modalEl.style.display = 'flex';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function closeGeneratedTestAssignModal() {
+            const modalEl = document.getElementById('generatedTestAssignModal');
+            if (modalEl) {
+                modalEl.style.display = 'none';
+            }
+        }
+
+        async function deleteGeneratedTest(generatedTestId) {
+            if (!confirm('이 생성된 테스트를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/generated-tests/${generatedTestId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '생성된 테스트 삭제에 실패했습니다.');
+                }
+                await loadGeneratedTests();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function loadTestCategories() {
+            const tableBody = document.getElementById('testCategoryTableBody');
+            if (!tableBody) {
+                return;
+            }
+
+            tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--muted);">불러오는 중...</td></tr>';
+
+            try {
+                const response = await fetch('/api/admin/test-categories');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '테스트 종목 목록 조회에 실패했습니다.');
+                }
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--muted);">등록된 테스트 종목이 없습니다.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td><button type="button" class="plain-link-btn" onclick="openTestQuestionManager(${item.id})">${item.category_name}</button></td>
+                        <td>${item.description || ''}</td>
+                        <td>${item.is_active === 1 ? '활성' : '비활성'}</td>
+                        <td>${item.create_date || ''}</td>
+                        <td>
+                            <div class="icon-actions">
+                                <button class="icon-btn" onclick="editTestCategory(${item.id})" title="수정" aria-label="수정">✏️</button>
+                                <button class="icon-btn delete" onclick="deleteTestCategory(${item.id})" title="삭제" aria-label="삭제">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                tableBody.innerHTML = `<tr><td colspan="6" style="color: #ef4444;">${error.message}</td></tr>`;
+            }
+        }
+
+        function showAddTestCategoryModal() {
+            document.getElementById('testCategoryModalTitle').textContent = '테스트 종목 추가';
+            document.getElementById('testCategoryId').value = '';
+            document.getElementById('testCategoryName').value = '';
+            document.getElementById('testCategoryDescription').value = '';
+            document.getElementById('testCategoryActiveToggle').checked = true;
+            document.getElementById('testCategoryActiveLabel').textContent = '활성';
+            document.getElementById('testCategoryModal').style.display = 'flex';
+        }
+
+        function closeTestCategoryModal() {
+            document.getElementById('testCategoryModal').style.display = 'none';
+        }
+
+        async function openTestQuestionManager(categoryId) {
+            currentQuestionTestCategoryId = categoryId;
+            document.getElementById('testCategoryListView').style.display = 'none';
+            document.getElementById('testQuestionDetailView').style.display = 'block';
+            await loadTestQuestions();
+        }
+
+        function backToTestCategoryList() {
+            currentQuestionTestCategoryId = null;
+            currentQuestionTestCategoryName = '';
+            currentQuestionList = [];
+            currentQuestionPage = 1;
+            const selectedTitle = document.getElementById('selectedTestCategoryName');
+            const selectedCount = document.getElementById('selectedTestCategoryCount');
+            const paginationEl = document.getElementById('testQuestionPagination');
+            if (selectedTitle) {
+                selectedTitle.textContent = '';
+            }
+            if (selectedCount) {
+                selectedCount.textContent = '';
+            }
+            if (paginationEl) {
+                paginationEl.innerHTML = '';
+            }
+            document.getElementById('testQuestionDetailView').style.display = 'none';
+            document.getElementById('testCategoryListView').style.display = 'block';
+        }
+
+        function truncateText(text, maxLength) {
+            const normalized = String(text || '');
+            if (normalized.length <= maxLength) {
+                return normalized;
+            }
+            return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+        }
+
+        function renderTestQuestionPagination() {
+            const paginationEl = document.getElementById('testQuestionPagination');
+            if (!paginationEl) {
+                return;
+            }
+
+            const totalItems = currentQuestionList.length;
+            const totalPages = Math.max(1, Math.ceil(totalItems / QUESTION_PAGE_SIZE));
+            currentQuestionPage = Math.min(Math.max(1, currentQuestionPage), totalPages);
+
+            if (totalItems === 0) {
+                paginationEl.innerHTML = '';
+                return;
+            }
+
+            const startIndex = (currentQuestionPage - 1) * QUESTION_PAGE_SIZE;
+            const endIndex = Math.min(totalItems, startIndex + QUESTION_PAGE_SIZE);
+
+            paginationEl.innerHTML = `
+                <div style="color:var(--muted); font-size:13px;">
+                    ${startIndex + 1}-${endIndex} / 총 ${totalItems}개
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="button secondary" onclick="changeTestQuestionPage(-1)" ${currentQuestionPage <= 1 ? 'disabled' : ''}>이전</button>
+                    <span style="font-size:13px; color:var(--text); font-weight:600; min-width:72px; text-align:center;">${currentQuestionPage} / ${totalPages}</span>
+                    <button type="button" class="button secondary" onclick="changeTestQuestionPage(1)" ${currentQuestionPage >= totalPages ? 'disabled' : ''}>다음</button>
+                </div>
+            `;
+        }
+
+        function renderTestQuestionRows() {
+            const tableBody = document.getElementById('testQuestionTableBody');
+            const paginationEl = document.getElementById('testQuestionPagination');
+            if (!tableBody) {
+                return;
+            }
+
+            if (!Array.isArray(currentQuestionList) || currentQuestionList.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--muted);">등록된 문제가 없습니다.</td></tr>';
+                if (paginationEl) {
+                    paginationEl.innerHTML = '';
+                }
+                return;
+            }
+
+            const totalPages = Math.max(1, Math.ceil(currentQuestionList.length / QUESTION_PAGE_SIZE));
+            currentQuestionPage = Math.min(Math.max(1, currentQuestionPage), totalPages);
+            const startIndex = (currentQuestionPage - 1) * QUESTION_PAGE_SIZE;
+            const pageItems = currentQuestionList.slice(startIndex, startIndex + QUESTION_PAGE_SIZE);
+
+            tableBody.innerHTML = '';
+            pageItems.forEach(item => {
+                const fullQuestionTitle = String(item.question_title || '');
+                const fullCategoryName = String(item.question_category_name || 'None');
+                const shortQuestionTitle = truncateText(fullQuestionTitle, 40);
+                const shortCategoryName = truncateText(fullCategoryName, 18);
+                const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.title = '클릭하여 미리보기';
+                row.addEventListener('click', function(e) {
+                    if (e.target.closest('.icon-btn')) return;
+                    showQuestionPreview(item.id);
+                });
+                row.innerHTML = `
+                    <td>${item.id}</td>
+                    <td title="${escapeHtml(fullQuestionTitle)}">${escapeHtml(shortQuestionTitle)}</td>
+                    <td title="${escapeHtml(fullCategoryName)}">${escapeHtml(shortCategoryName)}</td>
+                    <td>${item.is_active === 1 ? '활성' : '비활성'}</td>
+                    <td>${item.create_date || ''}</td>
+                    <td>
+                        <div class="icon-actions">
+                            <button class="icon-btn" onclick="showQuestionPreview(${item.id})" title="미리보기" aria-label="미리보기">👁️</button>
+                            <button class="icon-btn" onclick="editTestQuestion(${item.id})" title="수정" aria-label="수정">✏️</button>
+                            <button class="icon-btn delete" onclick="deleteTestQuestion(${item.id})" title="삭제" aria-label="삭제">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            renderTestQuestionPagination();
+        }
+
+        function changeTestQuestionPage(delta) {
+            currentQuestionPage += delta;
+            renderTestQuestionRows();
+        }
+
+        async function loadTestQuestions() {
+            if (!currentQuestionTestCategoryId) {
+                return;
+            }
+
+            const tableBody = document.getElementById('testQuestionTableBody');
+            const selectedTitle = document.getElementById('selectedTestCategoryName');
+            const selectedCount = document.getElementById('selectedTestCategoryCount');
+            const paginationEl = document.getElementById('testQuestionPagination');
+            tableBody.innerHTML = '<tr><td colspan="6" style="color: var(--muted);">불러오는 중...</td></tr>';
+            if (paginationEl) {
+                paginationEl.innerHTML = '';
+            }
+
+            try {
+                const response = await fetch(`/api/admin/test-categories/${currentQuestionTestCategoryId}/questions`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 목록 조회에 실패했습니다.');
+                }
+
+                currentQuestionTestCategoryName = data.test_category?.category_name || '';
+                selectedTitle.textContent = currentQuestionTestCategoryName;
+                currentQuestionList = Array.isArray(data.questions) ? data.questions : [];
+                currentQuestionPage = 1;
+                if (selectedCount) {
+                    selectedCount.textContent = `총 ${currentQuestionList.length}문제`;
+                }
+                renderTestQuestionRows();
+            } catch (error) {
+                currentQuestionList = [];
+                tableBody.innerHTML = `<tr><td colspan="6" style="color: #ef4444;">${error.message}</td></tr>`;
+            }
+        }
+
+        async function loadQuestionCategories() {
+            const response = await fetch('/api/admin/question-categories');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || '문제 카테고리 목록 조회에 실패했습니다.');
+            }
+
+            questionCategoriesCache = Array.isArray(data) ? data : [];
+            return questionCategoriesCache;
+        }
+
+        function populateQuestionCategorySelect(selectedValue = '') {
+            const select = document.getElementById('testQuestionCategorySelect');
+            if (!select) {
+                return;
+            }
+
+            select.innerHTML = '<option value="">None</option>';
+            questionCategoriesCache
+                .filter(item => item.is_active === 1)
+                .forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = String(item.id);
+                    option.textContent = item.category_name;
+                    select.appendChild(option);
+                });
+
+            const preferredValue = selectedValue ? String(selectedValue) : (lastSelectedQuestionCategoryId || '');
+            const hasPreferredOption = preferredValue && Array.from(select.options).some(opt => opt.value === preferredValue);
+            select.value = hasPreferredOption ? preferredValue : '';
+        }
+
+        async function showAddTestQuestionModal() {
+            if (!currentQuestionTestCategoryId) {
+                alert('먼저 테스트 종목을 선택해주세요.');
+                return;
+            }
+
+            try {
+                await loadQuestionCategories();
+            } catch (error) {
+                alert(error.message);
+                return;
+            }
+
+            document.getElementById('testQuestionModalTitle').textContent = '문제 추가';
+            document.getElementById('testQuestionId').value = '';
+            ynItems = [];
+            setQuestionEditorType('multiple_choice');
+            document.getElementById('testQuestionJsonInput').value = JSON.stringify(getDefaultQuestionPayload('multiple_choice'), null, 2);
+            document.getElementById('ynQuestionNumber').value = '';
+            document.getElementById('ynQuestionText').value = '';
+            renderYnItems();
+            document.getElementById('testQuestionActiveToggle').checked = true;
+            document.getElementById('testQuestionActiveLabel').textContent = '활성';
+            populateQuestionCategorySelect('');
+            currentQuestionImageUrls = [];
+            renderQuestionImageList();
+            document.getElementById('testQuestionModal').style.display = 'flex';
+        }
+
+        function closeTestQuestionModal() {
+            document.getElementById('testQuestionModal').style.display = 'none';
+        }
+
+        function updateLastSelectedQuestionCategory(value) {
+            const normalized = value ? String(value) : '';
+            lastSelectedQuestionCategoryId = normalized;
+            if (normalized) {
+                localStorage.setItem(LAST_QUESTION_CATEGORY_KEY, normalized);
+            } else {
+                localStorage.removeItem(LAST_QUESTION_CATEGORY_KEY);
+            }
+        }
+
+        let previewQuestionId = null;
+
+        async function showQuestionPreview(questionId) {
+            if (!currentQuestionTestCategoryId) return;
+            previewQuestionId = questionId;
+            const contentEl = document.getElementById('questionPreviewContent');
+            contentEl.innerHTML = '<p style="color:var(--muted);">불러오는 중...</p>';
+            document.getElementById('questionPreviewModal').style.display = 'flex';
+
+            try {
+                const response = await fetch(`/api/admin/test-categories/${currentQuestionTestCategoryId}/questions/${questionId}`);
+                const item = await response.json();
+                if (!response.ok) throw new Error(item.detail || '문제 정보를 불러오지 못했습니다.');
+
+                const payload = item.question_payload || {};
+                const questionType = (payload.question_type || '').toLowerCase();
+                const images = Array.isArray(item.image_urls) ? item.image_urls : [];
+
+                const badgesHtml = `
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                        <span style="background:#eff6ff; color:var(--accent); border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600;">#${escapeHtml(String(payload.question_number ?? item.question_number ?? ''))}</span>
+                        <span style="background:${item.is_active===1?'#dcfce7':'#fee2e2'}; color:${item.is_active===1?'#16a34a':'#dc2626'}; border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600;">${item.is_active===1?'활성':'비활성'}</span>
+                        ${questionType ? `<span style="background:#fef9c3; color:#854d0e; border-radius:20px; padding:3px 12px; font-size:12px; font-weight:600;">${escapeHtml(questionType)}</span>` : ''}
+                        ${item.question_category_name ? `<span style="background:#f3f4f6; color:var(--muted); border-radius:20px; padding:3px 12px; font-size:12px;">${escapeHtml(item.question_category_name)}</span>` : ''}
+                    </div>`;
+
+                const questionTextHtml = `<div style="font-size:16px; font-weight:600; color:var(--text); line-height:1.6; margin-bottom:18px; white-space:pre-wrap;">${escapeHtml(payload.question || item.question_title || '')}</div>`;
+
+                const imagesHtml = images.length ? `<div style="margin-top:16px;">
+                    <div style="font-size:13px; font-weight:600; color:var(--muted); margin-bottom:8px;">첨부 이미지</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                        ${images.map(url => `<img src="${escapeHtml(url)}" style="max-width:100%; max-height:220px; border-radius:8px; border:1px solid var(--border); object-fit:contain;" onerror="this.style.display='none'">`).join('')}
+                    </div></div>` : '';
+
+                let bodyHtml = '';
+
+                if (questionType === 'yes_no') {
+                    const itemsList = Array.isArray(payload.items) ? payload.items : [];
+                    const subQuestionsHtml = itemsList.map((it, idx) => {
+                        const ans = String(it.answer || '').trim().toLowerCase();
+                        const isYes = ans === 'yes';
+                        return `<div style="display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:10px; margin-bottom:8px;
+                            border:1.5px solid var(--border); background:var(--hover);">
+                            <span style="min-width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff;
+                                font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">
+                                ${escapeHtml(String(it.id ?? idx + 1))}
+                            </span>
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-size:14px; color:var(--text); line-height:1.6; margin-bottom:8px;">${escapeHtml(String(it.text || ''))}</div>
+                                <div style="display:flex; gap:8px;">
+                                    <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 14px; border-radius:20px; font-size:13px; font-weight:700;
+                                        background:${isYes ? '#dcfce7' : '#f3f4f6'};
+                                        color:${isYes ? '#16a34a' : '#9ca3af'};
+                                        border: 1.5px solid ${isYes ? '#4ade80' : 'var(--border)'};
+                                        opacity:${isYes ? '1' : '0.5'};">
+                                        ${isYes ? '✓' : ''} Yes
+                                    </span>
+                                    <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 14px; border-radius:20px; font-size:13px; font-weight:700;
+                                        background:${!isYes ? '#fee2e2' : '#f3f4f6'};
+                                        color:${!isYes ? '#dc2626' : '#9ca3af'};
+                                        border: 1.5px solid ${!isYes ? '#fca5a5' : 'var(--border)'};
+                                        opacity:${!isYes ? '1' : '0.5'};">
+                                        ${!isYes ? '✓' : ''} No
+                                    </span>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    bodyHtml = `<div style="margin-bottom:4px;">
+                        <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:10px; letter-spacing:0.03em;">하위 질문 (${itemsList.length}개)</div>
+                        ${subQuestionsHtml}
+                    </div>`;
+                } else if (questionType === 'matching') {
+                    const matchingOptions = Array.isArray(payload.options) ? payload.options : [];
+                    const itemsList = Array.isArray(payload.items) ? payload.items : [];
+                    const optionsHtml = matchingOptions.map((option, idx) => `
+                        <div style="padding:10px 12px; border-radius:8px; margin-bottom:8px; background:#eff6ff; border:1px solid #bfdbfe; color:var(--accent); font-size:14px; font-weight:600; line-height:1.5;">
+                            ${idx + 1}. ${escapeHtml(String(option || ''))}
+                        </div>
+                    `).join('');
+                    const itemsHtml = itemsList.map((it, idx) => `
+                        <div style="padding:12px 14px; border-radius:10px; margin-bottom:8px; border:1.5px solid var(--border); background:var(--hover);">
+                            <div style="display:flex; gap:10px; align-items:flex-start; margin-bottom:8px;">
+                                <span style="min-width:24px; height:24px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;">
+                                    ${escapeHtml(String(it.id ?? idx + 1))}
+                                </span>
+                                <div style="flex:1; min-width:0; font-size:14px; color:var(--text); line-height:1.6;">${escapeHtml(String(it.text || ''))}</div>
+                            </div>
+                            <div style="margin-left:34px; display:inline-flex; align-items:center; padding:5px 12px; border-radius:18px; background:#dcfce7; color:#166534; font-size:13px; font-weight:700; border:1px solid #86efac;">정답: ${escapeHtml(String(it.answer || ''))}</div>
+                        </div>
+                    `).join('');
+                    bodyHtml = `
+                        <div style="display:grid; grid-template-columns:minmax(180px, 220px) minmax(0, 1fr); gap:16px; align-items:start;">
+                            <div>
+                                <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:10px; letter-spacing:0.03em;">OPTIONS</div>
+                                ${optionsHtml || '<div style="color:var(--muted); font-size:13px;">옵션이 없습니다.</div>'}
+                            </div>
+                            <div>
+                                <div style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:10px; letter-spacing:0.03em;">문제와 정답</div>
+                                ${itemsHtml || '<div style="color:var(--muted); font-size:13px;">항목이 없습니다.</div>'}
+                            </div>
+                        </div>`;
+                } else {
+                    const options = payload.options || {};
+                    const answer = String(payload.answer || '').trim().toUpperCase();
+                    const optionLetters = Object.keys(options);
+                    bodyHtml = optionLetters.map(k => {
+                        const isCorrect = k.toUpperCase() === answer;
+                        return `<div style="display:flex; gap:10px; align-items:flex-start; padding:9px 12px; border-radius:8px; margin-bottom:6px;
+                            background:${isCorrect ? '#dcfce7' : 'var(--hover)'};
+                            border:1.5px solid ${isCorrect ? '#4ade80' : 'var(--border)'}; color:var(--text);">
+                            <span style="font-weight:700; min-width:22px; color:${isCorrect ? '#16a34a' : 'var(--accent)'}">${k.toUpperCase()}.</span>
+                            <span style="flex:1;">${escapeHtml(String(options[k]))}</span>
+                            ${isCorrect ? '<span style="font-weight:700; color:#16a34a; font-size:13px;">✓ 정답</span>' : ''}
+                        </div>`;
+                    }).join('');
+                    bodyHtml += `<div style="margin-top:16px; padding:10px 14px; background:#eff6ff; border-radius:8px; font-size:14px; color:var(--accent); font-weight:600;">
+                        정답: ${escapeHtml(answer)}
+                    </div>`;
+                }
+
+                contentEl.innerHTML = badgesHtml + questionTextHtml + bodyHtml + imagesHtml;
+            } catch (error) {
+                contentEl.innerHTML = `<p style="color:#ef4444;">${error.message}</p>`;
+            }
+        }
+
+        function closeQuestionPreview() {
+            document.getElementById('questionPreviewModal').style.display = 'none';
+            previewQuestionId = null;
+        }
+
+        function getDefaultQuestionPayload(type) {
+            if (type === 'yes_no') {
+                return {
+                    question_number: 1,
+                    question_type: 'yes_no',
+                    question: '',
+                    items: [
+                        { id: 1, text: '', answer: 'yes' }
+                    ]
+                };
+            }
+            if (type === 'matching') {
+                return {
+                    question_number: 1,
+                    question_type: 'matching',
+                    question: '',
+                    items: [
+                        { id: 1, text: '', answer: '' }
+                    ],
+                    options: ['']
+                };
+            }
+            return {
+                question_number: 2,
+                question: '',
+                options: {
+                    A: '',
+                    B: '',
+                    C: '',
+                    D: ''
+                },
+                answer: ''
+            };
+        }
+
+        function openEditFromPreview() {
+            const qid = previewQuestionId;
+            closeQuestionPreview();
+            if (qid) editTestQuestion(qid);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        let ynItems = [];
+
+        function syncYnJsonPreview() {
+            const questionTextEl = document.getElementById('ynQuestionText');
+            const questionNumberEl = document.getElementById('ynQuestionNumber');
+            const jsonInputEl = document.getElementById('testQuestionJsonInput');
+            if (!questionTextEl || !questionNumberEl || !jsonInputEl) {
+                return;
+            }
+            jsonInputEl.value = JSON.stringify({
+                question_type: 'yes_no',
+                question_number: questionNumberEl.value ? parseInt(questionNumberEl.value, 10) : null,
+                question: questionTextEl.value.trim(),
+                items: ynItems.map(item => ({
+                    id: item.id,
+                    text: item.text,
+                    answer: item.answer
+                }))
+            }, null, 2);
+        }
+
+        function setQuestionEditorType(type) {
+            const previousType = document.getElementById('questionEditorType').value;
+            document.getElementById('questionEditorType').value = type;
+            const isYn = type === 'yes_no';
+            document.getElementById('mcEditorSection').style.display = '';
+            document.getElementById('ynEditorSection').style.display = isYn ? '' : 'none';
+            document.getElementById('qTypeBtnMc').className = type === 'multiple_choice' ? 'button' : 'button secondary';
+            document.getElementById('qTypeBtnYn').className = isYn ? 'button' : 'button secondary';
+            document.getElementById('qTypeBtnMatching').className = type === 'matching' ? 'button' : 'button secondary';
+            if (previousType !== type && !document.getElementById('testQuestionId').value) {
+                const defaultPayload = getDefaultQuestionPayload(type);
+                document.getElementById('testQuestionJsonInput').value = JSON.stringify(defaultPayload, null, 2);
+                if (isYn) {
+                    ynItems = Array.isArray(defaultPayload.items) ? defaultPayload.items.map(item => ({ ...item })) : [];
+                    document.getElementById('ynQuestionNumber').value = defaultPayload.question_number ?? '';
+                    document.getElementById('ynQuestionText').value = defaultPayload.question || '';
+                    renderYnItems();
+                    syncYnJsonPreview();
+                }
+            }
+        }
+
+        function renderYnItems() {
+            const listEl = document.getElementById('ynItemsList');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            ynItems.forEach((item, idx) => {
+                const isYes = String(item.answer || '').toLowerCase() === 'yes';
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex; gap:8px; align-items:flex-start; margin-bottom:8px; padding:10px 12px; border-radius:8px; border:1px solid var(--border); background:var(--hover);';
+                const numSpan = `<span style="min-width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:3px;">${escapeHtml(String(item.id ?? idx + 1))}</span>`;
+                const textArea = document.createElement('textarea');
+                textArea.rows = 2;
+                textArea.placeholder = '항목 내용';
+                textArea.value = item.text || '';
+                textArea.style.cssText = 'flex:1; font-size:13px; padding:7px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); resize:vertical; box-sizing:border-box;';
+                textArea.addEventListener('input', () => { ynItems[idx].text = textArea.value; syncYnJsonPreview(); });
+                const ansBtn = document.createElement('button');
+                ansBtn.type = 'button';
+                ansBtn.textContent = isYes ? 'Yes ✓' : 'No ✓';
+                ansBtn.style.cssText = `padding:4px 10px; border-radius:16px; font-size:12px; font-weight:700; cursor:pointer; border:1.5px solid; background:${isYes ? '#dcfce7' : '#fee2e2'}; color:${isYes ? '#16a34a' : '#dc2626'}; border-color:${isYes ? '#4ade80' : '#fca5a5'};`;
+                ansBtn.addEventListener('click', () => toggleYnItemAnswer(idx));
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.textContent = '✕';
+                delBtn.style.cssText = 'padding:4px 8px; border-radius:6px; background:#fee2e2; color:#dc2626; border:none; font-size:12px; cursor:pointer;';
+                delBtn.addEventListener('click', () => removeYnItem(idx));
+                const btns = document.createElement('div');
+                btns.style.cssText = 'display:flex; flex-direction:column; gap:4px; flex-shrink:0;';
+                btns.appendChild(ansBtn);
+                btns.appendChild(delBtn);
+                div.innerHTML = numSpan;
+                div.appendChild(textArea);
+                div.appendChild(btns);
+                listEl.appendChild(div);
+            });
+        }
+
+        function addYnItem() {
+            const newId = ynItems.length > 0 ? (Math.max(...ynItems.map(i => Number(i.id) || 0)) + 1) : 1;
+            ynItems.push({ id: newId, text: '', answer: 'yes' });
+            renderYnItems();
+            syncYnJsonPreview();
+        }
+
+        function removeYnItem(idx) {
+            ynItems.splice(idx, 1);
+            renderYnItems();
+            syncYnJsonPreview();
+        }
+
+        function toggleYnItemAnswer(idx) {
+            const current = String(ynItems[idx].answer || '').toLowerCase();
+            ynItems[idx].answer = current === 'yes' ? 'no' : 'yes';
+            renderYnItems();
+            syncYnJsonPreview();
+        }
+
+        function getYnPayload() {
+            const questionNumber = document.getElementById('ynQuestionNumber').value;
+            const questionText = document.getElementById('ynQuestionText').value.trim();
+            if (!questionText) throw new Error('문제 본문을 입력해주세요.');
+            return JSON.stringify({
+                question_type: 'yes_no',
+                question_number: questionNumber ? parseInt(questionNumber, 10) : null,
+                question: questionText,
+                items: ynItems.map(i => ({ id: i.id, text: i.text, answer: i.answer }))
+            }, null, 2);
+        }
+
+        async function editTestQuestion(questionId) {
+            if (!currentQuestionTestCategoryId) {
+                return;
+            }
+
+            try {
+                await loadQuestionCategories();
+                const response = await fetch(`/api/admin/test-categories/${currentQuestionTestCategoryId}/questions/${questionId}`);
+                const item = await response.json();
+                if (!response.ok) {
+                    throw new Error(item.detail || '문제 정보를 불러오지 못했습니다.');
+                }
+
+                document.getElementById('testQuestionModalTitle').textContent = '문제 수정';
+                document.getElementById('testQuestionId').value = item.id;
+                const qType = (item.question_type || '').toLowerCase();
+                if (qType === 'yes_no') {
+                    ynItems = Array.isArray(item.items) ? item.items.map(i => ({ id: i.id, text: i.text || '', answer: (i.answer || 'yes') })) : [];
+                    setQuestionEditorType('yes_no');
+                    const payload = item.question_payload || {};
+                    document.getElementById('ynQuestionNumber').value = payload.question_number ?? item.question_number ?? '';
+                    document.getElementById('ynQuestionText').value = payload.question || item.question_text || item.question_title || '';
+                    document.getElementById('testQuestionJsonInput').value = JSON.stringify(payload || getDefaultQuestionPayload('yes_no'), null, 2);
+                    renderYnItems();
+                    syncYnJsonPreview();
+                } else {
+                    ynItems = [];
+                    setQuestionEditorType(qType === 'matching' ? 'matching' : 'multiple_choice');
+                    document.getElementById('ynQuestionNumber').value = '';
+                    document.getElementById('ynQuestionText').value = '';
+                    document.getElementById('testQuestionJsonInput').value = JSON.stringify(item.question_payload || {
+                        question_number: item.question_number || null,
+                        question_type: qType || 'multiple_choice',
+                        question: item.question_text || item.question_title || "",
+                        options: item.options || {},
+                        items: item.items || [],
+                        answer: item.answer || ""
+                    }, null, 2);
+                }
+                document.getElementById('testQuestionActiveToggle').checked = item.is_active === 1;
+                document.getElementById('testQuestionActiveLabel').textContent = item.is_active === 1 ? '활성' : '비활성';
+                populateQuestionCategorySelect(item.question_category_id || '');
+                currentQuestionImageUrls = Array.isArray(item.image_urls) ? item.image_urls : [];
+                renderQuestionImageList();
+                document.getElementById('testQuestionModal').style.display = 'flex';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteTestQuestion(questionId) {
+            if (!currentQuestionTestCategoryId) {
+                return;
+            }
+
+            if (!confirm('이 문제를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/test-categories/${currentQuestionTestCategoryId}/questions/${questionId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 삭제에 실패했습니다.');
+                }
+                loadTestQuestions();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function renderQuestionImageList() {
+            const listEl = document.getElementById('testQuestionImageList');
+            if (!listEl) {
+                return;
+            }
+
+            if (!currentQuestionImageUrls.length) {
+                listEl.innerHTML = '<div style="color:var(--muted); font-size:12px;">등록된 이미지가 없습니다.</div>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            currentQuestionImageUrls.forEach((url, index) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+
+                const preview = document.createElement('img');
+                preview.src = url;
+                preview.alt = `question-image-${index + 1}`;
+                preview.style.width = '48px';
+                preview.style.height = '48px';
+                preview.style.objectFit = 'cover';
+                preview.style.borderRadius = '6px';
+                preview.style.border = '1px solid var(--border)';
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.textContent = `이미지 ${index + 1}`;
+                link.style.color = 'var(--accent)';
+                link.style.textDecoration = 'none';
+                link.style.flex = '1';
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'button danger';
+                removeBtn.style.padding = '6px 10px';
+                removeBtn.style.margin = '0';
+                removeBtn.textContent = '삭제';
+                removeBtn.onclick = () => {
+                    currentQuestionImageUrls.splice(index, 1);
+                    renderQuestionImageList();
+                };
+
+                row.appendChild(preview);
+                row.appendChild(link);
+                row.appendChild(removeBtn);
+                listEl.appendChild(row);
+            });
+        }
+
+        function getQuestionUploadMetadata() {
+            if (!currentQuestionTestCategoryName) {
+                throw new Error('이미지 업로드를 위해 종목을 먼저 선택해주세요.');
+            }
+
+            const editorType = document.getElementById('questionEditorType').value;
+            let questionNumber;
+            if (editorType === 'yes_no') {
+                questionNumber = document.getElementById('ynQuestionNumber').value;
+                if (!questionNumber || String(questionNumber).trim() === '') {
+                    throw new Error('이미지 업로드를 위해 문제 번호를 먼저 입력해주세요.');
+                }
+            } else {
+                const jsonInput = document.getElementById('testQuestionJsonInput');
+                let parsed;
+                try {
+                    parsed = JSON.parse((jsonInput.value || '').trim() || '{}');
+                } catch (error) {
+                    throw new Error(`먼저 올바른 문제 JSON 형식으로 입력해주세요: ${error.message}`);
+                }
+                questionNumber = parsed.question_number;
+                if (questionNumber === undefined || questionNumber === null || String(questionNumber).trim() === '') {
+                    throw new Error('이미지 업로드를 위해 JSON의 question_number를 먼저 입력해주세요.');
+                }
+            }
+
+            const categorySelect = document.getElementById('testQuestionCategorySelect');
+            const categoryName = categorySelect.value
+                ? (categorySelect.options[categorySelect.selectedIndex]?.text || 'None')
+                : 'None';
+
+            return {
+                testCategoryName: currentQuestionTestCategoryName,
+                questionNumber,
+                categoryName
+            };
+        }
+
+        async function uploadQuestionImageFile(file) {
+            const meta = getQuestionUploadMetadata();
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('test_category_name', meta.testCategoryName);
+            formData.append('category_name', meta.categoryName);
+            formData.append('question_number', String(meta.questionNumber));
+
+            const response = await fetch('/api/admin/test-questions/upload-image', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || '이미지 업로드에 실패했습니다.');
+            }
+            return data.url;
+        }
+
+        async function uploadQuestionImageFiles(files) {
+            if (!files || !files.length) {
+                return;
+            }
+
+            for (const file of files) {
+                const url = await uploadQuestionImageFile(file);
+                currentQuestionImageUrls.push(url);
+            }
+            renderQuestionImageList();
+        }
+
+        async function handleTestQuestionJsonPaste(event) {
+            const clipboardItems = event.clipboardData && event.clipboardData.items;
+            if (!clipboardItems || !clipboardItems.length) {
+                return;
+            }
+
+            let imageFile = null;
+            for (const item of clipboardItems) {
+                if (item && item.type && item.type.startsWith('image/')) {
+                    imageFile = item.getAsFile();
+                    break;
+                }
+            }
+
+            if (!imageFile) {
+                return;
+            }
+
+            event.preventDefault();
+            try {
+                await uploadQuestionImageFiles([imageFile]);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function showQuestionCategoryManager() {
+            document.getElementById('questionCategoryManagerModal').style.display = 'flex';
+            loadQuestionCategoryManager();
+        }
+
+        function closeQuestionCategoryManager() {
+            document.getElementById('questionCategoryManagerModal').style.display = 'none';
+        }
+
+        async function loadQuestionCategoryManager() {
+            const tableBody = document.getElementById('questionCategoryTableBody');
+            tableBody.innerHTML = '<tr><td colspan="5" style="color: var(--muted);">불러오는 중...</td></tr>';
+
+            try {
+                const data = await loadQuestionCategories();
+
+                if (!data.length) {
+                    tableBody.innerHTML = '<tr><td colspan="5" style="color: var(--muted);">등록된 문제 카테고리가 없습니다.</td></tr>';
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.id}</td>
+                        <td>${item.category_name}</td>
+                        <td>${item.description || ''}</td>
+                        <td>${item.is_active === 1 ? '활성' : '비활성'}</td>
+                        <td>
+                            <div class="icon-actions">
+                                <button class="icon-btn" onclick="editQuestionCategory(${item.id})" title="수정" aria-label="수정">✏️</button>
+                                <button class="icon-btn delete" onclick="deleteQuestionCategory(${item.id})" title="삭제" aria-label="삭제">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="color: #ef4444;">${error.message}</td></tr>`;
+            }
+        }
+
+        function showAddQuestionCategoryModal() {
+            document.getElementById('questionCategoryModalTitle').textContent = '문제 카테고리 추가';
+            document.getElementById('questionCategoryId').value = '';
+            document.getElementById('questionCategoryName').value = '';
+            document.getElementById('questionCategoryDescription').value = '';
+            document.getElementById('questionCategoryActiveToggle').checked = true;
+            document.getElementById('questionCategoryActiveLabel').textContent = '활성';
+            document.getElementById('questionCategoryModal').style.display = 'flex';
+        }
+
+        function closeQuestionCategoryModal() {
+            document.getElementById('questionCategoryModal').style.display = 'none';
+        }
+
+        async function editQuestionCategory(questionCategoryId) {
+            try {
+                const response = await fetch(`/api/admin/question-categories/${questionCategoryId}`);
+                const item = await response.json();
+                if (!response.ok) {
+                    throw new Error(item.detail || '문제 카테고리 정보를 불러오지 못했습니다.');
+                }
+
+                document.getElementById('questionCategoryModalTitle').textContent = '문제 카테고리 수정';
+                document.getElementById('questionCategoryId').value = item.id;
+                document.getElementById('questionCategoryName').value = item.category_name || '';
+                document.getElementById('questionCategoryDescription').value = item.description || '';
+                document.getElementById('questionCategoryActiveToggle').checked = item.is_active === 1;
+                document.getElementById('questionCategoryActiveLabel').textContent = item.is_active === 1 ? '활성' : '비활성';
+                document.getElementById('questionCategoryModal').style.display = 'flex';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteQuestionCategory(questionCategoryId) {
+            if (!confirm('이 문제 카테고리를 삭제하시겠습니까? 연결된 문제는 None으로 변경됩니다.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/question-categories/${questionCategoryId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 카테고리 삭제에 실패했습니다.');
+                }
+                await loadQuestionCategoryManager();
+                if (currentQuestionTestCategoryId) {
+                    loadTestQuestions();
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function editTestCategory(categoryId) {
+            try {
+                const response = await fetch(`/api/admin/test-categories/${categoryId}`);
+                const item = await response.json();
+                if (!response.ok) {
+                    throw new Error(item.detail || '테스트 종목 정보를 불러오지 못했습니다.');
+                }
+
+                document.getElementById('testCategoryModalTitle').textContent = '테스트 종목 수정';
+                document.getElementById('testCategoryId').value = item.id;
+                document.getElementById('testCategoryName').value = item.category_name || '';
+                document.getElementById('testCategoryDescription').value = item.description || '';
+                document.getElementById('testCategoryActiveToggle').checked = item.is_active === 1;
+                document.getElementById('testCategoryActiveLabel').textContent = item.is_active === 1 ? '활성' : '비활성';
+                document.getElementById('testCategoryModal').style.display = 'flex';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteTestCategory(categoryId) {
+            if (!confirm('이 테스트 종목을 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/test-categories/${categoryId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '테스트 종목 삭제에 실패했습니다.');
+                }
+
+                loadTestCategories();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
         
         // 로그인 처리 및 초기 화면 처리
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -926,6 +2687,7 @@
                         localStorage.removeItem('admin_training_key');
                         document.getElementById('loginContainer').style.display = 'none';
                         document.getElementById('adminContainer').style.display = 'block';
+                        switchManagementTab('course');
                         loadCourses();
                     } else {
                         loginError.textContent = data.detail || '로그인에 실패했습니다.';
@@ -973,6 +2735,7 @@
             if (isLoggedIn) {
                 document.getElementById('loginContainer').style.display = 'none';
                 document.getElementById('adminContainer').style.display = 'block';
+                switchManagementTab('course');
                 loadCourses();
             } else {
                 document.getElementById('loginContainer').style.display = 'flex';
@@ -1021,6 +2784,305 @@
         document.getElementById('copyPublicToggle').addEventListener('change', function() {
             const label = document.getElementById('copyPublicLabel');
             label.textContent = this.checked ? '공개' : '비공개';
+        });
+
+        document.getElementById('testCategoryActiveToggle').addEventListener('change', function() {
+            document.getElementById('testCategoryActiveLabel').textContent = this.checked ? '활성' : '비활성';
+        });
+
+        document.getElementById('testQuestionActiveToggle').addEventListener('change', function() {
+            document.getElementById('testQuestionActiveLabel').textContent = this.checked ? '활성' : '비활성';
+        });
+
+        document.getElementById('testQuestionJsonInput').addEventListener('paste', handleTestQuestionJsonPaste);
+        document.getElementById('questionImagePasteZone').addEventListener('paste', handleTestQuestionJsonPaste);
+
+        document.getElementById('testQuestionImageInput').addEventListener('change', async function() {
+            const files = Array.from(this.files || []);
+            if (!files.length) {
+                return;
+            }
+
+            try {
+                await uploadQuestionImageFiles(files);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                this.value = '';
+            }
+        });
+
+        document.getElementById('testQuestionCategorySelect').addEventListener('change', function() {
+            updateLastSelectedQuestionCategory(this.value);
+        });
+
+        document.getElementById('generatedTestCategorySelect').addEventListener('change', async function() {
+            await handleGeneratedTestCategoryChange();
+        });
+
+        document.getElementById('generatedTestIncludeAll').addEventListener('change', function() {
+            handleGeneratedTestIncludeAllToggle();
+        });
+
+        document.getElementById('generatedTestAssignForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const generatedTestId = document.getElementById('generatedTestAssignId').value;
+            const trainingKey = document.getElementById('generatedTestAssignCourse').value;
+            const subject = document.getElementById('generatedTestAssignSubject').value.trim();
+            const status = document.getElementById('generatedTestAssignStatus').value;
+
+            if (!generatedTestId || !trainingKey || !subject) {
+                alert('과정과 항목 제목을 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/generated-tests/${generatedTestId}/assign-to-lab`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        training_key: trainingKey,
+                        lab_content_subject: subject,
+                        lab_content_status: parseInt(status, 10)
+                    })
+                });
+                const raw = await response.text();
+                let data = {};
+                try {
+                    data = raw ? JSON.parse(raw) : {};
+                } catch (parseError) {
+                    data = { detail: raw || '서버 응답 파싱 실패' };
+                }
+                if (!response.ok) {
+                    throw new Error(data.detail || '랩 할당에 실패했습니다.');
+                }
+                closeGeneratedTestAssignModal();
+                const createdInfo = data.created_test_center ? ' (테스트 센터 신규 생성)' : '';
+                alert(`할당 완료: ${data.lab_name}${createdInfo} / 콘텐츠 ${data.content_id}`);
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('generatedTestForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const categoryId = document.getElementById('generatedTestCategorySelect').value;
+            const questionCount = document.getElementById('generatedTestQuestionCount').value;
+            const includeAllQuestions = document.getElementById('generatedTestIncludeAll').checked;
+            const randomOrder = document.getElementById('generatedTestRandomOrder').checked;
+            const checkedCategoryIds = Array.from(document.querySelectorAll('.generated-test-category-checkbox:checked')).map(el => parseInt(el.value, 10));
+
+            if (!categoryId) {
+                alert('테스트 종목을 선택해주세요.');
+                return;
+            }
+
+            if (!includeAllQuestions && !checkedCategoryIds.length) {
+                alert('최소 1개 이상의 문제 카테고리를 선택해주세요.');
+                return;
+            }
+
+            if (!includeAllQuestions && (!questionCount || Number(questionCount) <= 0)) {
+                alert('총 문항수를 1 이상으로 입력해주세요.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/generated-tests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        test_category_id: parseInt(categoryId, 10),
+                        question_category_ids: checkedCategoryIds,
+                        question_count: includeAllQuestions ? null : parseInt(questionCount, 10),
+                        include_all_questions: includeAllQuestions,
+                        random_order: randomOrder
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '테스트 생성에 실패했습니다.');
+                }
+
+                await loadGeneratedTests();
+                document.getElementById('generatedTestQuestionCount').value = '';
+                document.getElementById('generatedTestIncludeAll').checked = false;
+                handleGeneratedTestIncludeAllToggle();
+                if (data.generated_test_id) {
+                    showGeneratedTestPreview(data.generated_test_id);
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('ynQuestionNumber').addEventListener('input', function() {
+            syncYnJsonPreview();
+        });
+
+        document.getElementById('ynQuestionText').addEventListener('input', function() {
+            syncYnJsonPreview();
+        });
+
+        document.getElementById('questionCategoryActiveToggle').addEventListener('change', function() {
+            document.getElementById('questionCategoryActiveLabel').textContent = this.checked ? '활성' : '비활성';
+        });
+
+        document.getElementById('testCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const categoryId = document.getElementById('testCategoryId').value;
+            const payload = {
+                category_name: document.getElementById('testCategoryName').value.trim(),
+                description: document.getElementById('testCategoryDescription').value.trim(),
+                is_active: document.getElementById('testCategoryActiveToggle').checked ? 1 : 0
+            };
+
+            if (!payload.category_name) {
+                alert('테스트 종목명을 입력해주세요.');
+                return;
+            }
+
+            const url = categoryId
+                ? `/api/admin/test-categories/${categoryId}`
+                : '/api/admin/test-categories';
+            const method = categoryId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '저장에 실패했습니다.');
+                }
+
+                closeTestCategoryModal();
+                loadTestCategories();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('testQuestionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!currentQuestionTestCategoryId) {
+                alert('테스트 종목을 먼저 선택해주세요.');
+                return;
+            }
+
+            const questionId = document.getElementById('testQuestionId').value;
+            const selectedQuestionCategoryId = document.getElementById('testQuestionCategorySelect').value;
+            const editorType = document.getElementById('questionEditorType').value;
+
+            let questionJson;
+            if (editorType === 'yes_no') {
+                try {
+                    questionJson = getYnPayload();
+                } catch (error) {
+                    alert(error.message);
+                    return;
+                }
+            } else {
+                questionJson = document.getElementById('testQuestionJsonInput').value.trim();
+                if (!questionJson) {
+                    alert('문제 JSON을 입력해주세요.');
+                    return;
+                }
+                let parsedQuestion;
+                try {
+                    parsedQuestion = JSON.parse(questionJson);
+                } catch (error) {
+                    alert(`문제 JSON 형식이 올바르지 않습니다: ${error.message}`);
+                    return;
+                }
+                if (editorType === 'matching') {
+                    parsedQuestion.question_type = 'matching';
+                } else if (!parsedQuestion.question_type) {
+                    parsedQuestion.question_type = 'multiple_choice';
+                }
+                questionJson = JSON.stringify(parsedQuestion, null, 2);
+            }
+
+            const payload = {
+                question_json: questionJson,
+                question_category_id: selectedQuestionCategoryId || null,
+                image_urls: currentQuestionImageUrls,
+                is_active: document.getElementById('testQuestionActiveToggle').checked ? 1 : 0
+            };
+
+            updateLastSelectedQuestionCategory(selectedQuestionCategoryId || '');
+
+            const url = questionId
+                ? `/api/admin/test-categories/${currentQuestionTestCategoryId}/questions/${questionId}`
+                : `/api/admin/test-categories/${currentQuestionTestCategoryId}/questions`;
+            const method = questionId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 저장에 실패했습니다.');
+                }
+
+                closeTestQuestionModal();
+                loadTestQuestions();
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('questionCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const questionCategoryId = document.getElementById('questionCategoryId').value;
+            const payload = {
+                category_name: document.getElementById('questionCategoryName').value.trim(),
+                description: document.getElementById('questionCategoryDescription').value.trim(),
+                is_active: document.getElementById('questionCategoryActiveToggle').checked ? 1 : 0
+            };
+
+            if (!payload.category_name) {
+                alert('문제 카테고리명을 입력해주세요.');
+                return;
+            }
+
+            const url = questionCategoryId
+                ? `/api/admin/question-categories/${questionCategoryId}`
+                : '/api/admin/question-categories';
+            const method = questionCategoryId ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '문제 카테고리 저장에 실패했습니다.');
+                }
+
+                closeQuestionCategoryModal();
+                await loadQuestionCategoryManager();
+                if (currentQuestionTestCategoryId) {
+                    loadTestQuestions();
+                }
+            } catch (error) {
+                alert(error.message);
+            }
         });
 
         // 복사 폼 제출

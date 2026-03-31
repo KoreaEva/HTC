@@ -839,17 +839,17 @@
 
     <div id="moveContentModal" class="modal">
         <div class="modal-content">
-            <h2>콘텐츠 이동</h2>
+            <h2 id="moveContentModalTitle">콘텐츠 이동</h2>
             <form id="moveContentForm">
                 <input type="hidden" id="moveContentId">
                 <div class="form-group" id="moveTargetTrainingGroup" style="display:none;">
-                    <label for="moveTargetTrainingKey">이동할 과정:</label>
+                    <label for="moveTargetTrainingKey" id="moveTargetTrainingLabel">이동할 과정:</label>
                     <select id="moveTargetTrainingKey" onchange="loadMoveTargetLabs()">
                         <option value="">과정을 선택하세요</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="targetLabId">이동할 랩:</label>
+                    <label for="targetLabId" id="moveTargetLabLabel">이동할 랩:</label>
                     <select id="targetLabId" required>
                         <!-- 랩 목록이 여기에 동적으로 추가됩니다 -->
                     </select>
@@ -1478,6 +1478,7 @@
                 let html = `
                     <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center; justify-content:flex-end;">
                         <button class="button success" id="bulkMoveBtn-${labId}" onclick="showLabBulkMoveModal(${labId})" style="${selectedIds.length > 0 ? 'display:inline-block;' : 'display:none;'}">선택 항목 이동 (${selectedIds.length})</button>
+                        <button class="button primary" id="bulkCopyBtn-${labId}" onclick="showLabBulkCopyModal(${labId})" style="${selectedIds.length > 0 ? 'display:inline-block;' : 'display:none;'}">선택 항목 복사 (${selectedIds.length})</button>
                     </div>
                     <table class="content-table">
                         <thead>
@@ -2198,6 +2199,7 @@
             labSelectedContents[labId] = selectedIds;
 
             const bulkMoveBtn = document.getElementById(`bulkMoveBtn-${labId}`);
+            const bulkCopyBtn = document.getElementById(`bulkCopyBtn-${labId}`);
             const selectAllCheckbox = document.getElementById(`selectAll-${labId}`);
 
             if (bulkMoveBtn) {
@@ -2210,17 +2212,45 @@
                 }
             }
 
+            if (bulkCopyBtn) {
+                if (selectedIds.length > 0) {
+                    bulkCopyBtn.style.display = 'inline-block';
+                    bulkCopyBtn.textContent = `선택 항목 복사 (${selectedIds.length})`;
+                } else {
+                    bulkCopyBtn.style.display = 'none';
+                    bulkCopyBtn.textContent = '선택 항목 복사 (0)';
+                }
+            }
+
             if (selectAllCheckbox) {
                 const allCheckboxes = document.querySelectorAll(`.content-checkbox-${labId}`);
                 selectAllCheckbox.checked = allCheckboxes.length > 0 && checked.length === allCheckboxes.length;
             }
         }
 
-        async function showLabBulkMoveModal(labId) {
+        function setMoveContentModalMode(actionType) {
+            const mode = actionType === 'copy' ? 'copy' : 'move';
+            const titleEl = document.getElementById('moveContentModalTitle');
+            const trainingLabelEl = document.getElementById('moveTargetTrainingLabel');
+            const labLabelEl = document.getElementById('moveTargetLabLabel');
+
+            if (titleEl) {
+                titleEl.textContent = mode === 'copy' ? '콘텐츠 복사' : '콘텐츠 이동';
+            }
+            if (trainingLabelEl) {
+                trainingLabelEl.textContent = mode === 'copy' ? '복사할 과정:' : '이동할 과정:';
+            }
+            if (labLabelEl) {
+                labLabelEl.textContent = mode === 'copy' ? '복사할 랩:' : '이동할 랩:';
+            }
+        }
+
+        async function openLabBulkActionModal(labId, actionType) {
             const selectedIds = labSelectedContents[labId] || [];
+            const actionName = actionType === 'copy' ? '복사' : '이동';
 
             if (selectedIds.length === 0) {
-                alert('이동할 콘텐츠를 선택해주세요.');
+                alert(`${actionName}할 콘텐츠를 선택해주세요.`);
                 return;
             }
 
@@ -2243,7 +2273,13 @@
                     trainingSelect.appendChild(option);
                 });
 
-                trainingSelect.value = trainingKey;
+                if (actionType === 'copy') {
+                    const defaultCopyTarget = courses.find(course => course.training_key !== trainingKey);
+                    trainingSelect.value = defaultCopyTarget ? defaultCopyTarget.training_key : trainingKey;
+                } else {
+                    trainingSelect.value = trainingKey;
+                }
+
                 await loadMoveTargetLabs(labId);
 
                 if (!labSelect.value) {
@@ -2254,12 +2290,22 @@
                 moveContentIdEl.value = JSON.stringify(selectedIds);
                 moveContentIdEl.dataset.currentLabId = labId;
                 moveContentIdEl.dataset.isBulk = 'true';
+                moveContentIdEl.dataset.bulkAction = actionType;
+                setMoveContentModalMode(actionType);
                 updateMoveActionButtonLabel();
 
                 openModal('moveContentModal');
             } catch (error) {
-                alert('랩 목록을 불러오는데 실패했습니다: ' + error.message);
+                alert(`랩 목록을 불러오는데 실패했습니다: ${error.message}`);
             }
+        }
+
+        async function showLabBulkMoveModal(labId) {
+            await openLabBulkActionModal(labId, 'move');
+        }
+
+        async function showLabBulkCopyModal(labId) {
+            await openLabBulkActionModal(labId, 'copy');
         }
 
         async function loadMoveTargetLabs(sourceLabId = null) {
@@ -2336,7 +2382,9 @@
                 
                 document.getElementById('moveContentId').value = contentId;
                 document.getElementById('moveContentId').dataset.currentLabId = currentLabId;
-                                document.getElementById('moveContentId').dataset.isBulk = 'false';
+                document.getElementById('moveContentId').dataset.isBulk = 'false';
+                document.getElementById('moveContentId').dataset.bulkAction = 'move';
+                setMoveContentModalMode('move');
                 updateMoveActionButtonLabel();
                 openModal('moveContentModal');
             } catch (error) {
@@ -2368,16 +2416,15 @@
         function updateMoveActionButtonLabel() {
             const submitBtn = document.getElementById('moveActionSubmitBtn');
             const contentIdInput = document.getElementById('moveContentId');
-            const targetTrainingSelect = document.getElementById('moveTargetTrainingKey');
 
             if (!submitBtn || !contentIdInput) {
                 return;
             }
 
             const isBulk = contentIdInput.dataset.isBulk === 'true';
-            const selectedTrainingKey = targetTrainingSelect ? (targetTrainingSelect.value || trainingKey) : trainingKey;
+            const actionType = contentIdInput.dataset.bulkAction || 'move';
 
-            if (isBulk && selectedTrainingKey !== trainingKey) {
+            if (isBulk && actionType === 'copy') {
                 submitBtn.textContent = 'Copy';
             } else {
                 submitBtn.textContent = 'Move';
@@ -2391,6 +2438,7 @@
             const contentId = String(contentIdInput.value || '').trim();
             const currentLabId = contentIdInput.dataset.currentLabId;
             let isBulk = contentIdInput.dataset.isBulk === 'true';
+            const bulkAction = contentIdInput.dataset.bulkAction || 'move';
             const newLabIdRaw = document.getElementById('targetLabId').value;
             const newLabId = parseInt(newLabIdRaw, 10);
             const targetTrainingKey = document.getElementById('moveTargetTrainingKey').value || trainingKey;
@@ -2420,8 +2468,8 @@
                         alert('이동할 콘텐츠를 선택해주세요.');
                         return;
                     }
-                    if (targetTrainingKey !== trainingKey) {
-                        // 다른 과정 선택 시 대량 복사
+                    if (bulkAction === 'copy' || targetTrainingKey !== trainingKey) {
+                        // 복사 모드이거나 다른 과정 대상일 때는 대량 복사
                         res = await fetch(`/api/admin/lab_contents/actions/bulk-copy?training_key=${encodeURIComponent(trainingKey)}&lab_id=${currentLabId}`, {
                             method: 'POST',
                             headers: {

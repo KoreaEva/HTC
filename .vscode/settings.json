@@ -16,7 +16,11 @@
             "matchCommandLine": true
         },
         "uvicorn": true,
-        "/opt/homebrew/bin/python3.11": true
+        "/opt/homebrew/bin/python3.11": true,
+        "/^bash /Users/winkey/Documents/github/HTC/start\\.sh$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     },
     "python-envs.defaultEnvManager": "ms-python.python:system"
 }
