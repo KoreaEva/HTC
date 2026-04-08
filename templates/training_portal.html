@@ -1446,7 +1446,7 @@
             if (pageEl) pageEl.textContent = `문제 ${currentIndex + 1} / ${questions.length}`;
             if (prevBtn) prevBtn.disabled = currentIndex <= 0;
             if (nextBtn) {
-                const nextEnabled = (currentIndex < questions.length - 1) && Boolean(trainingTestCenterState.solved[currentIndex]);
+                const nextEnabled = currentIndex < questions.length - 1;
                 nextBtn.disabled = !nextEnabled;
                 setTrainingNextButtonStyle(nextBtn, nextEnabled);
             }
@@ -1470,7 +1470,7 @@
                         }
                         showTrainingCorrectPopup();
                     } else if (checkMsg) {
-                        const wrongText = '오답입니다. 다시 선택해 주세요.';
+                        const wrongText = '오답입니다. 다음 문제로 계속 진행할 수 있습니다.';
                         if (isTrainingSupervisor()) {
                             const answerHint = getTrainingQuestionAnswerHint(currentQuestion);
                             checkMsg.textContent = answerHint

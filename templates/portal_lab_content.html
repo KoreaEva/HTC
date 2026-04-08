@@ -951,7 +951,7 @@
                         <div class="test-nav-info">문제 ${currentIndex + 1} / ${questions.length}</div>
                         <div style="display:flex; gap:8px;">
                             <button class="button" id="testPrevBtn" ${currentIndex <= 0 ? 'disabled' : ''}>이전</button>
-                            <button class="button test-next-btn ${(currentIndex >= questions.length - 1 || !testCenterState.solved[currentIndex]) ? 'disabled' : 'enabled'}" id="testNextBtn" ${(currentIndex >= questions.length - 1 || !testCenterState.solved[currentIndex]) ? 'disabled' : ''}>다음</button>
+                            <button class="button test-next-btn ${currentIndex >= questions.length - 1 ? 'disabled' : 'enabled'}" id="testNextBtn" ${currentIndex >= questions.length - 1 ? 'disabled' : ''}>다음</button>
                         </div>
                     </div>
                 </div>
@@ -964,7 +964,7 @@
             const checkMsg = document.getElementById('testCheckMsg');
 
             if (nextBtn) {
-                const nextEnabled = (currentIndex < questions.length - 1) && Boolean(testCenterState.solved[currentIndex]);
+                const nextEnabled = currentIndex < questions.length - 1;
                 nextBtn.disabled = !nextEnabled;
                 nextBtn.classList.toggle('enabled', nextEnabled);
                 nextBtn.classList.toggle('disabled', !nextEnabled);
@@ -1004,7 +1004,7 @@
                         }
                         showCorrectCelebrationPopup();
                     } else if (checkMsg) {
-                        checkMsg.textContent = '오답입니다. 다시 선택해 주세요.';
+                        checkMsg.textContent = '오답입니다. 다음 문제로 계속 진행할 수 있습니다.';
                         checkMsg.style.color = '#dc2626';
                     }
                 };
