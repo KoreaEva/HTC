@@ -17,6 +17,8 @@ import random
 import asyncio
 import json
 import re
+import uuid
+from urllib.parse import urlparse, unquote
 from collections import deque
 
 try:
@@ -40,6 +42,10 @@ async def startup_event():
     try:
         ensure_event_logs_table()
         print("✅ 이벤트 로그 테이블 확인/생성 완료")
+        ensure_jjek_messages_table()
+        print("✅ Jjek 메시지 테이블 확인/생성 완료")
+        ensure_jjek_message_reads_table()
+        print("✅ Jjek 메시지 읽음 테이블 확인/생성 완료")
         ensure_supervisors_table()
         print("✅ 감독자 테이블 확인/생성 완료")
         ensure_test_categories_table()
@@ -50,6 +56,12 @@ async def startup_event():
         print("✅ 테스트 문제 테이블 확인/생성 완료")
         ensure_generated_tests_table()
         print("✅ 랜덤 테스트 테이블 확인/생성 완료")
+        ensure_test_center_results_table()
+        print("✅ 테스트 결과 테이블 확인/생성 완료")
+        ensure_course_admins_table()
+        print("✅ 과정 관리자 테이블 확인/생성 완료")
+        ensure_assignment_submissions_table()
+        print("✅ 과제 제출 테이블 확인/생성 완료")
     except Exception as e:
         print(f"⚠️ 테이블 생성 실패: {str(e)}")
 
@@ -277,8 +289,284 @@ def ensure_generated_tests_table():
         conn.close()
 
 
+def ensure_test_center_results_table():
+    """테스트 센터 풀이 결과 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS test_center_results (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    lab_id INT NOT NULL,
+                    content_id INT NOT NULL,
+                    generated_test_id INT NULL,
+                    member_id VARCHAR(100) NOT NULL,
+                    member_name VARCHAR(100) NULL,
+                    started_at DATETIME NULL,
+                    completed_at DATETIME NULL,
+                    total_questions INT NOT NULL DEFAULT 0,
+                    answered_questions INT NOT NULL DEFAULT 0,
+                    solved_questions INT NOT NULL DEFAULT 0,
+                    score_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+                    detail_json LONGTEXT NULL,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_tcr_training (training_key),
+                    INDEX idx_tcr_member (member_id),
+                    INDEX idx_tcr_content (training_key, lab_id, content_id),
+                    INDEX idx_tcr_completed (completed_at),
+                    INDEX idx_tcr_created (create_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+                """
+            )
+            alter_statements = [
+                "ALTER TABLE test_center_results ADD COLUMN started_at DATETIME NULL AFTER member_name",
+                "ALTER TABLE test_center_results ADD COLUMN completed_at DATETIME NULL AFTER started_at",
+                "ALTER TABLE test_center_results ADD INDEX idx_tcr_completed (completed_at)",
+            ]
+            for statement in alter_statements:
+                try:
+                    cursor.execute(statement)
+                except Exception as e:
+                    if "Duplicate column name" not in str(e) and "Duplicate key name" not in str(e):
+                        raise
+            try:
+                cursor.execute("ALTER TABLE test_center_results CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci")
+            except Exception:
+                pass
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_assignment_submissions_table():
+    """과제 제출 테이블 생성 (없을 경우)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS assignment_submissions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    lab_id INT NOT NULL,
+                    content_id INT NOT NULL,
+                    member_id VARCHAR(100) NOT NULL,
+                    member_name VARCHAR(100) NOT NULL,
+                    file_name VARCHAR(500) NOT NULL,
+                    file_url TEXT NOT NULL,
+                    blob_path VARCHAR(1000) NOT NULL,
+                    feedback_text TEXT NULL,
+                    feedback_status VARCHAR(30) NOT NULL DEFAULT 'pending',
+                    feedback_at DATETIME NULL,
+                    feedback_admin_id VARCHAR(100) NULL,
+                    feedback_admin_name VARCHAR(100) NULL,
+                    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_asub_training (training_key),
+                    INDEX idx_asub_content (training_key, lab_id, content_id),
+                    INDEX idx_asub_member (member_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+
+            alter_statements = [
+                "ALTER TABLE assignment_submissions ADD COLUMN feedback_text TEXT NULL AFTER blob_path",
+                "ALTER TABLE assignment_submissions ADD COLUMN feedback_status VARCHAR(30) NOT NULL DEFAULT 'pending' AFTER feedback_text",
+                "ALTER TABLE assignment_submissions ADD COLUMN feedback_at DATETIME NULL AFTER feedback_status",
+                "ALTER TABLE assignment_submissions ADD COLUMN feedback_admin_id VARCHAR(100) NULL AFTER feedback_at",
+                "ALTER TABLE assignment_submissions ADD COLUMN feedback_admin_name VARCHAR(100) NULL AFTER feedback_admin_id",
+            ]
+
+            for statement in alter_statements:
+                try:
+                    cursor.execute(statement)
+                except Exception as e:
+                    if "Duplicate column name" not in str(e):
+                        raise
+
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_course_admins_table():
+    """과정 관리자(Course Manager / Partner) 테이블 생성"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS course_admins (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    admin_id VARCHAR(100) NOT NULL,
+                    admin_name VARCHAR(100) NOT NULL,
+                    role_type VARCHAR(50) NOT NULL DEFAULT 'course_manager',
+                    is_active TINYINT DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_course_admin (training_key, admin_id),
+                    INDEX idx_ca_training_key (training_key),
+                    INDEX idx_ca_admin_id (admin_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_jjek_messages_table():
+    """Jjek 메신저 메시지 테이블 생성"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS jjek_messages (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    sender_member_id VARCHAR(100),
+                    sender_name VARCHAR(100) NOT NULL,
+                    sender_role VARCHAR(30) NOT NULL,
+                    receiver_member_id VARCHAR(100),
+                    message_text TEXT NOT NULL,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_jjek_training (training_key),
+                    INDEX idx_jjek_receiver (training_key, receiver_member_id),
+                    INDEX idx_jjek_sender (training_key, sender_member_id),
+                    INDEX idx_jjek_create (create_date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def ensure_jjek_message_reads_table():
+    """Jjek 메신저 읽음 상태 테이블 생성"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS jjek_message_reads (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    message_id BIGINT NOT NULL,
+                    reader_member_id VARCHAR(100) NOT NULL,
+                    reader_role VARCHAR(30) NOT NULL,
+                    read_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_jjek_message_reader (training_key, message_id, reader_member_id, reader_role),
+                    INDEX idx_jjek_reader (training_key, reader_member_id, reader_role),
+                    INDEX idx_jjek_message (training_key, message_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def normalize_jjek_reader_role(raw_role: Optional[str]) -> str:
+    role = str(raw_role or "").strip().lower()
+    if role in ("trainee", "student", "user", "member"):
+        return "trainee"
+    if role in ("admin", "supervisor", "partner", "course_manager", "manager", "system"):
+        return "admin"
+
+    # training_member.role can be numeric (e.g., 10/20 for trainees, 100+ for admins)
+    try:
+        role_num = int(float(role))
+        return "admin" if role_num >= 100 else "trainee"
+    except Exception:
+        pass
+
+    return "admin"
+
+
+def get_admin_member_column_map(cursor):
+    """admin_member 테이블의 컬럼명을 동적으로 매핑한다."""
+    try:
+        cursor.execute(
+            """
+            SELECT column_name AS col_name
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE() AND table_name = 'admin_member'
+            """
+        )
+        raw_rows = cursor.fetchall()
+        cols = set()
+        for row in raw_rows:
+            if not isinstance(row, dict):
+                continue
+            for key in ("col_name", "COL_NAME", "column_name", "COLUMN_NAME"):
+                value = row.get(key)
+                if value:
+                    cols.add(str(value))
+                    break
+    except Exception:
+        return None
+
+    if not cols:
+        return None
+
+    def pick(candidates):
+        for candidate in candidates:
+            if candidate in cols:
+                return candidate
+        return None
+
+    return {
+        "id": pick(["admin_id", "member_id", "id", "username"]),
+        "name": pick(["admin_name", "member_name", "name", "username"]),
+        "password": pick(["admin_password", "member_password", "password", "passwd"]),
+        "role": pick(["role", "admin_role", "role_type"]),
+        "active": pick(["is_active", "active", "use_yn"]),
+    }
+
+
+def find_admin_member_login(cursor, username: str):
+    """admin_member에서 관리자 계정 정보를 조회한다."""
+    col_map = get_admin_member_column_map(cursor)
+    if not col_map or not col_map.get("id"):
+        return None
+
+    id_col = col_map["id"]
+    name_col = col_map["name"] or id_col
+    pw_col = col_map["password"]
+    role_col = col_map["role"]
+    active_col = col_map["active"]
+
+    select_cols = [
+        f"{id_col} AS admin_id",
+        f"{name_col} AS admin_name",
+        (f"{pw_col} AS admin_password" if pw_col else "NULL AS admin_password"),
+        (f"{role_col} AS admin_role" if role_col else "NULL AS admin_role"),
+    ]
+
+    sql = f"SELECT {', '.join(select_cols)} FROM admin_member WHERE ({id_col} = %s"
+    params = [username]
+
+    if name_col and name_col != id_col:
+        sql += f" OR {name_col} = %s"
+        params.append(username)
+
+    sql += ")"
+
+    if active_col:
+        if active_col == "use_yn":
+            sql += " AND use_yn = 'Y'"
+        else:
+            sql += f" AND {active_col} = 1"
+
+    sql += " LIMIT 1"
+    try:
+        cursor.execute(sql, tuple(params))
+        return cursor.fetchone()
+    except Exception:
+        return None
+
+
 def log_monitoring_event(training_key: str, event_type: str, details: dict, 
-                         event_category: str = "system", user_id: str = None, 
+                         event_category: str = "system", user_id: str = None,
                          user_name: str = None, target_type: str = None, 
                          target_id: str = None, target_name: str = None,
                          description: str = None):
@@ -350,6 +638,22 @@ def now_kst_str(fmt: str = '%Y-%m-%d %H:%M:%S'):
     return now_kst().strftime(fmt)
 
 
+def parse_client_datetime_to_kst_str(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        normalized = raw.replace('Z', '+00:00')
+        dt_obj = datetime.fromisoformat(normalized)
+        if dt_obj.tzinfo is not None:
+            dt_obj = dt_obj.astimezone(KST).replace(tzinfo=None)
+        return dt_obj.strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return None
+
+
 def format_kst(dt_value, fmt: str = '%Y-%m-%d %H:%M'):
     if not dt_value:
         return ''
@@ -380,6 +684,9 @@ def normalize_lab_content_type(raw_type):
         'code': 3,
         '4': 4,
         'text': 4,
+        '5': 5,
+        'assignment': 5,
+        'file': 5,
     }
     if value in mapping:
         return mapping[value]
@@ -398,6 +705,33 @@ def sanitize_filename_part(value: str, default_value: str = "none") -> str:
     text = re.sub(r"[^\w\-]", "_", text, flags=re.UNICODE)
     text = re.sub(r"_+", "_", text).strip("_")
     return text or default_value
+
+
+def sanitize_blob_path_part(value: str, default_value: str = "none") -> str:
+    """Azure Blob 경로 세그먼트에 안전한 문자만 남긴다."""
+    text = (value or "").strip()
+    if not text:
+        return default_value
+    text = text.replace("\\", "_").replace("/", "_")
+    text = re.sub(r"\s+", "_", text)
+    text = re.sub(r"[^A-Za-z0-9._-]", "_", text)
+    text = re.sub(r"_+", "_", text).strip("._")
+    if not text:
+        return default_value
+    # Blob path segment length protection (practical limit guard)
+    return text[:120]
+
+
+def build_safe_blob_filename(original_name: str) -> str:
+    """원본 파일명과 무관하게 Azure-safe 파일명을 생성한다."""
+    name = str(original_name or "").strip()
+    ext = ""
+    if "." in name:
+        ext = name.rsplit(".", 1)[-1].lower()
+        ext = re.sub(r"[^a-z0-9]", "", ext)
+        if ext:
+            ext = "." + ext[:10]
+    return f"{now_kst_str('%Y%m%d%H%M%S')}_{uuid.uuid4().hex}{ext}"
 
 
 def get_blob_service_client():
@@ -434,6 +768,13 @@ def get_blob_service_client():
 
 def get_blob_container_name(default_name: str = "question") -> str:
     container_name = os.getenv("STORAGE_CONTAINER_NAME", default_name)
+    container_name = (container_name or default_name).strip().lower()
+    return container_name or default_name
+
+
+def get_assignment_container_name(default_name: str = "htc") -> str:
+    # Azure Blob 컨테이너명은 소문자만 허용된다.
+    container_name = os.getenv("ASSIGNMENT_CONTAINER_NAME", default_name)
     container_name = (container_name or default_name).strip().lower()
     return container_name or default_name
 
@@ -646,6 +987,20 @@ class LabViewLog(BaseModel):
     member_id: str
     lab_id: int
 
+
+class TestCenterSubmitRequest(BaseModel):
+    training_key: str
+    member_id: str
+    lab_id: int
+    content_id: int
+    generated_test_id: Optional[int] = None
+    started_at: Optional[str] = None
+    total_questions: int
+    answered_questions: int
+    solved_questions: int
+    score_percent: float
+    detail: Optional[dict] = None
+
 class TrainingKeyCheckRequest(BaseModel):
     training_key: str
 
@@ -653,6 +1008,21 @@ class RegisterRequest(BaseModel):
     training_key: str
     username: str
     name: str
+
+
+class JjekMessageSendRequest(BaseModel):
+    training_key: str
+    sender_member_id: Optional[str] = None
+    sender_name: str
+    sender_role: str
+    receiver_member_id: Optional[str] = None
+    message_text: str
+
+
+class JjekMessageReadRequest(BaseModel):
+    training_key: str
+    reader_member_id: str
+    reader_role: str
 
 @app.get("/")
 async def read_root():
@@ -721,6 +1091,473 @@ async def logout(data: dict = Body(...)):
         )
     
     return {"message": "Logout successful"}
+
+
+@app.post("/api/jjek/messages/send")
+async def send_jjek_message(data: JjekMessageSendRequest):
+    training_key = (data.training_key or "").strip()
+    sender_name = (data.sender_name or "").strip()
+    sender_role = (data.sender_role or "").strip().lower()
+    sender_member_id = (data.sender_member_id or "").strip() or None
+    receiver_member_id = (data.receiver_member_id or "").strip() or None
+    message_text = (data.message_text or "").strip()
+
+    if not training_key or not sender_name or not sender_role or not message_text:
+        raise HTTPException(status_code=400, detail="training_key, sender_name, sender_role, message_text는 필수입니다.")
+
+    if sender_role not in ("admin", "supervisor", "trainee", "system"):
+        raise HTTPException(status_code=400, detail="sender_role은 admin/supervisor/trainee/system 중 하나여야 합니다.")
+
+    if len(message_text) > 2000:
+        raise HTTPException(status_code=400, detail="메시지는 2000자 이내로 전송해주세요.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM training WHERE training_key = %s", (training_key,))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=404, detail="유효하지 않은 training_key입니다.")
+
+            if receiver_member_id:
+                cursor.execute(
+                    "SELECT 1 FROM training_member WHERE training_key = %s AND member_id = %s",
+                    (training_key, receiver_member_id)
+                )
+                if not cursor.fetchone():
+                    raise HTTPException(status_code=404, detail="수신 대상 수강생을 찾을 수 없습니다.")
+
+            cursor.execute(
+                """
+                INSERT INTO jjek_messages (
+                    training_key, sender_member_id, sender_name, sender_role,
+                    receiver_member_id, message_text, create_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    training_key,
+                    sender_member_id,
+                    sender_name,
+                    sender_role,
+                    receiver_member_id,
+                    message_text,
+                    now_kst_naive(),
+                )
+            )
+            message_id = cursor.lastrowid
+            conn.commit()
+
+        return {
+            "success": True,
+            "message_id": message_id,
+            "training_key": training_key,
+            "receiver_member_id": receiver_member_id,
+            "create_date": format_kst(now_kst_naive()),
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/jjek/messages/inbox")
+async def get_jjek_inbox(
+    training_key: str,
+    member_id: str,
+    since_id: Optional[int] = Query(None),
+    limit: int = Query(100, ge=1, le=300)
+):
+    training_key = (training_key or "").strip()
+    member_id = (member_id or "").strip()
+
+    if not training_key or not member_id:
+        raise HTTPException(status_code=400, detail="training_key와 member_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, sender_member_id, sender_name, sender_role,
+                       receiver_member_id, message_text, create_date
+                FROM jjek_messages
+                WHERE training_key = %s
+                  AND (
+                        receiver_member_id = %s
+                        OR (
+                            (receiver_member_id IS NULL OR receiver_member_id = '')
+                            AND sender_role IN ('admin', 'supervisor', 'system')
+                        )
+                        OR (sender_member_id = %s AND sender_role = 'trainee')
+                      )
+            """
+            params = [training_key, member_id, member_id]
+
+            if since_id:
+                sql += " AND id > %s"
+                params.append(since_id)
+
+            sql += " ORDER BY id ASC LIMIT %s"
+            params.append(limit)
+            cursor.execute(sql, tuple(params))
+            rows = cursor.fetchall() or []
+
+        messages = [
+            {
+                "id": row.get("id"),
+                "sender_member_id": row.get("sender_member_id"),
+                "sender_name": row.get("sender_name") or "관리자",
+                "sender_role": row.get("sender_role") or "admin",
+                "receiver_member_id": row.get("receiver_member_id"),
+                "message_text": row.get("message_text") or "",
+                "create_date": format_kst(row.get("create_date")),
+            }
+            for row in rows
+        ]
+
+        last_id = messages[-1]["id"] if messages else (since_id or 0)
+        return {
+            "success": True,
+            "messages": messages,
+            "last_id": last_id,
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/jjek/messages/conversation")
+async def get_jjek_conversation(
+    training_key: str,
+    trainee_member_id: str,
+    since_id: Optional[int] = Query(None),
+    limit: int = Query(200, ge=1, le=500)
+):
+    training_key = (training_key or "").strip()
+    trainee_member_id = (trainee_member_id or "").strip()
+
+    if not training_key or not trainee_member_id:
+        raise HTTPException(status_code=400, detail="training_key와 trainee_member_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, sender_member_id, sender_name, sender_role,
+                       receiver_member_id, message_text, create_date
+                FROM jjek_messages
+                WHERE training_key = %s
+                  AND (
+                                        (
+                                            (receiver_member_id = %s OR receiver_member_id IS NULL OR receiver_member_id = '')
+                                            AND sender_role IN ('admin', 'supervisor', 'system')
+                                        )
+                    OR
+                    (sender_member_id = %s AND sender_role = 'trainee')
+                  )
+            """
+            params = [training_key, trainee_member_id, trainee_member_id]
+
+            if since_id:
+                sql += " AND id > %s"
+                params.append(since_id)
+
+            sql += " ORDER BY id ASC LIMIT %s"
+            params.append(limit)
+            cursor.execute(sql, tuple(params))
+            rows = cursor.fetchall() or []
+
+        messages = [
+            {
+                "id": row.get("id"),
+                "sender_member_id": row.get("sender_member_id"),
+                "sender_name": row.get("sender_name") or "사용자",
+                "sender_role": row.get("sender_role") or "trainee",
+                "receiver_member_id": row.get("receiver_member_id"),
+                "message_text": row.get("message_text") or "",
+                "create_date": format_kst(row.get("create_date")),
+            }
+            for row in rows
+        ]
+
+        last_id = messages[-1]["id"] if messages else (since_id or 0)
+        return {
+            "success": True,
+            "messages": messages,
+            "last_id": last_id,
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/jjek/messages/broadcast")
+async def get_jjek_broadcast_messages(
+    training_key: str,
+    since_id: Optional[int] = Query(None),
+    limit: int = Query(200, ge=1, le=500)
+):
+    training_key = (training_key or "").strip()
+    if not training_key:
+        raise HTTPException(status_code=400, detail="training_key는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, sender_member_id, sender_name, sender_role,
+                       receiver_member_id, message_text, create_date
+                FROM jjek_messages
+                WHERE training_key = %s
+                  AND (receiver_member_id IS NULL OR receiver_member_id = '')
+                  AND sender_role IN ('admin', 'supervisor', 'system')
+            """
+            params = [training_key]
+
+            if since_id:
+                sql += " AND id > %s"
+                params.append(since_id)
+
+            sql += " ORDER BY id ASC LIMIT %s"
+            params.append(limit)
+            cursor.execute(sql, tuple(params))
+            rows = cursor.fetchall() or []
+
+        messages = [
+            {
+                "id": row.get("id"),
+                "sender_member_id": row.get("sender_member_id"),
+                "sender_name": row.get("sender_name") or "관리자",
+                "sender_role": row.get("sender_role") or "admin",
+                "receiver_member_id": row.get("receiver_member_id"),
+                "message_text": row.get("message_text") or "",
+                "create_date": format_kst(row.get("create_date")),
+            }
+            for row in rows
+        ]
+
+        last_id = messages[-1]["id"] if messages else (since_id or 0)
+        return {
+            "success": True,
+            "messages": messages,
+            "last_id": last_id,
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/jjek/messages/admin-view")
+async def get_jjek_admin_view_messages(
+    training_key: str,
+    since_id: Optional[int] = Query(None),
+    limit: int = Query(500, ge=1, le=1000)
+):
+    training_key = (training_key or "").strip()
+    if not training_key:
+        raise HTTPException(status_code=400, detail="training_key는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, sender_member_id, sender_name, sender_role,
+                       receiver_member_id, message_text, create_date
+                FROM jjek_messages
+                WHERE training_key = %s
+            """
+            params = [training_key]
+
+            if since_id:
+                sql += " AND id > %s"
+                params.append(since_id)
+
+            sql += " ORDER BY id ASC LIMIT %s"
+            params.append(limit)
+            cursor.execute(sql, tuple(params))
+            rows = cursor.fetchall() or []
+
+        messages = [
+            {
+                "id": row.get("id"),
+                "sender_member_id": row.get("sender_member_id"),
+                "sender_name": row.get("sender_name") or "사용자",
+                "sender_role": row.get("sender_role") or "trainee",
+                "receiver_member_id": row.get("receiver_member_id"),
+                "message_text": row.get("message_text") or "",
+                "create_date": format_kst(row.get("create_date")),
+            }
+            for row in rows
+        ]
+
+        last_id = messages[-1]["id"] if messages else (since_id or 0)
+        return {
+            "success": True,
+            "messages": messages,
+            "last_id": last_id,
+        }
+    finally:
+        conn.close()
+
+
+@app.get("/api/jjek/messages/unread-count")
+async def get_jjek_unread_count(
+    training_key: str,
+    reader_member_id: str,
+    reader_role: str,
+):
+    training_key = (training_key or "").strip()
+    reader_member_id = (reader_member_id or "").strip()
+    normalized_reader_role = normalize_jjek_reader_role(reader_role)
+
+    if not training_key or not reader_member_id:
+        raise HTTPException(status_code=400, detail="training_key와 reader_member_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            if normalized_reader_role == "trainee":
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS unread_count
+                    FROM jjek_messages m
+                    LEFT JOIN jjek_message_reads r
+                      ON r.training_key = m.training_key
+                     AND r.message_id = m.id
+                     AND r.reader_member_id = %s
+                     AND r.reader_role = %s
+                    WHERE m.training_key = %s
+                                            AND (
+                                                        m.receiver_member_id = %s
+                                                        OR (
+                                                                (m.receiver_member_id IS NULL OR m.receiver_member_id = '')
+                                                                AND m.sender_role IN ('admin', 'supervisor', 'system')
+                                                        )
+                                                        OR (m.sender_member_id = %s AND m.sender_role = 'trainee')
+                                                    )
+                      AND NOT (COALESCE(m.sender_member_id, '') = %s AND m.sender_role = 'trainee')
+                      AND r.id IS NULL
+                    """,
+                                        (
+                                                reader_member_id,
+                                                normalized_reader_role,
+                                                training_key,
+                                                reader_member_id,
+                                                reader_member_id,
+                                                reader_member_id,
+                                        )
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS unread_count
+                    FROM jjek_messages m
+                    LEFT JOIN jjek_message_reads r
+                      ON r.training_key = m.training_key
+                     AND r.message_id = m.id
+                     AND r.reader_member_id = %s
+                     AND r.reader_role = %s
+                    WHERE m.training_key = %s
+                      AND m.sender_role = 'trainee'
+                      AND r.id IS NULL
+                    """,
+                    (reader_member_id, normalized_reader_role, training_key)
+                )
+            row = cursor.fetchone() or {}
+
+        return {
+            "success": True,
+            "unread_count": int(row.get("unread_count") or 0),
+        }
+    finally:
+        conn.close()
+
+
+@app.post("/api/jjek/messages/mark-read")
+async def mark_jjek_messages_read(data: dict = Body(...)):
+    payload = data
+    if hasattr(data, "model_dump"):
+        payload = data.model_dump()
+    elif not isinstance(data, dict):
+        payload = {}
+
+    training_key = str(payload.get("training_key") or "").strip()
+    # Backward compatibility: accept both reader_member_id and legacy member_id.
+    reader_member_id = str(payload.get("reader_member_id") or payload.get("member_id") or "").strip()
+    # Backward compatibility: accept both reader_role and legacy role.
+    normalized_reader_role = normalize_jjek_reader_role(payload.get("reader_role") or payload.get("role"))
+
+    if not training_key or not reader_member_id:
+        raise HTTPException(status_code=400, detail="training_key와 reader_member_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            if normalized_reader_role == "trainee":
+                cursor.execute(
+                    """
+                    INSERT IGNORE INTO jjek_message_reads (
+                        training_key, message_id, reader_member_id, reader_role, read_date
+                    )
+                    SELECT m.training_key, m.id, %s, %s, %s
+                    FROM jjek_messages m
+                    LEFT JOIN jjek_message_reads r
+                      ON r.training_key = m.training_key
+                     AND r.message_id = m.id
+                     AND r.reader_member_id = %s
+                     AND r.reader_role = %s
+                    WHERE m.training_key = %s
+                                            AND (
+                                                        m.receiver_member_id = %s
+                                                        OR (
+                                                                (m.receiver_member_id IS NULL OR m.receiver_member_id = '')
+                                                                AND m.sender_role IN ('admin', 'supervisor', 'system')
+                                                        )
+                                                        OR (m.sender_member_id = %s AND m.sender_role = 'trainee')
+                                                    )
+                      AND NOT (COALESCE(m.sender_member_id, '') = %s AND m.sender_role = 'trainee')
+                      AND r.id IS NULL
+                    """,
+                    (
+                        reader_member_id,
+                        normalized_reader_role,
+                        now_kst_naive(),
+                        reader_member_id,
+                        normalized_reader_role,
+                        training_key,
+                        reader_member_id,
+                        reader_member_id,
+                        reader_member_id,
+                    )
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT IGNORE INTO jjek_message_reads (
+                        training_key, message_id, reader_member_id, reader_role, read_date
+                    )
+                    SELECT m.training_key, m.id, %s, %s, %s
+                    FROM jjek_messages m
+                    LEFT JOIN jjek_message_reads r
+                      ON r.training_key = m.training_key
+                     AND r.message_id = m.id
+                     AND r.reader_member_id = %s
+                     AND r.reader_role = %s
+                    WHERE m.training_key = %s
+                      AND m.sender_role = 'trainee'
+                      AND r.id IS NULL
+                    """,
+                    (
+                        reader_member_id,
+                        normalized_reader_role,
+                        now_kst_naive(),
+                        reader_member_id,
+                        normalized_reader_role,
+                        training_key,
+                    )
+                )
+            marked_count = cursor.rowcount or 0
+            conn.commit()
+
+        return {
+            "success": True,
+            "marked_count": int(marked_count),
+        }
+    finally:
+        conn.close()
 
 @app.post("/api/portal/log_lab_view")
 async def log_lab_view(data: dict = Body(...)):
@@ -805,11 +1642,6 @@ async def register_user(data: RegisterRequest):
             if not valid_key:
                 raise HTTPException(status_code=400, detail="유효하지 않은 트레이닝 키입니다.")
             
-            # 다음 member_key 구하기
-            cursor.execute("SELECT MAX(member_key) as max_key FROM training_member WHERE training_key = %s", (data.training_key,))
-            result = cursor.fetchone()
-            next_key = 1 if not result or result['max_key'] is None else int(result['max_key']) + 1
-            
             # 이름 중복 체크 및 숫자 붙이기
             member_name = data.name
             suffix = 0
@@ -828,25 +1660,45 @@ async def register_user(data: RegisterRequest):
                 else:
                     break
             
-            # 아이디 자동 생성: labuser1, labuser2, labuser3...
-            member_id = f"labuser{next_key}"
-            
-            # 회원 등록
-            try:
+            # 회원 등록: 복합 PK(member_key, training_key) 충돌 시 다음 번호로 재시도
+            next_key = None
+            member_id = None
+            last_error = None
+            for _attempt in range(20):
                 cursor.execute(
-                    "INSERT INTO training_member (member_key, training_key, member_id, member_name, member_password, role, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (
-                        next_key,
-                        data.training_key,
-                        member_id,
-                        member_name,
-                        "",  # 비밀번호 없음
-                        10,  # 일반 사용자 역할
-                        now_kst_str('%Y-%m-%d %H:%M:%S')
-                    )
+                    "SELECT COALESCE(MAX(member_key), 0) + 1 as next_key FROM training_member WHERE training_key = %s",
+                    (data.training_key,)
                 )
-            except Exception as e:
-                raise HTTPException(status_code=500, detail=f"회원 생성 실패: {str(e)}")
+                result = cursor.fetchone() or {}
+                next_key = int(result.get('next_key') or 1)
+
+                # 아이디 자동 생성: labuser1, labuser2, labuser3...
+                member_id = f"labuser{next_key}"
+
+                try:
+                    cursor.execute(
+                        "INSERT INTO training_member (member_key, training_key, member_id, member_name, member_password, role, create_date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        (
+                            next_key,
+                            data.training_key,
+                            member_id,
+                            member_name,
+                            "",  # 비밀번호 없음
+                            10,  # 일반 사용자 역할
+                            now_kst_str('%Y-%m-%d %H:%M:%S')
+                        )
+                    )
+                    last_error = None
+                    break
+                except Exception as e:
+                    last_error = e
+                    error_text = str(e)
+                    if "Duplicate entry" in error_text and "training_member.PRIMARY" in error_text:
+                        continue
+                    raise HTTPException(status_code=500, detail=f"회원 생성 실패: {error_text}")
+
+            if last_error is not None:
+                raise HTTPException(status_code=500, detail=f"회원 생성 실패: {str(last_error)}")
             
             conn.commit()
             
@@ -899,44 +1751,59 @@ async def admin_login(data: dict = Body(...)):
     if not username or not password:
         raise HTTPException(status_code=400, detail="아이디와 비밀번호를 입력해 주세요.")
 
-    admin_username = os.getenv("ADMIN_USERNAME", "winkey")
-    admin_password = os.getenv("ADMIN_PASSWORD", "!Korea1004")
-
-    # 1) 환경변수(또는 기본값) 관리자 계정 우선 확인
-    if username == admin_username and password == admin_password:
-        return {
-            "success": True,
-            "message": "로그인 성공",
-            "admin_id": username
-        }
-
-    # 2) DB 관리자 계정(role >= 100) 확인
+    # admin_member 테이블 계정으로만 관리자 로그인 허용
     conn = get_mysql_conn()
     try:
         with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT member_id, member_password, role
-                FROM training_member
-                WHERE member_id = %s AND role >= 100
-                ORDER BY create_date DESC
-                LIMIT 1
-                """,
-                (username,)
-            )
-            admin_user = cursor.fetchone()
+            admin_user = find_admin_member_login(cursor, username)
 
             if not admin_user:
                 raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 일치하지 않습니다.")
 
-            stored_password = (admin_user.get("member_password") or "").strip()
+            stored_password = (admin_user.get("admin_password") or "").strip()
+            resolved_admin_id = str(admin_user.get("admin_id") or username)
+            resolved_admin_name = str(admin_user.get("admin_name") or resolved_admin_id)
+            admin_level_raw = admin_user.get("admin_role")
+            try:
+                admin_level = int(admin_level_raw) if admin_level_raw is not None else None
+            except Exception:
+                admin_level = None
             password_sha256 = hashlib.sha256(password.encode("utf-8")).hexdigest()
+            password_md5 = hashlib.md5(password.encode("utf-8")).hexdigest()
+            stored_password_lower = stored_password.lower()
 
-            if stored_password and (password == stored_password or password_sha256 == stored_password):
+            if stored_password and (
+                password == stored_password
+                or password_sha256 == stored_password
+                or password_md5 == stored_password
+                or password_sha256 == stored_password_lower
+                or password_md5 == stored_password_lower
+            ):
+                # course_admins 테이블에서 이 관리자의 과정 배정 확인
+                cursor.execute(
+                    "SELECT training_key, role_type FROM course_admins WHERE admin_id = %s AND is_active = 1",
+                    (resolved_admin_id,)
+                )
+                assignments = cursor.fetchall()
+                if assignments:
+                    role_type = assignments[0]['role_type']
+                    assigned_keys = [row['training_key'] for row in assignments]
+                    return {
+                        "success": True,
+                        "message": "로그인 성공",
+                        "admin_id": resolved_admin_id,
+                        "admin_name": resolved_admin_name,
+                        "role": role_type,
+                        "admin_level": admin_level,
+                        "assigned_training_keys": assigned_keys
+                    }
                 return {
                     "success": True,
                     "message": "로그인 성공",
-                    "admin_id": username
+                    "admin_id": resolved_admin_id,
+                    "admin_name": resolved_admin_name,
+                    "role": "admin",
+                    "admin_level": admin_level
                 }
 
             raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 일치하지 않습니다.")
@@ -1098,6 +1965,225 @@ async def delete_user(user_id: str):
         return {"message": "User deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")
+    finally:
+        conn.close()
+
+
+# 과정 관리자(Course Manager / Partner) 관리 API
+@app.get("/api/admin/course-admins/{training_key}")
+async def get_course_admins(training_key: str):
+    ensure_course_admins_table()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, admin_id, admin_name, role_type, is_active, create_date
+                FROM course_admins
+                WHERE training_key = %s AND is_active = 1
+                ORDER BY create_date DESC
+                """,
+                (training_key,)
+            )
+            result = cursor.fetchall()
+            return [
+                {
+                    "id": row['id'],
+                    "admin_id": row['admin_id'],
+                    "admin_name": row['admin_name'],
+                    "role_type": row['role_type'],
+                    "is_active": row['is_active'],
+                    "create_date": format_kst(row['create_date'])
+                }
+                for row in result
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"과정 관리자 목록 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/course-admins/by-admin/{admin_id}")
+async def get_course_admins_by_admin(admin_id: str):
+    ensure_course_admins_table()
+    admin_id = (admin_id or "").strip()
+    if not admin_id:
+        raise HTTPException(status_code=400, detail="admin_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT training_key, role_type
+                FROM course_admins
+                WHERE admin_id = %s AND is_active = 1
+                ORDER BY create_date DESC
+                """,
+                (admin_id,)
+            )
+            rows = cursor.fetchall() or []
+
+            assigned_keys = []
+            seen = set()
+            for row in rows:
+                key = str(row.get("training_key") or "").strip()
+                if key and key not in seen:
+                    assigned_keys.append(key)
+                    seen.add(key)
+
+            role_type = rows[0].get("role_type") if rows else None
+            return {
+                "admin_id": admin_id,
+                "assigned_training_keys": assigned_keys,
+                "role": role_type,
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"관리자 배정 과정 조회 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/course-admins")
+async def add_course_admin(data: dict = Body(...)):
+    ensure_course_admins_table()
+    training_key = (data.get("training_key") or "").strip()
+    admin_id = (data.get("admin_id") or "").strip()
+    admin_name = (data.get("admin_name") or "").strip()
+
+    if not all([training_key, admin_id]):
+        raise HTTPException(status_code=400, detail="training_key, admin_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            col_map = get_admin_member_column_map(cursor)
+            if not col_map or not col_map.get("id"):
+                raise HTTPException(status_code=500, detail="admin_member 테이블 컬럼을 확인할 수 없습니다.")
+
+            id_col = col_map["id"]
+            name_col = col_map["name"] or id_col
+            role_col = col_map["role"]
+            active_col = col_map["active"]
+
+            if not role_col:
+                raise HTTPException(status_code=500, detail="admin_member.role 컬럼이 없어 권한을 판별할 수 없습니다.")
+
+            select_sql = f"SELECT {id_col} AS admin_id, {name_col} AS admin_name, {role_col} AS admin_role FROM admin_member WHERE {id_col} = %s"
+            params = [admin_id]
+
+            if active_col:
+                if active_col == "use_yn":
+                    select_sql += " AND use_yn = 'Y'"
+                else:
+                    select_sql += f" AND {active_col} = 1"
+
+            select_sql += " LIMIT 1"
+            cursor.execute(select_sql, tuple(params))
+            admin_row = cursor.fetchone()
+            if not admin_row:
+                raise HTTPException(status_code=404, detail="관리자 계정을 찾을 수 없습니다.")
+
+            try:
+                role_value = int(admin_row.get("admin_role"))
+            except Exception:
+                raise HTTPException(status_code=400, detail="관리자 권한 값이 올바르지 않습니다.")
+
+            if role_value == 50:
+                role_type = "partner"
+            elif role_value == 30:
+                role_type = "course_manager"
+            else:
+                raise HTTPException(status_code=400, detail="선택한 계정은 Course Manager(30) 또는 Partner(50) 권한이 아닙니다.")
+
+            resolved_admin_name = admin_name or str(admin_row.get("admin_name") or admin_id)
+
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO course_admins (training_key, admin_id, admin_name, role_type, is_active)
+                    VALUES (%s, %s, %s, %s, 1)
+                    """,
+                    (training_key, admin_id, resolved_admin_name, role_type)
+                )
+                conn.commit()
+            except Exception as e:
+                if "Duplicate entry" in str(e):
+                    raise HTTPException(status_code=400, detail="이미 해당 과정에 등록된 관리자입니다.")
+                raise HTTPException(status_code=500, detail=f"관리자 추가 실패: {str(e)}")
+
+        return {"message": "과정 관리자가 추가되었습니다."}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/course-admins/{record_id}")
+async def delete_course_admin(record_id: int):
+    ensure_course_admins_table()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM course_admins WHERE id = %s", (record_id,))
+        conn.commit()
+        return {"message": "과정 관리자가 삭제되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"삭제 실패: {str(e)}")
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/admin-accounts")
+async def get_admin_accounts():
+    """관리자 계정 목록 조회 (admin_member 기준)"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            col_map = get_admin_member_column_map(cursor)
+            if not col_map or not col_map.get("id"):
+                return []
+
+            id_col = col_map["id"]
+            name_col = col_map["name"] or id_col
+            role_col = col_map["role"]
+            active_col = col_map["active"]
+
+            select_cols = [
+                f"{id_col} AS member_id",
+                f"{name_col} AS member_name",
+                (f"{role_col} AS role" if role_col else "NULL AS role"),
+            ]
+            sql = f"SELECT {', '.join(select_cols)} FROM admin_member"
+
+            if active_col:
+                if active_col == "use_yn":
+                    sql += " WHERE use_yn = 'Y'"
+                else:
+                    sql += f" WHERE {active_col} = 1"
+
+            sql += " ORDER BY member_name"
+            cursor.execute(sql)
+            result = cursor.fetchall()
+            filtered = []
+            for row in result:
+                try:
+                    role_value = int(row.get('role'))
+                except Exception:
+                    continue
+
+                if role_value not in (30, 50):
+                    continue
+
+                filtered.append({
+                    "member_id": row['member_id'],
+                    "member_name": row['member_name'],
+                    "role": role_value,
+                    "role_type": "partner" if role_value == 50 else "course_manager",
+                    "role_label": "Partner" if role_value == 50 else "Course Manager",
+                })
+
+            return filtered
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"admin_member 조회 실패: {str(e)}")
     finally:
         conn.close()
 
@@ -2189,6 +3275,7 @@ async def assign_generated_test_to_lab(generated_test_id: int, data: dict = Body
                 SELECT
                     gt.id,
                     gt.generated_name,
+                    gt.question_count,
                     gt.questions_json,
                     tc.category_name AS test_category_name
                 FROM generated_tests gt
@@ -2264,13 +3351,24 @@ async def assign_generated_test_to_lab(generated_test_id: int, data: dict = Body
             if not lab_content_subject:
                 lab_content_subject = f"{generated_test['generated_name']}"
 
+            cursor.execute(
+                "SELECT course_name FROM training WHERE training_key = %s",
+                (training_key,)
+            )
+            training_row = cursor.fetchone() or {}
+            course_name = training_row.get("course_name") or training_key
+
+            question_count = int(generated_test.get("question_count") or 0)
+            if question_count <= 0:
+                question_count = len(questions)
+
             lab_content = json.dumps(
                 {
                     "content_kind": "generated_test_center",
                     "generated_test_id": generated_test_id,
                     "generated_name": generated_test.get("generated_name") or "",
                     "test_category_name": generated_test.get("test_category_name") or "",
-                    "question_count": len(questions),
+                    "question_count": question_count,
                 },
                 ensure_ascii=False,
             )
@@ -2301,6 +3399,9 @@ async def assign_generated_test_to_lab(generated_test_id: int, data: dict = Body
             return {
                 "message": "생성된 테스트가 랩 콘텐츠로 할당되었습니다.",
                 "training_key": training_key,
+                "course_name": course_name,
+                "generated_name": generated_test.get("generated_name") or "",
+                "question_count": question_count,
                 "lab_id": lab_id,
                 "lab_name": lab.get("lab_name"),
                 "created_test_center": created_test_center,
@@ -3522,6 +4623,280 @@ async def log_content_view(log: ContentViewLog):
     finally:
         conn.close()
 
+
+@app.post("/api/portal/test-center/submit")
+async def submit_test_center_result(payload: TestCenterSubmitRequest):
+    ensure_test_center_results_table()
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT member_id, member_name FROM training_member WHERE training_key = %s AND member_id = %s",
+                (payload.training_key, payload.member_id),
+            )
+            member_row = cursor.fetchone()
+            if not member_row:
+                raise HTTPException(status_code=404, detail="사용자 정보를 찾을 수 없습니다.")
+
+            cursor.execute(
+                """
+                SELECT content_id, lab_content_type, lab_content_subject
+                FROM training_lab_contents
+                WHERE training_key = %s AND lab_id = %s AND content_id = %s
+                """,
+                (payload.training_key, payload.lab_id, payload.content_id),
+            )
+            content_row = cursor.fetchone()
+            if not content_row:
+                raise HTTPException(status_code=404, detail="테스트 콘텐츠를 찾을 수 없습니다.")
+            if int(content_row.get("lab_content_type") or -1) != 4:
+                raise HTTPException(status_code=400, detail="테스트 센터 콘텐츠가 아닙니다.")
+            content_subject = (content_row.get("lab_content_subject") or "테스트").strip()
+
+            total_questions = max(0, int(payload.total_questions))
+            answered_questions = max(0, int(payload.answered_questions))
+            solved_questions = max(0, int(payload.solved_questions))
+
+            if total_questions <= 0:
+                raise HTTPException(status_code=400, detail="총 문항 수가 올바르지 않습니다.")
+            if answered_questions > total_questions or solved_questions > total_questions:
+                raise HTTPException(status_code=400, detail="문항 집계 값이 올바르지 않습니다.")
+
+            score_percent = round(float(payload.score_percent), 2)
+            if score_percent < 0:
+                score_percent = 0.0
+            if score_percent > 100:
+                score_percent = 100.0
+
+            started_at = parse_client_datetime_to_kst_str(payload.started_at)
+            completed_at = now_kst_str('%Y-%m-%d %H:%M:%S')
+
+            cursor.execute(
+                """
+                SELECT id, create_date
+                FROM test_center_results
+                WHERE training_key = %s
+                  AND lab_id = %s
+                  AND content_id = %s
+                  AND member_id = %s
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (payload.training_key, payload.lab_id, payload.content_id, payload.member_id),
+            )
+            existing_result = cursor.fetchone()
+            if existing_result:
+                completed_at = format_kst(existing_result.get("create_date")) if existing_result.get("create_date") else None
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": "이미 완료한 테스트입니다.",
+                        "result_id": existing_result.get("id"),
+                        "completed_at": completed_at,
+                    },
+                )
+
+            detail_json = None
+            if payload.detail is not None:
+                detail_json = json.dumps(payload.detail, ensure_ascii=False)
+
+            cursor.execute(
+                """
+                INSERT INTO test_center_results (
+                    training_key, lab_id, content_id, generated_test_id,
+                    member_id, member_name,
+                    started_at, completed_at,
+                    total_questions, answered_questions, solved_questions, score_percent,
+                    detail_json, create_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    payload.training_key,
+                    payload.lab_id,
+                    payload.content_id,
+                    payload.generated_test_id,
+                    payload.member_id,
+                    member_row.get("member_name"),
+                    started_at,
+                    completed_at,
+                    total_questions,
+                    answered_questions,
+                    solved_questions,
+                    score_percent,
+                    detail_json,
+                    completed_at,
+                ),
+            )
+            result_id = cursor.lastrowid
+            conn.commit()
+
+            # 테스트 완료 알림 메시지를 본인 짹짹 메신저로 전송
+            try:
+                jjek_msg = (
+                    f"📋 테스트가 완료되었습니다.\n"
+                    f"제목: {content_subject}\n"
+                    f"점수: {score_percent:.2f}점 "
+                    f"({solved_questions}/{total_questions} 문항 정답)"
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO jjek_messages (
+                        training_key, sender_member_id, sender_name, sender_role,
+                        receiver_member_id, message_text, create_date
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        payload.training_key,
+                        None,
+                        "테스트센터",
+                        "system",
+                        payload.member_id,
+                        jjek_msg,
+                        now_kst_naive(),
+                    ),
+                )
+                conn.commit()
+            except Exception as _jjek_err:
+                print(f"[WARN] 테스트 완료 짹짹 메시지 전송 실패: {_jjek_err}")
+                pass  # 알림 전송 실패가 결과 저장을 방해하지 않도록
+
+            return {
+                "success": True,
+                "message": "테스트 결과가 저장되었습니다.",
+                "result_id": result_id,
+                "started_at": started_at,
+                "completed_at": completed_at,
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/portal/test-center/completion")
+async def get_test_center_completion_status(
+    training_key: str = Query(...),
+    member_id: str = Query(...),
+    lab_id: int = Query(...),
+    content_id: int = Query(...),
+):
+    ensure_test_center_results_table()
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                                SELECT id, completed_at, create_date
+                FROM test_center_results
+                WHERE training_key = %s
+                  AND member_id = %s
+                  AND lab_id = %s
+                  AND content_id = %s
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (training_key, member_id, lab_id, content_id),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return {"completed": False}
+
+            return {
+                "completed": True,
+                "result_id": row.get("id"),
+                "completed_at": format_kst(row.get("completed_at") or row.get("create_date")) if (row.get("completed_at") or row.get("create_date")) else None,
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/test-management/scores")
+async def get_test_management_scores(training_key: str = Query(...)):
+    ensure_test_center_results_table()
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    r.id,
+                    r.training_key,
+                    r.lab_id,
+                    tl.lab_name,
+                    r.content_id,
+                    tlc.lab_content_subject,
+                    r.generated_test_id,
+                    r.member_id,
+                    COALESCE(r.member_name, tm.member_name) AS member_name,
+                    r.started_at,
+                    r.completed_at,
+                    r.total_questions,
+                    r.answered_questions,
+                    r.solved_questions,
+                    r.score_percent,
+                    r.create_date
+                FROM test_center_results r
+                LEFT JOIN training_member tm
+                    ON tm.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tm.member_id = (r.member_id COLLATE utf8mb4_0900_ai_ci)
+                LEFT JOIN training_lab tl
+                    ON tl.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tl.lab_id = r.lab_id
+                LEFT JOIN training_lab_contents tlc
+                    ON tlc.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tlc.lab_id = r.lab_id
+                    AND tlc.content_id = r.content_id
+                WHERE r.training_key = %s
+                ORDER BY r.create_date DESC
+                """,
+                (training_key,),
+            )
+            rows = cursor.fetchall() or []
+
+            return [
+                {
+                    "id": row.get("id"),
+                    "training_key": row.get("training_key"),
+                    "lab_id": row.get("lab_id"),
+                    "lab_name": row.get("lab_name") or "",
+                    "content_id": row.get("content_id"),
+                    "lab_content_subject": row.get("lab_content_subject") or "",
+                    "generated_test_id": row.get("generated_test_id"),
+                    "member_id": row.get("member_id") or "",
+                    "member_name": row.get("member_name") or "",
+                    "started_at": format_kst(row.get("started_at"), '%Y-%m-%d %H:%M:%S') if row.get("started_at") else None,
+                    "completed_at": format_kst(row.get("completed_at"), '%Y-%m-%d %H:%M:%S') if row.get("completed_at") else None,
+                    "total_questions": int(row.get("total_questions") or 0),
+                    "answered_questions": int(row.get("answered_questions") or 0),
+                    "solved_questions": int(row.get("solved_questions") or 0),
+                    "score_percent": float(row.get("score_percent") or 0),
+                    "create_date": format_kst(row.get("create_date")),
+                }
+                for row in rows
+            ]
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/test-management/scores/{result_id}")
+async def delete_test_management_score(result_id: int, training_key: str = Query(...)):
+    ensure_test_center_results_table()
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM test_center_results WHERE id = %s AND training_key = %s",
+                (result_id, training_key),
+            )
+            if cursor.rowcount == 0:
+                raise HTTPException(status_code=404, detail="삭제할 테스트 결과를 찾을 수 없습니다.")
+            conn.commit()
+            return {"success": True, "message": "테스트 결과가 삭제되었습니다."}
+    finally:
+        conn.close()
+
 @app.get("/api/admin/monitoring-events")
 async def get_monitoring_events(training_key: str = Query(...), limit: int = Query(50, le=100)):
     """실시간 모니터링 이벤트 조회 (특정 과정)"""
@@ -3610,6 +4985,515 @@ async def get_lab_content(content_id: int, training_key: str = Query(...), lab_i
             }
     finally:
         conn.close()
+
+def _upload_to_htc_blob(blob_path: str, file_data: bytes, file_content_type: str):
+    """과제 전용 컨테이너에 파일을 업로드하고 BlobClient를 반환한다."""
+    blob_service_client = get_blob_service_client()
+    # 과제 업로드 컨테이너는 고정값으로 사용 (Azure 규칙: 소문자)
+    container_name = "htc"
+    container_client = blob_service_client.get_container_client(container_name)
+    try:
+        if not container_client.exists():
+            container_client.create_container()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"컨테이너 '{container_name}' 확인/생성 실패: {str(e)}"
+        )
+
+    blob_client = container_client.get_blob_client(blob_path)
+    try:
+        if ContentSettings:
+            blob_client.upload_blob(
+                file_data,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=file_content_type)
+            )
+        else:
+            blob_client.upload_blob(file_data, overwrite=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Blob 업로드 실패(container={container_name}, blob_path={blob_path}): {str(e)}"
+        )
+    return blob_client
+
+
+def _get_htc_container_client():
+    blob_service_client = get_blob_service_client()
+    container_name = "htc"
+    container_client = blob_service_client.get_container_client(container_name)
+    try:
+        if not container_client.exists():
+            container_client.create_container()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"컨테이너 '{container_name}' 확인/생성 실패: {str(e)}"
+        )
+    return container_client
+
+
+def sanitize_preserved_filename(filename: str) -> str:
+    """원본 파일명을 최대한 유지하되 Azure 경로에 위험한 문자만 제거한다."""
+    name = str(filename or "").strip()
+    if not name:
+        return "file"
+    name = name.replace("\\", "_").replace("/", "_")
+    name = re.sub(r"[\x00-\x1f\x7f]+", "", name)
+    name = re.sub(r"[<>:" + "|?*]", "_", name)
+    name = name.strip(" .")
+    return name or "file"
+
+
+def split_filename(filename: str):
+    if "." in filename and not filename.startswith("."):
+        base, ext = filename.rsplit(".", 1)
+        return base, "." + ext
+    return filename, ""
+
+
+def resolve_unique_blob_path(container_client, folder_path: str, original_filename: str) -> tuple[str, str]:
+    safe_original = sanitize_preserved_filename(original_filename)
+    base, ext = split_filename(safe_original)
+    base = base[:120] if base else "file"
+    ext = ext[:20]
+
+    candidate_name = f"{base}{ext}"
+    candidate_path = f"{folder_path}/{candidate_name}"
+    counter = 2
+    while container_client.get_blob_client(candidate_path).exists():
+        candidate_name = f"{base} ({counter}){ext}"
+        candidate_path = f"{folder_path}/{candidate_name}"
+        counter += 1
+
+    return candidate_path, candidate_name
+
+
+def _delete_from_htc_blob(blob_path: str) -> bool:
+    """과제 전용 컨테이너에서 blob 삭제. 없으면 False, 삭제되면 True."""
+    blob_service_client = get_blob_service_client()
+    container_name = "htc"
+    container_client = blob_service_client.get_container_client(container_name)
+    blob_client = container_client.get_blob_client(blob_path)
+    if not blob_client.exists():
+        return False
+    blob_client.delete_blob(delete_snapshots="include")
+    return True
+
+
+def _extract_blob_path(file_url: str, fallback_blob_path: str = "") -> str:
+    if fallback_blob_path:
+        return fallback_blob_path
+    if not file_url:
+        return ""
+    try:
+        parsed = urlparse(file_url)
+        path = (parsed.path or "").lstrip("/")
+        # URL path: container/blob_path -> blob_path
+        if "/" in path:
+            return unquote(path.split("/", 1)[1])
+        return ""
+    except Exception:
+        return ""
+
+
+@app.post("/api/admin/lab_contents/upload-assignment")
+async def upload_assignment_file(
+    file: UploadFile = File(...),
+    training_key: str = Form(...),
+    lab_id: int = Form(...),
+    content_id: int = Form(0)
+):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="업로드할 파일이 필요합니다.")
+
+    original_name = file.filename or "file"
+    safe_name = build_safe_blob_filename(original_name)
+    safe_training = sanitize_blob_path_part(str(training_key), "training")
+    safe_lab_id = sanitize_blob_path_part(str(lab_id), "lab")
+    safe_content_id = sanitize_blob_path_part(str(content_id), "content")
+    # training_id 폴더 하위에 업로드
+    blob_path = f"{safe_training}/{safe_lab_id}_{safe_content_id}-admin_{safe_name}"
+
+    file_data = await file.read()
+    if not file_data:
+        raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
+
+    file_content_type = file.content_type or "application/octet-stream"
+    try:
+        blob_client = _upload_to_htc_blob(blob_path, file_data, file_content_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 업로드 실패({type(e).__name__}): {str(e)}")
+
+    return {
+        "message": "파일이 업로드되었습니다.",
+        "file_name": original_name,
+        "url": blob_client.url,
+    }
+
+
+@app.post("/api/portal/assignment/submit")
+async def submit_assignment(
+    file: UploadFile = File(...),
+    training_key: str = Form(...),
+    lab_id: int = Form(...),
+    content_id: int = Form(...),
+    member_id: str = Form(...),
+    member_name: str = Form(...),
+    force_replace: str = Form("0")
+):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="제출할 파일이 필요합니다.")
+
+    original_name = file.filename or "file"
+    safe_member = sanitize_filename_part(str(member_name), "member")
+    safe_training = sanitize_blob_path_part(str(training_key), "training")
+    # training_id/member_name 폴더 하위에 업로드
+    blob_folder = f"{safe_training}/{safe_member}"
+
+    force_replace_enabled = str(force_replace).strip().lower() in ("1", "true", "yes", "y", "on")
+
+    file_data = await file.read()
+    if not file_data:
+        raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
+
+    file_content_type = file.content_type or "application/octet-stream"
+
+    conn = get_mysql_conn()
+    existing_rows = []
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """SELECT id, file_url, blob_path
+                   FROM assignment_submissions
+                   WHERE training_key=%s AND lab_id=%s AND content_id=%s AND member_id=%s
+                   ORDER BY submitted_at DESC, id DESC""",
+                (training_key, lab_id, content_id, member_id)
+            )
+            existing_rows = cursor.fetchall() or []
+
+        if existing_rows and not force_replace_enabled:
+            raise HTTPException(
+                status_code=409,
+                detail="이미 과제가 제출되었습니다. 다시 업로드 하시겠습니까?"
+            )
+
+        if existing_rows and force_replace_enabled:
+            for row in existing_rows:
+                old_blob_path = _extract_blob_path(row.get("file_url"), row.get("blob_path"))
+                if not old_blob_path:
+                    continue
+                try:
+                    _delete_from_htc_blob(old_blob_path)
+                except Exception:
+                    # 기존 파일이 이미 없거나 삭제 실패해도 재제출은 계속 진행
+                    pass
+
+        container_client = _get_htc_container_client()
+        blob_path, stored_file_name = resolve_unique_blob_path(container_client, blob_folder, original_name)
+        blob_client = _upload_to_htc_blob(blob_path, file_data, file_content_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 업로드 실패({type(e).__name__}): {str(e)}")
+
+    file_url = blob_client.url
+    try:
+        with conn.cursor() as cursor:
+            if existing_rows:
+                cursor.execute(
+                    "DELETE FROM assignment_submissions WHERE training_key=%s AND lab_id=%s AND content_id=%s AND member_id=%s",
+                    (training_key, lab_id, content_id, member_id)
+                )
+            cursor.execute(
+                """INSERT INTO assignment_submissions
+                   (training_key, lab_id, content_id, member_id, member_name, file_name, file_url, blob_path)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (training_key, lab_id, content_id, member_id, member_name,
+                 stored_file_name, file_url, blob_path)
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {
+        "message": "과제가 제출되었습니다." if not existing_rows else "과제가 다시 제출되었습니다.",
+        "file_name": stored_file_name,
+        "url": file_url,
+        "replaced": bool(existing_rows),
+    }
+
+
+@app.get("/api/portal/assignment/latest")
+async def get_latest_assignment_submission(
+    training_key: str = Query(...),
+    lab_id: int = Query(...),
+    content_id: int = Query(...),
+    member_id: str = Query(""),
+    member_name: str = Query("")
+):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            row = None
+
+            normalized_member_id = (member_id or "").strip()
+            normalized_member_name = (member_name or "").strip()
+
+            if normalized_member_id:
+                cursor.execute(
+                    """SELECT id, training_key, lab_id, content_id, member_id, member_name,
+                              file_name, file_url, blob_path, submitted_at
+                       FROM assignment_submissions
+                       WHERE training_key=%s AND lab_id=%s AND content_id=%s AND member_id=%s
+                       ORDER BY submitted_at DESC, id DESC
+                       LIMIT 1""",
+                    (training_key, lab_id, content_id, normalized_member_id)
+                )
+                row = cursor.fetchone()
+
+            if not row and normalized_member_name:
+                cursor.execute(
+                    """SELECT id, training_key, lab_id, content_id, member_id, member_name,
+                              file_name, file_url, blob_path, submitted_at
+                       FROM assignment_submissions
+                       WHERE training_key=%s AND lab_id=%s AND content_id=%s AND member_name=%s
+                       ORDER BY submitted_at DESC, id DESC
+                       LIMIT 1""",
+                    (training_key, lab_id, content_id, normalized_member_name)
+                )
+                row = cursor.fetchone()
+
+            # 보조 조회: 기존 데이터의 lab_id가 달라도 같은 콘텐츠/사용자 제출을 찾도록 허용
+            if not row and normalized_member_id:
+                cursor.execute(
+                    """SELECT id, training_key, lab_id, content_id, member_id, member_name,
+                              file_name, file_url, blob_path, submitted_at
+                       FROM assignment_submissions
+                       WHERE training_key=%s AND content_id=%s AND member_id=%s
+                       ORDER BY submitted_at DESC, id DESC
+                       LIMIT 1""",
+                    (training_key, content_id, normalized_member_id)
+                )
+                row = cursor.fetchone()
+
+            if not row and normalized_member_name:
+                cursor.execute(
+                    """SELECT id, training_key, lab_id, content_id, member_id, member_name,
+                              file_name, file_url, blob_path, submitted_at
+                       FROM assignment_submissions
+                       WHERE training_key=%s AND content_id=%s AND member_name=%s
+                       ORDER BY submitted_at DESC, id DESC
+                       LIMIT 1""",
+                    (training_key, content_id, normalized_member_name)
+                )
+                row = cursor.fetchone()
+
+            if not row:
+                return {"submitted": False}
+
+            return {
+                "submitted": True,
+                "id": row.get("id"),
+                "training_key": row.get("training_key"),
+                "lab_id": row.get("lab_id"),
+                "content_id": row.get("content_id"),
+                "member_id": row.get("member_id"),
+                "member_name": row.get("member_name"),
+                "file_name": row.get("file_name"),
+                "file_url": row.get("file_url"),
+                "blob_path": row.get("blob_path"),
+                "submitted_at": format_kst(row.get("submitted_at")) if row.get("submitted_at") else "-",
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/assignment/results")
+async def get_assignment_results(
+    training_key: str = Query(...),
+    lab_id: int = Query(None),
+    content_id: int = Query(None)
+):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            conditions = ["training_key = %s"]
+            params = [training_key]
+            if lab_id is not None:
+                conditions.append("lab_id = %s")
+                params.append(lab_id)
+            if content_id is not None:
+                conditions.append("content_id = %s")
+                params.append(content_id)
+            where = " AND ".join(conditions)
+            cursor.execute(
+                f"""SELECT id, training_key, lab_id, content_id, member_id, member_name,
+                           file_name, file_url, blob_path,
+                           feedback_text, feedback_status, feedback_at, feedback_admin_id, feedback_admin_name,
+                           submitted_at
+                    FROM assignment_submissions WHERE {where}
+                    ORDER BY submitted_at DESC""",
+                params
+            )
+            rows = cursor.fetchall()
+            results = []
+            for r in rows:
+                results.append({
+                    "id": r["id"],
+                    "training_key": r["training_key"],
+                    "lab_id": r["lab_id"],
+                    "content_id": r["content_id"],
+                    "member_id": r["member_id"],
+                    "member_name": r["member_name"],
+                    "file_name": r["file_name"],
+                    "file_url": r["file_url"],
+                    "blob_path": r["blob_path"],
+                    "feedback_text": r.get("feedback_text") or "",
+                    "feedback_status": r.get("feedback_status") or "pending",
+                    "feedback_at": format_kst(r.get("feedback_at")) if r.get("feedback_at") else "-",
+                    "feedback_admin_id": r.get("feedback_admin_id") or "",
+                    "feedback_admin_name": r.get("feedback_admin_name") or "",
+                    "submitted_at": format_kst(r["submitted_at"]) if r["submitted_at"] else "-",
+                })
+        return results
+    finally:
+        conn.close()
+
+
+@app.post("/api/admin/assignment/results/{submission_id}/feedback")
+async def save_assignment_feedback(
+    submission_id: int,
+    data: dict = Body(...)
+):
+    payload = data or {}
+    training_key = str(payload.get("training_key") or "").strip()
+    feedback_text = str(payload.get("feedback_text") or "").strip()
+    reviewer_id = str(payload.get("reviewer_id") or "").strip()
+    reviewer_name = str(payload.get("reviewer_name") or "").strip()
+    reviewer_role = str(payload.get("reviewer_role") or "admin").strip().lower()
+
+    if not training_key:
+        raise HTTPException(status_code=400, detail="training_key는 필수입니다.")
+    if not feedback_text:
+        raise HTTPException(status_code=400, detail="의견 내용을 입력해주세요.")
+    if len(feedback_text) > 2000:
+        raise HTTPException(status_code=400, detail="의견은 2000자 이내로 입력해주세요.")
+
+    sender_name = reviewer_name or reviewer_id or "운영자"
+    sender_member_id = reviewer_id or None
+    sender_role = "admin"
+    if reviewer_role in ("supervisor", "admin"):
+        sender_role = reviewer_role
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, member_id, member_name, lab_id, content_id, file_name
+                FROM assignment_submissions
+                WHERE id = %s AND training_key = %s
+                LIMIT 1
+                """,
+                (submission_id, training_key)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="제출 항목을 찾을 수 없습니다.")
+
+            cursor.execute(
+                """
+                UPDATE assignment_submissions
+                SET feedback_text = %s,
+                    feedback_status = 'completed',
+                    feedback_at = %s,
+                    feedback_admin_id = %s,
+                    feedback_admin_name = %s
+                WHERE id = %s AND training_key = %s
+                """,
+                (
+                    feedback_text,
+                    now_kst_naive(),
+                    reviewer_id or None,
+                    sender_name,
+                    submission_id,
+                    training_key,
+                )
+            )
+
+            jjek_message = (
+                f"[과제 피드백 도착]\n"
+                f"파일: {row.get('file_name') or '-'}\n"
+                f"의견: {feedback_text}"
+            )
+
+            cursor.execute(
+                """
+                INSERT INTO jjek_messages (
+                    training_key, sender_member_id, sender_name, sender_role,
+                    receiver_member_id, message_text, create_date
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    training_key,
+                    sender_member_id,
+                    sender_name,
+                    sender_role,
+                    row.get("member_id"),
+                    jjek_message,
+                    now_kst_naive(),
+                )
+            )
+
+        conn.commit()
+        return {
+            "success": True,
+            "submission_id": submission_id,
+            "feedback_status": "completed",
+            "feedback_text": feedback_text,
+        }
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/assignment/results/{submission_id}")
+async def delete_assignment_result(
+    submission_id: int,
+    training_key: str = Query(...)
+):
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT file_url, blob_path FROM assignment_submissions WHERE id = %s AND training_key = %s",
+                (submission_id, training_key)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="제출 파일을 찾을 수 없습니다.")
+
+            blob_path = _extract_blob_path(row.get("file_url"), row.get("blob_path"))
+            if blob_path:
+                try:
+                    _delete_from_htc_blob(blob_path)
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Blob 파일 삭제 실패: {str(e)}")
+
+            cursor.execute(
+                "DELETE FROM assignment_submissions WHERE id = %s AND training_key = %s",
+                (submission_id, training_key)
+            )
+        conn.commit()
+        return {"message": "삭제되었습니다."}
+    finally:
+        conn.close()
+
 
 @app.post("/api/admin/lab_contents")
 async def add_lab_content(data: dict = Body(...)):

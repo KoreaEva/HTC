@@ -20,7 +20,8 @@
         "/^bash /Users/winkey/Documents/github/HTC/start\\.sh$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "C:/Users/young/AppData/Local/Programs/Python/Python311/python.exe": true
     },
     "python-envs.defaultEnvManager": "ms-python.python:system"
 }

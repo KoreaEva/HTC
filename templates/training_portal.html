@@ -22,9 +22,10 @@
         @media (max-width: 768px) {
             body { padding: 10px; }
             .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .header-actions { width: 100%; justify-content: flex-end; }
             .labs-container { grid-template-columns: 1fr; }
             .content-layout { flex-direction: column; }
-            .content-sidebar { width: 100%; margin-bottom: 20px; }
+            .content-sidebar { width: 100%; margin-bottom: 20px; position: static; top: auto; max-height: none; overflow-y: visible; }
             .content-viewer { min-height: 400px; padding: 15px; }
             .lab-card { padding: 15px; }
             .content-item { padding: 12px; }
@@ -41,8 +42,291 @@
         
         .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
         .welcome { font-size:1.5em; font-weight:600; }
-        .logout-btn { background:#ef4444; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:600; }
-        .logout-btn:hover { background:#dc2626; }
+        .header-actions { display:flex; align-items:center; gap:10px; position:relative; }
+        .jjek-menu-wrap {
+            position: relative;
+        }
+        .jjek-menu-btn {
+            display:inline-flex;
+            align-items:center;
+            gap:0;
+            background:#eff6ff;
+            color:#1d4ed8;
+            border:1px solid #bfdbfe;
+            border-radius:8px;
+            padding:8px 12px;
+            cursor:pointer;
+            font-weight:700;
+            letter-spacing:0.02em;
+            transition:all 0.2s ease;
+        }
+        .jjek-menu-badge {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            min-width:20px;
+            height:20px;
+            padding:0 6px;
+            border-radius:999px;
+            background:#dc2626;
+            color:#fff;
+            font-size:0.72rem;
+            font-weight:700;
+            line-height:1;
+        }
+        .jjek-menu-badge[hidden] {
+            display:none;
+        }
+        .jjek-menu-btn:hover {
+            color:#1e40af;
+            background:#dbeafe;
+            border-color:#60a5fa;
+            transform:none;
+        }
+        .jjek-menu-btn::after {
+            content:'▾';
+            font-size:0.8rem;
+            color:#1d4ed8;
+            margin-left:2px;
+        }
+        .jjek-menu-icon {
+            width:30px;
+            height:30px;
+            border-radius:999px;
+            object-fit:cover;
+            background:#fff;
+            border:1px solid rgba(245, 158, 11, 0.3);
+        }
+        .jjek-menu-panel {
+            position:absolute;
+            top:calc(100% + 10px);
+            right:0;
+            width:min(560px, calc(100vw - 24px));
+            background:#f8fbff;
+            border:1px solid #cfe3ff;
+            border-radius:14px;
+            box-shadow:0 8px 22px rgba(29, 78, 216, 0.12);
+            padding:16px;
+            z-index:50;
+            backdrop-filter:blur(6px);
+        }
+        .jjek-menu-panel[hidden] {
+            display:none;
+        }
+        .jjek-menu-top {
+            display:flex;
+            align-items:center;
+            gap:12px;
+            margin-bottom:14px;
+        }
+        .jjek-menu-avatar {
+            width:56px;
+            height:56px;
+            border-radius:16px;
+            object-fit:cover;
+            background:#eff6ff;
+            border:1px solid #bfdbfe;
+            flex-shrink:0;
+        }
+        .jjek-menu-title {
+            margin:0;
+            font-size:1.05rem;
+            font-weight:700;
+            color:#1d4ed8;
+        }
+        .jjek-menu-subtitle {
+            margin:4px 0 0;
+            color:var(--muted);
+            font-size:0.88rem;
+            line-height:1.4;
+        }
+        .jjek-menu-status {
+            margin-left:auto;
+            align-self:flex-start;
+            padding:6px 10px;
+            border-radius:999px;
+            background:#dbeafe;
+            color:#1d4ed8;
+            font-size:0.76rem;
+            font-weight:700;
+        }
+        .jjek-chat-shell {
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+        }
+        .jjek-chat-body {
+            min-height:360px;
+            max-height:520px;
+            overflow-y:auto;
+            padding:14px;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+            background:#edf4ff;
+            border:1px solid #d7e8ff;
+            border-radius:10px;
+        }
+        .jjek-chat-row {
+            display:flex;
+            gap:10px;
+            align-items:flex-end;
+        }
+        .jjek-chat-row.assistant {
+            justify-content:flex-start;
+        }
+        .jjek-chat-row.user {
+            justify-content:flex-end;
+        }
+        .jjek-chat-bubble {
+            display:block;
+            max-width:82%;
+            padding:12px 14px;
+            border-radius:14px;
+            font-size:0.95rem;
+            line-height:1.5;
+            white-space:pre-wrap;
+            box-shadow:0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .jjek-chat-operator-badge {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            margin-bottom:4px;
+            padding:4px 8px;
+            border-radius:999px;
+            background:#dbeafe;
+            color:#1d4ed8;
+            font-size:0.72rem;
+            font-weight:700;
+        }
+        .jjek-chat-operator-badge img {
+            width:14px;
+            height:14px;
+            border-radius:999px;
+            object-fit:cover;
+            background:#fff;
+            border:1px solid #93c5fd;
+        }
+        .jjek-chat-row.assistant .jjek-chat-bubble {
+            background:#1d4ed8;
+            color:#fff;
+            border-bottom-left-radius:3px;
+        }
+        .jjek-chat-row.user .jjek-chat-bubble {
+            background:#007bff;
+            color:#fff;
+            border-bottom-right-radius:3px;
+        }
+        .jjek-chat-meta {
+            font-size:0.78rem;
+            color:#64748b;
+            margin-top:4px;
+        }
+        .jjek-chat-row.user .jjek-chat-meta {
+            text-align:right;
+        }
+        .jjek-chat-quick {
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+        }
+        .jjek-quick-chip {
+            border:none;
+            border-radius:999px;
+            background:#fef3c7;
+            color:#92400e;
+            padding:8px 12px;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+            transition:background 0.18s ease, transform 0.18s ease;
+        }
+        .jjek-quick-chip:hover {
+            background:#fde68a;
+            transform:translateY(-1px);
+        }
+        .jjek-chat-form {
+            display:flex;
+            gap:8px;
+            align-items:flex-end;
+        }
+        .jjek-chat-input {
+            flex:1;
+            min-height:56px;
+            max-height:130px;
+            resize:vertical;
+            border:1px solid #93c5fd;
+            border-radius:8px;
+            padding:12px 14px;
+            font:inherit;
+            color:var(--text);
+            background:#fff;
+        }
+        .jjek-chat-input:focus {
+            outline:none;
+            border-color:#007bff;
+            box-shadow:0 0 0 2px rgba(0, 123, 255, 0.1);
+        }
+        .jjek-chat-send {
+            border:none;
+            border-radius:8px;
+            background:#007bff;
+            color:#fff;
+            padding:12px 20px;
+            font-weight:600;
+            cursor:pointer;
+        }
+        .jjek-chat-send:hover {
+            background:#0056b3;
+        }
+        .jjek-menu-footer {
+            margin-top:2px;
+            padding-top:12px;
+            border-top:1px solid var(--border);
+            color:var(--muted);
+            font-size:0.8rem;
+        }
+        @media (max-width: 768px) {
+            .jjek-menu-panel {
+                right:auto;
+                left:0;
+            }
+        }
+        @media (max-width: 480px) {
+            .jjek-menu-panel {
+                width:min(100vw - 18px, 380px);
+            }
+            .jjek-menu-btn {
+                padding:8px 2px;
+            }
+            .jjek-menu-btn span {
+                font-size:0.95rem;
+            }
+            .jjek-chat-bubble {
+                max-width:88%;
+            }
+        }
+        .logout-btn {
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            background:transparent;
+            color:#475569;
+            border:1px solid #cbd5e1;
+            padding:8px 10px;
+            border-radius:6px;
+            cursor:pointer;
+            font-weight:500;
+            font-size:0.92rem;
+        }
+        .logout-btn:hover {
+            background:#f8fafc;
+            color:#1f2937;
+            border-color:#94a3b8;
+        }
+        .logout-icon { font-size:0.9rem; line-height:1; opacity:0.85; }
+        .logout-text { letter-spacing:0.01em; }
         
 
         
@@ -54,11 +338,17 @@
             background:var(--accent);
             color:#fff;
             border:none;
-            padding:8px 12px;
-            border-radius:6px;
+            width:34px;
+            height:34px;
+            border-radius:999px;
             cursor:pointer;
             font-weight:600;
-            font-size:0.9em;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            padding:0;
+            font-size:1rem;
+            line-height:1;
         }
         .labs-toggle:hover { background:#1d4ed8; }
         .labs-container { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:15px; }
@@ -100,8 +390,8 @@
         /* 콘텐츠 목록 스타일 */
         .content-section { margin-bottom:30px; }
         .content-section h2 { color:var(--accent); margin-bottom:15px; }
-        .content-layout { display:flex; gap:20px; }
-        .content-sidebar { width:300px; flex-shrink:0; }
+        .content-layout { display:flex; gap:20px; align-items:flex-start; }
+        .content-sidebar { width:300px; flex-shrink:0; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; }
         .content-main { flex:1; }
         .content-list { background:var(--panel); border:1px solid var(--border); border-radius:12px; max-height:600px; overflow-y:auto; box-shadow: var(--shadow); }
         .content-item { padding:15px; border-bottom:1px solid var(--border); cursor:pointer; transition:all 0.3s ease; }
@@ -561,14 +851,46 @@
 <body>
     <div class="header">
         <div class="welcome">Training Center에 오신 것을 환영합니다!</div>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div class="header-actions">
+            <div class="jjek-menu-wrap">
+                <button type="button" class="jjek-menu-btn" id="jjekMenuButton" aria-haspopup="true" aria-expanded="false" aria-controls="jjekMenuPanel" onclick="toggleJjekMenu(event)">
+                    <img class="jjek-menu-icon" src="/static/images/jjek-jjek.png" alt="짹짹" onerror="this.style.display='none'">
+                    <span>짹짹</span>
+                    <span class="jjek-menu-badge" id="jjekMenuUnreadBadge" hidden>0</span>
+                </button>
+                <div class="jjek-menu-panel" id="jjekMenuPanel" hidden>
+                    <div class="jjek-menu-top">
+                        <img class="jjek-menu-avatar" src="/static/images/jjek-jjek.png" alt="짹짹" onerror="this.style.display='none'">
+                        <div>
+                            <p class="jjek-menu-title">짹짹 메신저</p>
+                            <p class="jjek-menu-subtitle" id="jjekMenuSubtitle">대화형 안내와 빠른 실행을 지원하는 메신저입니다.</p>
+                        </div>
+                        <div class="jjek-menu-status">online</div>
+                    </div>
+                    <div class="jjek-chat-shell">
+                        <div class="jjek-chat-body" id="jjekChatMessages"></div>
+                        <form class="jjek-chat-form" onsubmit="submitJjekMessage(event)">
+                            <textarea id="jjekChatInput" class="jjek-chat-input" rows="2" placeholder="메시지를 입력하세요" onkeydown="handleJjekInputKeydown(event)"></textarea>
+                            <button type="submit" class="jjek-chat-send">Send</button>
+                        </form>
+                    </div>
+                    <div class="jjek-menu-footer" id="jjekMenuFooter">세션 정보를 불러오는 중...</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">
+                <span class="logout-icon">⎋</span>
+                <span class="logout-text">로그아웃</span>
+            </button>
+        </div>
     </div>
     
     <!-- 랩 목록 -->
     <div class="labs-section collapsed" id="labsSection">
         <div class="labs-header">
             <h2>랩 목록</h2>
-            <button type="button" class="labs-toggle" id="labsToggleBtn">Expand</button>
+            <button type="button" class="labs-toggle" id="labsToggleBtn" aria-label="랩 목록 펼치기" title="랩 목록 펼치기">
+                <span id="labsToggleIcon">▸</span>
+            </button>
         </div>
         <div id="trainingInfo" style="margin-bottom:15px; padding:10px; background:var(--panel); border-radius:8px; border-left:4px solid var(--accent);">
             <p style="margin:0; color:var(--muted);">트레이닝 정보를 불러오는 중...</p>
@@ -617,10 +939,419 @@
     </div>
 
     <script>
+        let jjekChatHistory = [];
+        let jjekInboxTimer = null;
+        let jjekLastInboxId = 0;
+        let jjekUnreadTimer = null;
+        const jjekRenderedMessageIds = new Set();
+
         // 로그인 정보 가져오기 (세션에서)
         function getLoginInfo() {
             const loginInfo = sessionStorage.getItem('loginInfo');
             return loginInfo ? JSON.parse(loginInfo) : null;
+        }
+
+        function escapeJjekHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getJjekTimeLabel() {
+            return new Date().toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function isJjekMenuOpen() {
+            const panel = document.getElementById('jjekMenuPanel');
+            return Boolean(panel && !panel.hasAttribute('hidden'));
+        }
+
+        function setJjekUnreadBadge(count) {
+            const badge = document.getElementById('jjekMenuUnreadBadge');
+            if (!badge) {
+                return;
+            }
+
+            const unreadCount = Math.max(0, Number(count) || 0);
+            if (unreadCount <= 0) {
+                badge.hidden = true;
+                badge.textContent = '0';
+                return;
+            }
+
+            badge.hidden = false;
+            badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+        }
+
+        async function refreshJjekUnreadCount() {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo || !loginInfo.training_key || !loginInfo.member_id) {
+                setJjekUnreadBadge(0);
+                return;
+            }
+
+            if (isJjekMenuOpen()) {
+                setJjekUnreadBadge(0);
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    training_key: loginInfo.training_key,
+                    reader_member_id: loginInfo.member_id,
+                    reader_role: 'trainee',
+                });
+                const response = await fetch(`/api/jjek/messages/unread-count?${params.toString()}`);
+                if (!response.ok) {
+                    return;
+                }
+                const data = await response.json();
+                setJjekUnreadBadge(data.unread_count || 0);
+            } catch (_error) {
+                // 카운트 조회 실패는 다음 주기에 다시 시도
+            }
+        }
+
+        function startJjekUnreadPolling() {
+            if (jjekUnreadTimer) {
+                return;
+            }
+            refreshJjekUnreadCount();
+            jjekUnreadTimer = setInterval(refreshJjekUnreadCount, 5000);
+        }
+
+        async function markJjekMessagesRead() {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo || !loginInfo.training_key || !loginInfo.member_id) {
+                return;
+            }
+
+            setJjekUnreadBadge(0);
+
+            try {
+                await fetch('/api/jjek/messages/mark-read', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        training_key: loginInfo.training_key,
+                        reader_member_id: loginInfo.member_id,
+                        reader_role: 'trainee',
+                    }),
+                });
+                refreshJjekUnreadCount();
+            } catch (_error) {
+                // 읽음 처리 실패는 치명적이지 않으므로 무시
+            }
+        }
+
+        function renderJjekMessages() {
+            const container = document.getElementById('jjekChatMessages');
+            if (!container) {
+                return;
+            }
+
+            container.innerHTML = jjekChatHistory.map(message => `
+                <div class="jjek-chat-row ${message.role}">
+                    <div>
+                        ${message.showOperatorBadge ? '<div class="jjek-chat-operator-badge"><img src="/static/images/jjek-jjek.png" alt="운영자" onerror="this.style.display=\'none\'"><span>운영자</span></div>' : ''}
+                        <div class="jjek-chat-bubble">${escapeJjekHtml(message.text)}</div>
+                        <div class="jjek-chat-meta">${message.time}</div>
+                    </div>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function pushJjekMessage(role, text, label, extra = {}) {
+            jjekChatHistory.push({
+                role,
+                text,
+                label,
+                time: getJjekTimeLabel(),
+                showOperatorBadge: Boolean(extra.showOperatorBadge),
+            });
+            renderJjekMessages();
+        }
+
+        function ensureJjekConversation() {
+            const loginInfo = getLoginInfo();
+            if (jjekChatHistory.length > 0) {
+                renderJjekMessages();
+                return;
+            }
+
+            const welcomeName = loginInfo && loginInfo.member_name ? loginInfo.member_name : '사용자';
+            pushJjekMessage(
+                'assistant',
+                `${welcomeName}님, 안녕하세요. 저는 Jjek-Jjek messenger입니다.\n운영진과 채팅 메시지를 주고받을 수 있어요.`,
+                'Jjek-Jjek'
+            );
+        }
+
+        async function sendJjekMessageToAdmins(text) {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo || !loginInfo.training_key || !loginInfo.member_id) {
+                throw new Error('로그인 정보가 없어 메시지를 전송할 수 없습니다.');
+            }
+
+            const response = await fetch('/api/jjek/messages/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    training_key: loginInfo.training_key,
+                    sender_member_id: loginInfo.member_id,
+                    sender_name: loginInfo.member_name || '수강생',
+                    sender_role: 'trainee',
+                    message_text: text,
+                }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload.detail || '메시지 전송에 실패했습니다.');
+            }
+
+            return response.json().catch(() => ({}));
+        }
+
+        async function pollJjekInbox() {
+            const loginInfo = getLoginInfo();
+            if (!loginInfo || !loginInfo.training_key || !loginInfo.member_id) {
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    training_key: loginInfo.training_key,
+                    member_id: loginInfo.member_id,
+                    since_id: String(jjekLastInboxId || 0),
+                    limit: '100',
+                });
+
+                const response = await fetch(`/api/jjek/messages/inbox?${params.toString()}`);
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                const messages = Array.isArray(data.messages) ? data.messages : [];
+                messages.forEach((msg) => {
+                    if (!msg || !msg.message_text) {
+                        return;
+                    }
+                    const idNum = Number(msg.id || 0);
+                    if (idNum > 0) {
+                        if (jjekRenderedMessageIds.has(idNum)) {
+                            if (idNum > jjekLastInboxId) {
+                                jjekLastInboxId = idNum;
+                            }
+                            return;
+                        }
+                        jjekRenderedMessageIds.add(idNum);
+                    }
+                    const senderMemberId = String(msg.sender_member_id || '');
+                    const currentMemberId = String(loginInfo.member_id || '');
+                    const isOwnMessage = senderMemberId && currentMemberId && senderMemberId === currentMemberId;
+                    const senderRole = String(msg.sender_role || '').toLowerCase();
+                    const messageRole = isOwnMessage ? 'user' : 'assistant';
+                    const showOperatorBadge = !isOwnMessage && (senderRole === 'admin' || senderRole === 'supervisor');
+                    pushJjekMessage(messageRole, msg.message_text, msg.sender_name || '관리자', {
+                        showOperatorBadge,
+                    });
+                    if (idNum > jjekLastInboxId) {
+                        jjekLastInboxId = idNum;
+                    }
+                });
+                const panel = document.getElementById('jjekMenuPanel');
+                if (panel && !panel.hasAttribute('hidden')) {
+                    markJjekMessagesRead();
+                } else {
+                    refreshJjekUnreadCount();
+                }
+            } catch (_error) {
+                // 폴링 실패는 다음 주기에 다시 시도
+            }
+        }
+
+        function startJjekInboxPolling() {
+            if (jjekInboxTimer) {
+                return;
+            }
+            pollJjekInbox();
+            jjekInboxTimer = setInterval(pollJjekInbox, 5000);
+        }
+
+        function stopJjekInboxPolling() {
+            if (jjekInboxTimer) {
+                clearInterval(jjekInboxTimer);
+                jjekInboxTimer = null;
+            }
+        }
+
+        function handleJjekInputKeydown(event) {
+            if (!event) {
+                return;
+            }
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                submitJjekMessage();
+            }
+        }
+
+        async function submitJjekMessage(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            const input = document.getElementById('jjekChatInput');
+            if (!input) {
+                return;
+            }
+
+            const text = String(input.value || '').trim();
+            if (!text) {
+                input.focus();
+                return;
+            }
+
+            input.value = '';
+
+            try {
+                const sendResult = await sendJjekMessageToAdmins(text);
+                const sentId = Number(sendResult && sendResult.message_id ? sendResult.message_id : 0);
+                if (sentId > 0) {
+                    jjekRenderedMessageIds.add(sentId);
+                    if (sentId > jjekLastInboxId) {
+                        jjekLastInboxId = sentId;
+                    }
+                }
+                pushJjekMessage('user', text, 'You');
+                refreshJjekUnreadCount();
+            } catch (error) {
+                const message = error && error.message ? error.message : '메시지 전송 중 오류가 발생했습니다.';
+                pushJjekMessage('assistant', `전달 실패: ${message}`, 'Jjek-Jjek');
+            }
+        }
+
+        function closeJjekMenu() {
+            const panel = document.getElementById('jjekMenuPanel');
+            const button = document.getElementById('jjekMenuButton');
+            if (!panel || panel.hasAttribute('hidden')) {
+                return;
+            }
+            panel.setAttribute('hidden', 'hidden');
+            if (button) {
+                button.setAttribute('aria-expanded', 'false');
+            }
+            stopJjekInboxPolling();
+        }
+
+        function updateJjekMenuMeta() {
+            const loginInfo = getLoginInfo();
+            const subtitle = document.getElementById('jjekMenuSubtitle');
+            const footer = document.getElementById('jjekMenuFooter');
+            if (!subtitle || !footer) {
+                return;
+            }
+
+            if (!loginInfo) {
+                subtitle.textContent = '로그인 정보를 찾을 수 없습니다.';
+                footer.textContent = '세션이 만료되었을 수 있습니다.';
+                return;
+            }
+
+            subtitle.textContent = `${loginInfo.member_name}님과 대화하는 포털 메신저입니다.`;
+            footer.textContent = `Training Key: ${loginInfo.training_key} · Member ID: ${loginInfo.member_id}`;
+        }
+
+        function toggleJjekMenu(event) {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            const panel = document.getElementById('jjekMenuPanel');
+            const button = document.getElementById('jjekMenuButton');
+            if (!panel || !button) {
+                return;
+            }
+
+            const isOpening = panel.hasAttribute('hidden');
+            if (isOpening) {
+                updateJjekMenuMeta();
+                ensureJjekConversation();
+                panel.removeAttribute('hidden');
+                button.setAttribute('aria-expanded', 'true');
+                setJjekUnreadBadge(0);
+                startJjekInboxPolling();
+                markJjekMessagesRead();
+                const input = document.getElementById('jjekChatInput');
+                if (input) {
+                    setTimeout(() => input.focus(), 0);
+                }
+                return;
+            }
+
+            closeJjekMenu();
+        }
+
+        function goToLabsFromJjekMenu(shouldClose = true) {
+            if (shouldClose) {
+                closeJjekMenu();
+            }
+            const labsSection = document.getElementById('labsSection');
+            if (labsSection) {
+                labsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        async function refreshContentFromJjekMenu(shouldClose = true) {
+            if (shouldClose) {
+                closeJjekMenu();
+            }
+            await refreshContent();
+        }
+
+        function syncJjekSupervisorAction() {
+            const actionButton = document.getElementById('jjekSupervisorAction');
+            if (!actionButton) {
+                return;
+            }
+
+            const supervisorLab = window.trainingPortal && window.trainingPortal.firstSupervisorLab
+                ? window.trainingPortal.firstSupervisorLab
+                : null;
+
+            if (!supervisorLab) {
+                actionButton.disabled = true;
+                actionButton.textContent = '운영자 메뉴';
+                return;
+            }
+
+            actionButton.disabled = false;
+            actionButton.textContent = '운영자 메뉴';
+        }
+
+        function openSupervisorFromJjekMenu(shouldClose = true) {
+            const supervisorLab = window.trainingPortal && window.trainingPortal.firstSupervisorLab
+                ? window.trainingPortal.firstSupervisorLab
+                : null;
+            if (!supervisorLab) {
+                alert('현재 열 수 있는 운영자 메뉴가 없습니다.');
+                return;
+            }
+            if (shouldClose) {
+                closeJjekMenu();
+            }
+            openSupervisorModal(supervisorLab.lab_id, supervisorLab.lab_name);
         }
         
         // 권한 체크 함수
@@ -721,6 +1452,8 @@
                     window.trainingPortal = {};
                 }
                 window.trainingPortal.labs = data.labs;
+                window.trainingPortal.firstSupervisorLab = data.labs.find(lab => lab.is_supervisor && parseInt(lab.lab_status) === 20) || null;
+                syncJjekSupervisorAction();
                 
                 const labsContainer = document.getElementById('labsList');
                 const trainingInfoContainer = document.getElementById('trainingInfo');
@@ -786,10 +1519,22 @@
 
                 const labsSection = document.getElementById('labsSection');
                 const labsToggleBtn = document.getElementById('labsToggleBtn');
+                const labsToggleIcon = document.getElementById('labsToggleIcon');
                 if (labsToggleBtn && labsSection) {
+                    const syncLabsToggleIcon = () => {
+                        const isCollapsed = labsSection.classList.contains('collapsed');
+                        if (labsToggleIcon) {
+                            labsToggleIcon.textContent = isCollapsed ? '▸' : '▾';
+                        }
+                        const label = isCollapsed ? '랩 목록 펼치기' : '랩 목록 접기';
+                        labsToggleBtn.setAttribute('aria-label', label);
+                        labsToggleBtn.setAttribute('title', label);
+                    };
+
+                    syncLabsToggleIcon();
                     labsToggleBtn.addEventListener('click', () => {
                         labsSection.classList.toggle('collapsed');
-                        labsToggleBtn.textContent = labsSection.classList.contains('collapsed') ? '펼치기' : '접기';
+                        syncLabsToggleIcon();
                     });
                 }
 
@@ -889,9 +1634,6 @@
                     contentsHTML += `
                         <div class="${itemClass}" ${onClick} data-content-id="${content.content_id}">
                             <h4>${content.lab_content_subject || '제목 없음'}</h4>
-                            <div class="content-meta">
-                                <span class="content-date">${content.lab_content_create_date}</span>
-                            </div>
                         </div>
                     `;
                 });
@@ -941,8 +1683,20 @@
             questions: [],
             index: 0,
             meta: '',
-            solved: []
+            responses: [],
+            contentId: null,
+            generatedTestId: null,
+            startedAt: null,
+            submitted: false,
+            completed: false,
+            completedAt: null
         };
+
+        function getTrainingTestCompletedMessage(completedAt) {
+            return completedAt
+                ? `이미 완료한 테스트입니다.\n완료 시각: ${completedAt}`
+                : '이미 완료한 테스트입니다.';
+        }
 
         function escapeHtml(value) {
             return String(value || '')
@@ -1173,6 +1927,168 @@
             return true;
         }
 
+        function readCurrentTrainingResponse(question) {
+            const qType = String(question.question_type || 'multiple_choice').toLowerCase();
+
+            if (qType === 'yes_no') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                return {
+                    type: 'yes_no',
+                    answers: items.map((_, idx) => {
+                        const selected = document.querySelector(`input[data-answer-input="yesno"][data-item-index="${idx}"]:checked`);
+                        return selected ? normalizeYesNo(selected.value) : null;
+                    }),
+                };
+            }
+
+            if (qType === 'matching') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                return {
+                    type: 'matching',
+                    answers: items.map((_, idx) => {
+                        const selected = document.querySelector(`input[data-answer-input="matching"][data-item-index="${idx}"]`);
+                        const value = selected ? String(selected.value || '').trim() : '';
+                        return value || null;
+                    }),
+                };
+            }
+
+            const selectedAnswers = Array.from(document.querySelectorAll('input[data-answer-input="choice"]:checked'))
+                .map(node => normalizeChoiceToken(node.value || ''))
+                .filter(Boolean);
+            return {
+                type: 'choice',
+                answers: Array.from(new Set(selectedAnswers)),
+            };
+        }
+
+        function applyStoredTrainingResponse(question, response) {
+            if (!response) {
+                return;
+            }
+            const qType = String(question.question_type || 'multiple_choice').toLowerCase();
+
+            if (qType === 'yes_no') {
+                const answers = Array.isArray(response.answers) ? response.answers : [];
+                answers.forEach((answer, idx) => {
+                    if (!answer) {
+                        return;
+                    }
+                    const selector = `input[data-answer-input="yesno"][data-item-index="${idx}"][value="${answer}"]`;
+                    const radio = document.querySelector(selector);
+                    if (radio) {
+                        radio.checked = true;
+                    }
+                });
+                return;
+            }
+
+            if (qType === 'matching') {
+                const answers = Array.isArray(response.answers) ? response.answers : [];
+                const options = Array.isArray(question.options) ? question.options : [];
+                answers.forEach((answer, idx) => {
+                    const input = document.querySelector(`input[data-answer-input="matching"][data-item-index="${idx}"]`);
+                    const zone = input ? input.closest('.matching-drop-zone') : null;
+                    const valueEl = zone ? zone.querySelector('.matching-drop-value') : null;
+                    if (!input || !zone || !valueEl) {
+                        return;
+                    }
+                    if (!answer) {
+                        input.value = '';
+                        zone.classList.remove('filled');
+                        valueEl.textContent = '여기에 드롭';
+                        return;
+                    }
+                    input.value = String(answer);
+                    const optionIndex = Number(answer);
+                    valueEl.textContent = optionIndex > 0 && optionIndex <= options.length
+                        ? `${optionIndex}. ${options[optionIndex - 1] || ''}`
+                        : String(answer);
+                    zone.classList.add('filled');
+                });
+                return;
+            }
+
+            const selectedSet = new Set((Array.isArray(response.answers) ? response.answers : []).map(normalizeChoiceToken));
+            Array.from(document.querySelectorAll('input[data-answer-input="choice"]')).forEach(input => {
+                const key = normalizeChoiceToken(input.value || '');
+                input.checked = selectedSet.has(key);
+            });
+        }
+
+        function isTrainingResponseAnswered(question, response) {
+            if (!response) {
+                return false;
+            }
+            const qType = String(question.question_type || 'multiple_choice').toLowerCase();
+
+            if (qType === 'yes_no' || qType === 'matching') {
+                const answers = Array.isArray(response.answers) ? response.answers : [];
+                return answers.length > 0 && answers.every(item => item != null && String(item).trim() !== '');
+            }
+
+            return Array.isArray(response.answers) && response.answers.length > 0;
+        }
+
+        function isTrainingResponseCorrect(question, response) {
+            if (!isTrainingResponseAnswered(question, response)) {
+                return false;
+            }
+
+            const qType = String(question.question_type || 'multiple_choice').toLowerCase();
+
+            if (qType === 'yes_no') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                const answers = Array.isArray(response.answers) ? response.answers : [];
+                if (items.length !== answers.length) {
+                    return false;
+                }
+                for (let idx = 0; idx < items.length; idx += 1) {
+                    const expected = normalizeYesNo(items[idx].answer || '');
+                    if (!expected || normalizeYesNo(answers[idx]) !== expected) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            if (qType === 'matching') {
+                const items = Array.isArray(question.items) ? question.items : [];
+                const options = Array.isArray(question.options) ? question.options : [];
+                const answers = Array.isArray(response.answers) ? response.answers : [];
+                if (items.length !== answers.length) {
+                    return false;
+                }
+                for (let idx = 0; idx < items.length; idx += 1) {
+                    const expectedRaw = String(items[idx].answer || '').trim();
+                    let expected = expectedRaw;
+                    if (expectedRaw && Number.isNaN(Number(expectedRaw))) {
+                        const mappedIndex = options.findIndex(option => normalizeChoiceToken(option || '') === normalizeChoiceToken(expectedRaw));
+                        if (mappedIndex >= 0) {
+                            expected = String(mappedIndex + 1);
+                        }
+                    }
+                    if (!expected || String(answers[idx]).trim() !== expected) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            const expectedAnswers = getExpectedChoiceAnswerKeys(question);
+            if (!expectedAnswers.length) {
+                return false;
+            }
+            const selectedAnswers = Array.isArray(response.answers)
+                ? response.answers.map(normalizeChoiceToken).filter(Boolean)
+                : [];
+            return unorderedEquals(selectedAnswers, expectedAnswers);
+        }
+
+        function storeCurrentTrainingResponse(question, index) {
+            trainingTestCenterState.responses[index] = readCurrentTrainingResponse(question);
+        }
+
         function isTrainingSupervisor() {
             return Boolean(window.selectedLabIsSupervisor);
         }
@@ -1260,6 +2176,132 @@
                 buttonEl.style.opacity = '0.85';
                 buttonEl.style.cursor = 'not-allowed';
                 buttonEl.style.boxShadow = 'none';
+            }
+        }
+
+        function buildTrainingTestCenterSummary() {
+            const questions = Array.isArray(trainingTestCenterState.questions) ? trainingTestCenterState.questions : [];
+            const totalQuestions = questions.length;
+            let answeredQuestions = 0;
+            let solvedQuestions = 0;
+            const unansweredIndexes = [];
+
+            questions.forEach((question, idx) => {
+                const response = trainingTestCenterState.responses[idx];
+                if (isTrainingResponseAnswered(question, response)) {
+                    answeredQuestions += 1;
+                    if (isTrainingResponseCorrect(question, response)) {
+                        solvedQuestions += 1;
+                    }
+                } else {
+                    unansweredIndexes.push(idx + 1);
+                }
+            });
+
+            const scorePercent = totalQuestions > 0 ? (solvedQuestions / totalQuestions) * 100 : 0;
+            return {
+                totalQuestions,
+                answeredQuestions,
+                solvedQuestions,
+                unansweredIndexes,
+                scorePercent,
+            };
+        }
+
+        async function submitTrainingTestCenterResult(summary) {
+            if (trainingTestCenterState.submitted) {
+                alert(getTrainingTestCompletedMessage(trainingTestCenterState.completedAt));
+                return;
+            }
+
+            const loginInfo = getLoginInfo();
+            if (!loginInfo) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/';
+                return;
+            }
+
+            const payload = {
+                training_key: loginInfo.training_key,
+                member_id: loginInfo.member_id,
+                lab_id: Number(window.selectedLabId),
+                content_id: Number(trainingTestCenterState.contentId),
+                generated_test_id: trainingTestCenterState.generatedTestId ? Number(trainingTestCenterState.generatedTestId) : null,
+                started_at: trainingTestCenterState.startedAt || new Date().toISOString(),
+                total_questions: summary.totalQuestions,
+                answered_questions: summary.answeredQuestions,
+                solved_questions: summary.solvedQuestions,
+                score_percent: Number(summary.scorePercent.toFixed(2)),
+                detail: {
+                    responses: trainingTestCenterState.responses,
+                },
+            };
+
+            try {
+                const response = await fetch('/api/portal/test-center/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const raw = await response.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    data = null;
+                }
+                if (!response.ok) {
+                    const detailMessage = typeof data.detail === 'string'
+                        ? data.detail
+                        : (data && data.detail && data.detail.message ? data.detail.message : null);
+                    throw new Error(detailMessage || raw || '점수 저장에 실패했습니다.');
+                }
+
+                trainingTestCenterState.submitted = true;
+                trainingTestCenterState.completed = true;
+                trainingTestCenterState.completedAt = null;
+                // 테스트센터 알림 메시지가 짹짹에 즉시 반영되도록 뱃지 갱신
+                setTimeout(() => refreshJjekUnreadCount(), 500);
+                alert('테스트 결과가 저장되었습니다.');
+                closeTrainingTestCenterModal();
+            } catch (error) {
+                alert(error.message || '점수 저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        function showTrainingTestCenterSummary() {
+            const summary = buildTrainingTestCenterSummary();
+            const bodyEl = document.getElementById('trainingTestCenterBody');
+            if (!bodyEl) {
+                return;
+            }
+
+            const unansweredCount = Math.max(0, summary.totalQuestions - summary.answeredQuestions);
+            bodyEl.innerHTML = `
+                <div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 10px 26px rgba(15, 23, 42, 0.08);">
+                    <h3 style="margin:0 0 12px 0; color:var(--text); font-size:24px; line-height:1.32;">풀이 현황 요약</h3>
+                    <div style="line-height:1.9; color:#1f2937; font-size:16px;">
+                        <div>전체 ${summary.totalQuestions}문항</div>
+                        <div>풀이 ${summary.answeredQuestions}문항</div>
+                        <div>미풀이 ${unansweredCount}문항</div>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:12px; flex-wrap:wrap;">
+                    <div style="color:var(--muted); font-weight:700; font-size:1.02em;">확인 후 테스트를 완료하세요.</div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" id="trainingSummaryBackBtn" style="background:#e2e8f0; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:15px; font-weight:700;">문제로 돌아가기</button>
+                        <button type="button" id="trainingSummarySubmitBtn" style="background:#0f766e; color:#fff; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:15px; font-weight:700;">테스트 완료</button>
+                    </div>
+                </div>
+            `;
+
+            const backBtn = document.getElementById('trainingSummaryBackBtn');
+            const submitBtn = document.getElementById('trainingSummarySubmitBtn');
+            if (backBtn) {
+                backBtn.onclick = () => updateTrainingTestCenterModal();
+            }
+            if (submitBtn) {
+                submitBtn.onclick = () => submitTrainingTestCenterResult(summary);
             }
         }
 
@@ -1352,69 +2394,12 @@
             `;
         }
 
-        function isCurrentTrainingQuestionCorrect(question) {
-            const qType = String(question.question_type || 'multiple_choice').toLowerCase();
-
-            if (qType === 'yes_no') {
-                const items = Array.isArray(question.items) ? question.items : [];
-                if (!items.length) {
-                    return false;
-                }
-                for (let idx = 0; idx < items.length; idx += 1) {
-                    const selected = document.querySelector(`input[data-answer-input="yesno"][data-item-index="${idx}"]:checked`);
-                    if (!selected) {
-                        return false;
-                    }
-                    const expected = normalizeYesNo(items[idx].answer || '');
-                    if (!expected || normalizeYesNo(selected.value) !== expected) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            if (qType === 'matching') {
-                const items = Array.isArray(question.items) ? question.items : [];
-                const options = Array.isArray(question.options) ? question.options : [];
-                if (!items.length) {
-                    return false;
-                }
-                for (let idx = 0; idx < items.length; idx += 1) {
-                    const selected = document.querySelector(`input[data-answer-input="matching"][data-item-index="${idx}"]`);
-                    if (!selected || !selected.value) {
-                        return false;
-                    }
-                    const expectedRaw = String(items[idx].answer || '').trim();
-                    let expected = expectedRaw;
-                    if (expectedRaw && Number.isNaN(Number(expectedRaw))) {
-                        const mappedIndex = options.findIndex(option => normalizeChoiceToken(option || '') === normalizeChoiceToken(expectedRaw));
-                        if (mappedIndex >= 0) {
-                            expected = String(mappedIndex + 1);
-                        }
-                    }
-                    if (!expected || String(selected.value).trim() !== expected) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            const expectedAnswers = getExpectedChoiceAnswerKeys(question);
-            if (!expectedAnswers.length) {
-                return false;
-            }
-            const selectedAnswers = Array.from(document.querySelectorAll('input[data-answer-input="choice"]:checked'))
-                .map(node => normalizeChoiceToken(node.value || ''))
-                .filter(value => value !== '');
-
-            return unorderedEquals(selectedAnswers, expectedAnswers);
-        }
-
         function updateTrainingTestCenterModal() {
             const metaEl = document.getElementById('trainingTestCenterMeta');
             const bodyEl = document.getElementById('trainingTestCenterBody');
             const prevBtn = document.getElementById('trainingTestPrevBtn');
             const nextBtn = document.getElementById('trainingTestNextBtn');
+            const finishBtn = document.getElementById('trainingTestFinishBtn');
             const pageEl = document.getElementById('trainingTestPageInfo');
             const questions = trainingTestCenterState.questions || [];
 
@@ -1434,58 +2419,56 @@
             const currentIndex = Math.max(0, Math.min(trainingTestCenterState.index, questions.length - 1));
             trainingTestCenterState.index = currentIndex;
             const currentQuestion = questions[currentIndex];
+            const isLastQuestion = currentIndex >= questions.length - 1;
             bodyEl.innerHTML = `<div style="background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 10px 26px rgba(15, 23, 42, 0.08);">${buildTestCenterQuestionHtml(currentQuestion)}</div>`;
-            bodyEl.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
-                    <button type="button" id="trainingTestCheckBtn" style="background:#0f766e; color:#fff; border:none; border-radius:10px; padding:10px 16px; font-size:15px; font-weight:700; cursor:pointer;">정답 확인</button>
-                    <div id="trainingTestCheckMsg" style="font-size:14px; font-weight:700; color:var(--muted);"></div>
-                </div>
-            `;
             initMatchingDragDrop(bodyEl, currentQuestion);
+            applyStoredTrainingResponse(currentQuestion, trainingTestCenterState.responses[currentIndex]);
 
             if (pageEl) pageEl.textContent = `문제 ${currentIndex + 1} / ${questions.length}`;
             if (prevBtn) prevBtn.disabled = currentIndex <= 0;
             if (nextBtn) {
-                const nextEnabled = currentIndex < questions.length - 1;
+                const nextEnabled = !isLastQuestion;
                 nextBtn.disabled = !nextEnabled;
                 setTrainingNextButtonStyle(nextBtn, nextEnabled);
             }
+            if (finishBtn) {
+                finishBtn.style.display = isLastQuestion ? 'inline-block' : 'none';
+            }
 
-            const checkBtn = document.getElementById('trainingTestCheckBtn');
-            const checkMsg = document.getElementById('trainingTestCheckMsg');
-            if (checkBtn) {
-                checkBtn.onclick = () => {
-                    const isCorrect = isCurrentTrainingQuestionCorrect(currentQuestion);
-                    if (isCorrect) {
-                        trainingTestCenterState.solved[currentIndex] = true;
-                        if (checkMsg) {
-                            checkMsg.textContent = '정답입니다! 다음 문제 버튼이 활성화되었습니다.';
-                            checkMsg.style.color = '#0f766e';
-                        }
-                        highlightCorrectChoiceOptions(currentQuestion);
-                        if (nextBtn) {
-                            const nextEnabled = currentIndex < questions.length - 1;
-                            nextBtn.disabled = !nextEnabled;
-                            setTrainingNextButtonStyle(nextBtn, nextEnabled);
-                        }
-                        showTrainingCorrectPopup();
-                    } else if (checkMsg) {
-                        const wrongText = '오답입니다. 다음 문제로 계속 진행할 수 있습니다.';
-                        if (isTrainingSupervisor()) {
-                            const answerHint = getTrainingQuestionAnswerHint(currentQuestion);
-                            checkMsg.textContent = answerHint
-                                ? `${wrongText} 정답: ${answerHint}`
-                                : `${wrongText} 정답 정보를 확인할 수 없습니다.`;
-                        } else {
-                            checkMsg.textContent = wrongText;
-                        }
-                        checkMsg.style.color = '#dc2626';
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    storeCurrentTrainingResponse(currentQuestion, currentIndex);
+                    if (trainingTestCenterState.index > 0) {
+                        trainingTestCenterState.index -= 1;
+                        updateTrainingTestCenterModal();
                     }
+                };
+            }
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    storeCurrentTrainingResponse(currentQuestion, currentIndex);
+                    if (trainingTestCenterState.index < questions.length - 1) {
+                        trainingTestCenterState.index += 1;
+                        updateTrainingTestCenterModal();
+                    }
+                };
+            }
+            if (finishBtn) {
+                finishBtn.onclick = () => {
+                    storeCurrentTrainingResponse(currentQuestion, currentIndex);
+                    showTrainingTestCenterSummary();
                 };
             }
         }
 
         function openTrainingTestCenterModal() {
+            if (trainingTestCenterState.completed || trainingTestCenterState.submitted) {
+                alert(getTrainingTestCompletedMessage(trainingTestCenterState.completedAt));
+                return;
+            }
+            if (!trainingTestCenterState.startedAt) {
+                trainingTestCenterState.startedAt = new Date().toISOString();
+            }
             const modal = document.getElementById('trainingTestCenterModal');
             if (!modal) {
                 return;
@@ -1504,8 +2487,9 @@
 
         async function renderTrainingGeneratedTestCenter(payload, content, contentViewer) {
             let questions = Array.isArray(payload.questions) ? payload.questions : [];
+            const expectedCount = Number(payload.question_count || 0);
 
-            if (!questions.length && payload.generated_test_id) {
+            if (payload.generated_test_id && (!questions.length || (expectedCount > 0 && questions.length < expectedCount))) {
                 try {
                     const detailRes = await fetch(`/api/admin/generated-tests/${payload.generated_test_id}`);
                     const detailData = await detailRes.json();
@@ -1547,16 +2531,46 @@
                 }
             }
 
+            if (expectedCount > 0 && questions.length < expectedCount) {
+                contentViewer.innerHTML = `
+                    <h1>${content.lab_content_subject || '테스트 센터'}</h1>
+                    <p style="color:#dc2626;">문제 데이터를 모두 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.</p>
+                `;
+                return;
+            }
+
             trainingTestCenterState.questions = questions;
             trainingTestCenterState.index = 0;
-            trainingTestCenterState.meta = `${payload.generated_name || content.lab_content_subject || '테스트'} | 총 ${payload.question_count || questions.length}문항`;
-            trainingTestCenterState.solved = questions.map(() => false);
+            trainingTestCenterState.meta = `${payload.generated_name || content.lab_content_subject || '테스트'} | 총 ${expectedCount > 0 ? expectedCount : questions.length}문항`;
+            trainingTestCenterState.responses = questions.map(() => null);
+            trainingTestCenterState.contentId = content ? Number(content.content_id) : null;
+            trainingTestCenterState.generatedTestId = payload.generated_test_id ? Number(payload.generated_test_id) : null;
+            trainingTestCenterState.startedAt = null;
+            trainingTestCenterState.submitted = false;
+            trainingTestCenterState.completed = false;
+            trainingTestCenterState.completedAt = null;
+
+            const loginInfo = getLoginInfo();
+            if (trainingTestCenterState.contentId != null && loginInfo && loginInfo.training_key && loginInfo.member_id && window.selectedLabId) {
+                try {
+                    const completionRes = await fetch(`/api/portal/test-center/completion?training_key=${encodeURIComponent(loginInfo.training_key)}&member_id=${encodeURIComponent(loginInfo.member_id)}&lab_id=${encodeURIComponent(window.selectedLabId)}&content_id=${encodeURIComponent(trainingTestCenterState.contentId)}`);
+                    const completionData = await completionRes.json();
+                    if (completionRes.ok && completionData.completed) {
+                        trainingTestCenterState.completed = true;
+                        trainingTestCenterState.submitted = true;
+                        trainingTestCenterState.completedAt = completionData.completed_at || null;
+                    }
+                } catch (error) {
+                    // If status check fails, keep test accessible and rely on submit API protection.
+                }
+            }
 
             contentViewer.innerHTML = `
                 <h1>${content.lab_content_subject || '테스트 센터'}</h1>
                 <div style="display:flex; flex-direction:column; gap:14px; align-items:flex-start; background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:18px;">
                     <div style="color:var(--muted); font-size:0.95em;">${escapeHtml(trainingTestCenterState.meta)}</div>
-                    <button type="button" onclick="openTrainingTestCenterModal()" style="background:#2563eb; color:#fff; border:none; border-radius:8px; padding:10px 18px; font-weight:700; cursor:pointer;">테스트 시작</button>
+                    <button type="button" onclick="openTrainingTestCenterModal()" ${trainingTestCenterState.completed ? 'disabled' : ''} style="background:#2563eb; color:#fff; border:none; border-radius:8px; padding:10px 18px; font-weight:700; cursor:${trainingTestCenterState.completed ? 'not-allowed' : 'pointer'}; opacity:${trainingTestCenterState.completed ? '0.6' : '1'};">${trainingTestCenterState.completed ? '이미 완료한 테스트' : '테스트 시작'}</button>
+                    ${trainingTestCenterState.completed ? `<div style="color:var(--muted); font-size:13px; line-height:1.6;">${escapeHtml(getTrainingTestCompletedMessage(trainingTestCenterState.completedAt)).replace(/\n/g, '<br>')}</div>` : ''}
                 </div>
 
                 <div id="trainingTestCenterModal" onclick="if(event.target.id==='trainingTestCenterModal'){closeTrainingTestCenterModal();}" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.62); z-index:2000; align-items:center; justify-content:center; padding:18px;">
@@ -1573,8 +2587,9 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px;">
                                 <div id="trainingTestPageInfo" style="color:var(--muted); font-weight:700; font-size:1.02em;"></div>
                                 <div style="display:flex; gap:8px;">
-                                    <button type="button" id="trainingTestPrevBtn" onclick="if(trainingTestCenterState.index>0){trainingTestCenterState.index-=1;updateTrainingTestCenterModal();}" style="background:#e2e8f0; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:15px; font-weight:700;">이전</button>
-                                    <button type="button" id="trainingTestNextBtn" onclick="if(trainingTestCenterState.index<trainingTestCenterState.questions.length-1){trainingTestCenterState.index+=1;updateTrainingTestCenterModal();}" style="background:#cbd5e1; color:#475569; border:none; border-radius:10px; padding:10px 16px; cursor:not-allowed; font-size:15px; font-weight:700; opacity:0.85;">다음</button>
+                                    <button type="button" id="trainingTestPrevBtn" style="background:#e2e8f0; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:15px; font-weight:700;">이전</button>
+                                    <button type="button" id="trainingTestNextBtn" style="background:#cbd5e1; color:#475569; border:none; border-radius:10px; padding:10px 16px; cursor:not-allowed; font-size:15px; font-weight:700; opacity:0.85;">다음</button>
+                                    <button type="button" id="trainingTestFinishBtn" style="display:none; background:#0f766e; color:#fff; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-size:15px; font-weight:700;">종합 보기</button>
                                 </div>
                             </div>
                         </div>
@@ -1800,6 +2815,39 @@
                             <pre style="background: #f1f5f9; padding: 16px; border-radius: 6px; overflow-x: auto; color: var(--text);">${contentText}</pre>
                         `;
                     }
+                } else if (content.lab_content_type === 5) {
+                    // 타입 5: 과제 (파일 업로드)
+                    const loginInfo = getLoginInfo();
+                    const tMemberId = loginInfo ? (loginInfo.member_id || '') : '';
+                    const tMemberName = loginInfo ? (loginInfo.member_name || tMemberId) : tMemberId;
+                    let assignmentDesc = '';
+                    try {
+                        const parsed = JSON.parse(contentText);
+                        if (parsed && parsed.url) {
+                            assignmentDesc = `<div style="margin-bottom:12px;">
+                                <a href="${parsed.url}" target="_blank" style="color:#2563eb; text-decoration:underline; font-weight:600;">&#128196; 과제 내용 파일 다운로드</a>
+                                <span style="color:#64748b; font-size:13px; margin-left:8px;">${parsed.file_name || ''}</span>
+                            </div>`;
+                        }
+                    } catch { assignmentDesc = ''; }
+                    const trainingLabId = content.lab_id || loginInfo?.currentLabId || '';
+                    contentViewer.innerHTML = `
+                        <h1>${content.lab_content_subject || '과제'}</h1>
+                        <div style="padding:20px; background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:12px;">
+                            <div style="font-size:18px; font-weight:700; color:#0369a1; margin-bottom:12px;">&#128203; 과제 제출</div>
+                            ${assignmentDesc}
+                            <div style="margin-bottom:12px; color:#334155; font-size:14px;">과제 파일을 선택하여 제출하세요.</div>
+                            <input type="file" id="trainingAssignmentFile_${content.content_id}" style="display:block; margin-bottom:10px;">
+                            <button id="trainingAssignmentBtn_${content.content_id}"
+                                onclick="submitTrainingAssignment(${content.content_id}, '${tMemberId}', '${tMemberName}', '${trainingLabId}')"
+                                style="background:#0369a1; color:#fff; border:none; border-radius:8px; padding:10px 22px; font-weight:700; cursor:pointer; font-size:15px;">
+                                제출하기
+                            </button>
+                            <div id="trainingAssignmentMsg_${content.content_id}" style="margin-top:10px; font-size:13px;"></div>
+                            <div id="trainingAssignmentPreview_${content.content_id}" style="margin-top:12px;"></div>
+                        </div>
+                    `;
+                    await loadTrainingLatestAssignmentSubmission(content.content_id, tMemberId, trainingLabId);
                 } else {
                     // 기타 타입: 마크다운 텍스트인지 확인하여 자동 파싱
                     try {
@@ -1817,6 +2865,56 @@
                     }
                 }
                 
+
+            async function loadTrainingLatestAssignmentSubmission(contentId, memberId, labIdParam) {
+                const msgEl = document.getElementById(`trainingAssignmentMsg_${contentId}`);
+                const previewEl = document.getElementById(`trainingAssignmentPreview_${contentId}`);
+                const loginInfo = getLoginInfo();
+                const tKey = loginInfo ? loginInfo.training_key : '';
+                const lookupMemberId = String(memberId || '').trim();
+                const lookupMemberName = String((loginInfo && loginInfo.member_name) ? loginInfo.member_name : memberId || '').trim();
+
+                const candidateLabIds = [
+                    labIdParam,
+                    window.selectedLabId,
+                    loginInfo ? loginInfo.currentLabId : '',
+                    loginInfo ? loginInfo.lab_id : ''
+                ];
+                let tLab = '';
+                for (const candidate of candidateLabIds) {
+                    const text = String(candidate ?? '').trim();
+                    if (!text || text === 'undefined' || text === 'null') continue;
+                    const parsed = Number.parseInt(text, 10);
+                    if (Number.isInteger(parsed)) {
+                        tLab = String(parsed);
+                        break;
+                    }
+                }
+
+                if (!tKey || !tLab || (!lookupMemberId && !lookupMemberName)) return;
+
+                try {
+                    const qs = new URLSearchParams({
+                        training_key: String(tKey),
+                        lab_id: String(tLab),
+                        content_id: String(contentId),
+                        member_id: lookupMemberId,
+                        member_name: lookupMemberName,
+                    });
+                    const resp = await fetch(`/api/portal/assignment/latest?${qs.toString()}`);
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    if (!data || !data.submitted) return;
+
+                    if (msgEl) {
+                        msgEl.style.color = '#166534';
+                        msgEl.textContent = '과제가 제출되었습니다.';
+                    }
+                    renderTrainingSubmittedAssignmentPreview(previewEl, data.file_name, data.file_url || data.url);
+                } catch (e) {
+                    // 최신 제출 조회 실패는 제출 UI 사용을 막지 않도록 무시
+                }
+            }
             } catch (error) {
                 document.getElementById('contentViewer').innerHTML = `
                     <p style="text-align:center; color:#FF6B6B;">콘텐츠를 불러오는데 실패했습니다.</p>
@@ -1824,6 +2922,137 @@
             }
         }
         
+        function renderTrainingSubmittedAssignmentPreview(containerEl, fileName, fileUrl) {
+            if (!containerEl) return;
+            const safeName = String(fileName || '-');
+            const safeUrl = String(fileUrl || '');
+            const ext = safeName.toLowerCase().split('.').pop();
+            let previewHtml = '<div style="color:#64748b;">미리보기를 지원하지 않는 형식입니다. 다운로드 후 확인해주세요.</div>';
+
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext)) {
+                previewHtml = `<img src="${safeUrl}" alt="preview" style="max-width:100%; border:1px solid #e5e7eb; border-radius:8px;">`;
+            } else if (ext === 'pdf') {
+                previewHtml = `<iframe src="${safeUrl}" style="width:100%; height:56vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            } else if (['doc', 'docx', 'ppt', 'pptx'].includes(ext)) {
+                const officeSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(safeUrl)}`;
+                previewHtml = `<iframe src="${officeSrc}" style="width:100%; height:56vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            } else if (['txt', 'text', 'md', 'csv', 'log', 'json', 'xml', 'yaml', 'yml', 'ini', 'conf', 'sql'].includes(ext)) {
+                previewHtml = `<iframe src="${safeUrl}" style="width:100%; height:56vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            }
+
+            const uniqueId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const previewBtnId = `trainingPreviewBtn_${uniqueId}`;
+            const previewBodyId = `trainingPreviewBody_${uniqueId}`;
+
+            containerEl.innerHTML = `
+                <div style="margin-bottom:8px; font-size:14px; color:#0f172a;">
+                    <strong>제출된 파일:</strong> ${safeName}
+                    <button id="${previewBtnId}" type="button" style="margin-left:8px; background:#0ea5e9; color:#fff; border:none; border-radius:6px; padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer;">미리보기</button>
+                    <a href="${safeUrl}" target="_blank" style="margin-left:8px; color:#2563eb; text-decoration:underline;">새 창에서 열기</a>
+                </div>
+                <div id="${previewBodyId}" style="display:none; margin-top:8px;">${previewHtml}</div>
+            `;
+
+            const previewBtn = document.getElementById(previewBtnId);
+            const previewBody = document.getElementById(previewBodyId);
+            if (previewBtn && previewBody) {
+                previewBtn.addEventListener('click', () => {
+                    const isOpen = previewBody.style.display !== 'none';
+                    previewBody.style.display = isOpen ? 'none' : 'block';
+                    previewBtn.textContent = isOpen ? '미리보기' : '미리보기 닫기';
+                });
+            }
+        }
+
+        // 과제 파일 제출 함수 (training_portal)
+        async function submitTrainingAssignment(contentId, memberId, memberName, labIdParam) {
+            const fileInput = document.getElementById(`trainingAssignmentFile_${contentId}`);
+            const msgEl = document.getElementById(`trainingAssignmentMsg_${contentId}`);
+            const btn = document.getElementById(`trainingAssignmentBtn_${contentId}`);
+            const previewEl = document.getElementById(`trainingAssignmentPreview_${contentId}`);
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                if (msgEl) msgEl.textContent = '제출할 파일을 선택해주세요.';
+                return;
+            }
+            const loginInfo = getLoginInfo();
+            const tKey = loginInfo ? loginInfo.training_key : '';
+            const candidateLabIds = [
+                labIdParam,
+                window.selectedLabId,
+                loginInfo ? loginInfo.currentLabId : '',
+                loginInfo ? loginInfo.lab_id : ''
+            ];
+            let tLab = '';
+            for (const candidate of candidateLabIds) {
+                const text = String(candidate ?? '').trim();
+                if (!text || text === 'undefined' || text === 'null') continue;
+                const parsed = Number.parseInt(text, 10);
+                if (Number.isInteger(parsed)) {
+                    tLab = String(parsed);
+                    break;
+                }
+            }
+            if (!tLab) {
+                const reason = `lab_id를 찾을 수 없습니다. 후보값: ${candidateLabIds.map(v => String(v)).join(', ')}`;
+                if (msgEl) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = `오류: ${reason}`;
+                }
+                if (btn) btn.disabled = false;
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('training_key', tKey);
+            formData.append('lab_id', tLab);
+            formData.append('content_id', contentId);
+            formData.append('member_id', memberId || '');
+            formData.append('member_name', memberName || memberId || '');
+            if (btn) btn.disabled = true;
+            if (msgEl) msgEl.textContent = '제출 중...';
+            try {
+                async function postSubmit(forceReplace) {
+                    const fd = new FormData();
+                    fd.append('file', fileInput.files[0]);
+                    fd.append('training_key', tKey);
+                    fd.append('lab_id', tLab);
+                    fd.append('content_id', contentId);
+                    fd.append('member_id', memberId || '');
+                    fd.append('member_name', memberName || memberId || '');
+                    fd.append('force_replace', forceReplace ? '1' : '0');
+                    const resp = await fetch('/api/portal/assignment/submit', { method: 'POST', body: fd });
+                    const text = await resp.text();
+                    let data;
+                    try { data = JSON.parse(text); } catch { data = {}; }
+                    return { resp, data, text };
+                }
+
+                let { resp, data, text } = await postSubmit(false);
+                if (resp.status === 409) {
+                    const detail = (data && data.detail) ? data.detail : '이미 과제가 제출되었습니다. 다시 업로드 하시겠습니까?';
+                    const ok = confirm(detail);
+                    if (!ok) {
+                        if (msgEl) { msgEl.style.color = '#b45309'; msgEl.textContent = '재업로드가 취소되었습니다.'; }
+                        if (btn) btn.disabled = false;
+                        return;
+                    }
+                    ({ resp, data, text } = await postSubmit(true));
+                }
+
+                if (!resp.ok) {
+                    let detail = data.detail || data.message || text || '제출 실패';
+                    if (detail && typeof detail === 'object') detail = JSON.stringify(detail);
+                    throw new Error(`HTTP ${resp.status} ${resp.statusText} | ${detail}`);
+                }
+                if (msgEl) { msgEl.style.color = '#166534'; msgEl.textContent = `✅ 제출 완료: ${data.file_name}`; }
+                renderTrainingSubmittedAssignmentPreview(previewEl, data.file_name, data.url);
+            } catch (err) {
+                const message = err && err.message ? err.message : String(err);
+                if (msgEl) { msgEl.style.color = '#dc2626'; msgEl.textContent = `오류: ${message}`; }
+                if (btn) btn.disabled = false;
+            }
+        }
+
         // 콘텐츠 새로고침 함수
         async function refreshContent() {
             try {
@@ -1903,6 +3132,22 @@
             // 환영 메시지 업데이트
             document.querySelector('.welcome').textContent = 
                 `${loginInfo.member_name}님, Training Center에 오신 것을 환영합니다!`;
+
+            updateJjekMenuMeta();
+            startJjekUnreadPolling();
+
+            document.addEventListener('click', function(event) {
+                const menuWrap = document.querySelector('.jjek-menu-wrap');
+                if (menuWrap && !menuWrap.contains(event.target)) {
+                    closeJjekMenu();
+                }
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeJjekMenu();
+                }
+            });
             
             loadLabs();
         });

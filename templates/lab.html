@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Lab Management</title>
+    <title>Lab</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -121,14 +121,49 @@
             padding: 8px 14px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .tab-btn:hover {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
         }
         .tab-btn.active {
-            background: #007bff;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             color: #fff;
-            border-color: #007bff;
+            border-color: #1d4ed8;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+            transform: translateY(-1px);
         }
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
+        .subtab-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 0 0 12px 0;
+        }
+        .subtab-btn {
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #334155;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        .subtab-btn:hover {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
+        }
+        .subtab-btn.active {
+            background: #1d4ed8;
+            color: #fff;
+            border-color: #1d4ed8;
+        }
         .metric-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -615,6 +650,343 @@
             padding: 16px !important;
             margin: 0 !important;
         }
+
+        /* Jjek-Jjek 메신저 스타일 (Light Mode) */
+        .jjek-lab-messenger-wrap {
+            position: relative;
+        }
+
+        .jjek-lab-messenger-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .jjek-lab-messenger-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #dc2626;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .jjek-lab-messenger-badge[hidden] {
+            display: none;
+        }
+
+        .jjek-lab-messenger-btn:hover {
+            background: #dbeafe;
+            border-color: #60a5fa;
+        }
+
+        .jjek-lab-messenger-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #fff;
+            border: 1px solid #ddd;
+        }
+
+        .jjek-lab-messenger-panel {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: min(560px, calc(100vw - 20px));
+            background: #f8fbff;
+            border: 1px solid #cfe3ff;
+            border-radius: 14px;
+            box-shadow: 0 8px 22px rgba(29, 78, 216, 0.12);
+            padding: 16px;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            max-height: 680px;
+        }
+
+        .jjek-lab-messenger-panel[hidden] {
+            display: none;
+        }
+
+        .jjek-lab-messenger-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #dbeafe;
+        }
+
+        .jjek-lab-messenger-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #007bff;
+        }
+
+        .jjek-lab-messenger-close {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .jjek-lab-messenger-close:hover {
+            color: #1e3a8a;
+        }
+
+        .jjek-lab-messenger-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .jjek-lab-messenger-tab {
+            padding: 10px 18px;
+            background: #eaf2ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            color: #1d4ed8;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .jjek-lab-messenger-tab.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+
+        .jjek-lab-trainee-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+        }
+
+        .jjek-lab-trainee-item {
+            padding: 12px 14px;
+            background: #eef5ff;
+            border: 1px solid #d7e8ff;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            color: #1e3a8a;
+        }
+
+        .jjek-lab-trainee-item:hover {
+            background: #dbeafe;
+            border-color: #60a5fa;
+        }
+
+        .jjek-lab-trainee-item.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .jjek-lab-chat-body {
+            min-height: 360px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #edf4ff;
+            border-radius: 10px;
+            border: 1px solid #d7e8ff;
+            margin-bottom: 12px;
+        }
+
+        .jjek-lab-chat-msg {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+        }
+
+        .jjek-lab-chat-msg.trainee {
+            justify-content: flex-start;
+        }
+
+        .jjek-lab-chat-msg.admin {
+            justify-content: flex-end;
+        }
+
+        .jjek-lab-chat-bubble {
+            max-width: 82%;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .jjek-lab-chat-msg.trainee .jjek-lab-chat-bubble {
+            background: #007bff;
+            color: #fff;
+            border-bottom-left-radius: 3px;
+        }
+
+        .jjek-lab-chat-msg.admin .jjek-lab-chat-bubble {
+            background: #1d4ed8;
+            color: #fff;
+            border-bottom-right-radius: 3px;
+        }
+
+        .jjek-lab-chat-msg.admin .jjek-lab-chat-time {
+            text-align: right;
+        }
+
+        .jjek-lab-chat-operator-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .jjek-lab-chat-time {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .jjek-lab-chat-recipient {
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1d4ed8;
+        }
+        .jjek-lab-chat-msg.trainee .jjek-lab-chat-recipient {
+            color: #92400e;
+        }
+
+        .jjek-lab-chat-form {
+            display: flex;
+            gap: 8px;
+        }
+
+        .jjek-lab-chat-target-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .jjek-lab-chat-target-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+        }
+
+        .jjek-lab-chat-target {
+            min-width: 120px;
+            max-width: 170px;
+            padding: 8px 10px;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            background: #fff;
+            color: #334155;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .jjek-lab-chat-target:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+        }
+
+        .jjek-lab-chat-input {
+            flex: 1;
+            padding: 12px 14px;
+            background: #fff;
+            border: 1px solid #93c5fd;
+            border-radius: 8px;
+            color: #333;
+            font-size: 16px;
+            font-family: inherit;
+            resize: none;
+            min-height: 56px;
+            max-height: 130px;
+        }
+
+        .jjek-lab-chat-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+        }
+
+        .jjek-lab-chat-send {
+            padding: 12px 20px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .jjek-lab-chat-send:hover {
+            background: #0056b3;
+        }
+
+        .jjek-lab-chat-send:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .jjek-lab-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 140px;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .jjek-lab-empty-state-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+            opacity: 0.6;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -630,17 +1002,57 @@
     
     <div class="container">
         <div class="header">
-            <h1 id="courseTitle">Lab Management</h1>
-            <div>
+            <h1 id="courseTitle">Lab</h1>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="loggedInAdminName" style="margin-right:10px; font-weight:600; color:#334155;"></span>
+                <div class="jjek-lab-messenger-wrap">
+                    <button class="jjek-lab-messenger-btn" onclick="toggleJjekLabMessenger()">
+                        <img src="/static/images/jjek-jjek.png" alt="메신저" class="jjek-lab-messenger-icon">
+                        <span>메신저</span>
+                        <span class="jjek-lab-messenger-badge" id="jjekLabUnreadBadge" hidden>0</span>
+                    </button>
+                    <div class="jjek-lab-messenger-panel" id="jjekLabMessengerPanel" hidden>
+                        <div class="jjek-lab-messenger-header">
+                            <h3 class="jjek-lab-messenger-title">Jjek-Jjek 메신저</h3>
+                            <button class="jjek-lab-messenger-close" onclick="closeJjekLabMessenger()">✕</button>
+                        </div>
+                        <div id="jjekLabChatTab" style="display:flex; flex-direction:column; flex:1;">
+                            <div class="jjek-lab-chat-target-row">
+                                <span class="jjek-lab-chat-target-label">대화상대 선택</span>
+                                <select class="jjek-lab-chat-target" id="jjekLabReceiverSelect" onchange="handleLabReceiverChange(event)">
+                                    <option value="__all__">전체 사용자</option>
+                                </select>
+                            </div>
+                            <div class="jjek-lab-chat-body" id="jjekLabChatMessages">
+                                <div class="jjek-lab-empty-state">
+                                    <div class="jjek-lab-empty-state-icon">💬</div>
+                                    <div>메시지를 불러오는 중입니다</div>
+                                </div>
+                            </div>
+                            <form class="jjek-lab-chat-form" onsubmit="submitLabMessage(event)">
+                                <textarea
+                                    class="jjek-lab-chat-input"
+                                    id="jjekLabMessageInput"
+                                    placeholder="메시지를 입력하세요..."
+                                    onkeydown="handleJjekLabInputKeydown(event)"
+                                ></textarea>
+                                <button type="submit" class="jjek-lab-chat-send" id="jjekLabSendBtn">전송</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
                 <button class="button secondary" onclick="goBackToCourseList()" style="margin-right: 10px;">← 과정 목록</button>
                 <button class="button" onclick="showAddLabModal()">Add Lab</button>
             </div>
         </div>
 
         <div class="tab-nav">
-            <button class="tab-btn active" onclick="showCourseTab('lab', this)">Lab Management</button>
-            <button class="tab-btn" onclick="showCourseTab('user', this)">User Management</button>
-            <button class="tab-btn" onclick="showCourseTab('monitoring', this)">Monitoring</button>
+            <button class="tab-btn active" onclick="showCourseTab('lab', this)">Lab</button>
+            <button class="tab-btn" onclick="showCourseTab('user', this)">User</button>
+                <button class="tab-btn" id="adminMgmtTabBtn" onclick="showCourseTab('admin', this)">Admin</button>
+                <button class="tab-btn" id="testMgmtTabBtn" onclick="showCourseTab('test', this)">Test</button>
+                <button class="tab-btn" onclick="showCourseTab('monitoring', this)">Monitoring</button>
+                <button class="tab-btn" id="resultFilesTabBtn" onclick="showCourseTab('resultfiles', this)">Result files</button>
         </div>
         
         <!-- 랩 목록 섹션 -->
@@ -695,7 +1107,6 @@
                          <th>사용자명</th>
                          <th>마지막 본 콘텐츠</th>
                          <th>가입일</th>
-                         <th>운영자</th>
                          <th>관리</th>
                      </tr>
                  </thead>
@@ -703,6 +1114,99 @@
                     <!-- 사용자 목록이 여기에 동적으로 추가됩니다 -->
                 </tbody>
             </table>
+        </div>
+
+
+        <!-- Admin 섹션 -->
+        <div id="admin-tab" class="tab-pane">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="color:#333; margin:0;">Admin</h2>
+                <button class="button" onclick="showAddCourseAdminModal()">+ 관리자 추가</button>
+            </div>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:16px;">이 과정의 <strong>Course Manager</strong> 또는 <strong>Partner</strong>로 지정된 관리자 목록입니다. 배정된 관리자는 로그인 후 이 과정만 관리할 수 있습니다.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>관리자 ID</th>
+                        <th>이름</th>
+                        <th>역할</th>
+                        <th>등록일</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="courseAdminList">
+                    <tr><td colspan="5" style="text-align:center; padding:30px; color:#666;">⏳ 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="test-tab" class="tab-pane">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="color:#333; margin:0;">Test</h2>
+                <button class="button secondary" onclick="loadTestManagementScores()">새로고침</button>
+            </div>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:16px;">수강생의 테스트 완료 점수 이력을 확인합니다.</p>
+            <div id="testScoreFilterTabs" class="subtab-nav"></div>
+            <table>
+                <thead id="testScoreHead"></thead>
+                <tbody id="testScoreList">
+                    <tr><td colspan="9" style="text-align:center; padding:30px; color:#666;">⏳ 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Result files 식(Result files) 섹션 -->
+        <div id="resultfiles-tab" class="tab-pane">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="color:#333; margin:0;">Result files</h2>
+                <button class="button secondary" onclick="loadAssignmentResults()">&#128260; 새로고침</button>
+            </div>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:12px;">과제별 탭에서 제출 현황을 확인합니다. 미제출자는 파일명에 <strong>미제출</strong>로 표시됩니다.</p>
+            <div id="assignmentResultTabs" class="subtab-nav" style="margin-bottom:12px;"></div>
+            <div id="assignmentResultMeta" style="font-size:13px; color:#475569; margin-bottom:10px;"></div>
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>수강생</th>
+                        <th>파일명</th>
+                        <th>제출일시</th>
+                        <th>상태</th>
+                        <th>다운로드</th>
+                        <th>의견</th>
+                        <th>답변보기</th>
+                        <th>삭제</th>
+                    </tr>
+                </thead>
+                <tbody id="assignmentResultList">
+                    <tr><td colspan="9" style="text-align:center; padding:30px; color:#666;">&#9203; 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="assignmentPreviewModal" class="modal">
+            <div class="modal-content" style="max-width:900px; width:92%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h2 style="margin:0;">과제 미리보기</h2>
+                    <button class="button secondary" onclick="closeAssignmentPreviewModal()">닫기</button>
+                </div>
+                <div id="assignmentPreviewBody" style="max-height:70vh; overflow:auto;"></div>
+            </div>
+        </div>
+
+        <div id="assignmentFeedbackModal" class="modal">
+            <div class="modal-content" style="max-width:760px; width:92%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h2 id="assignmentFeedbackModalTitle" style="margin:0;">과제 의견</h2>
+                    <button class="button secondary" onclick="closeAssignmentFeedbackModal()">닫기</button>
+                </div>
+                <div id="assignmentFeedbackMeta" style="font-size:13px; color:#475569; margin-bottom:8px;"></div>
+                <textarea id="assignmentFeedbackInput" rows="7" style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:10px; font-size:14px; resize:vertical;"></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+                    <button class="button secondary" onclick="closeAssignmentFeedbackModal()">취소</button>
+                    <button class="button" id="assignmentFeedbackSaveBtn" onclick="saveAssignmentFeedback()">저장</button>
+                </div>
+            </div>
         </div>
 
         <!-- 모니터링 섹션 -->
@@ -738,6 +1242,26 @@
             <div class="monitoring-console" id="monitoringConsole">
                 <div class="console-line" style="color: #666;">Waiting for events...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- 랩 추가/수정 모달 -->
+    <!-- Course Admin 추가 모달 -->
+    <div id="courseAdminModal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <h2>과정 관리자 추가</h2>
+            <form id="courseAdminForm">
+                <div class="form-group">
+                    <label for="courseAdminSelect">관리자 계정 선택 (Partner:50 / Course Manager:30):</label>
+                    <select id="courseAdminSelect" required>
+                        <option value="">관리자 계정을 선택하세요</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">추가</button>
+                    <button type="button" class="button secondary" onclick="closeModal('courseAdminModal')">취소</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -802,7 +1326,13 @@
                                 <option value="code">💻 코드 (소스 코드)</option>
                                 <option value="web">🔗 웹페이지 (URL 링크)</option>
                                 <option value="web_markdown">🌐 웹 마크다운 (URL)</option>
+                                <option value="assignment">📎 과제 (파일 제출)</option>
                             </select>
+                        </div>
+                        <div class="form-group" id="assignmentFileGroup" style="display: none;">
+                            <label for="assignmentFile">과제 파일</label>
+                            <input type="file" id="assignmentFile">
+                            <div id="assignmentFileInfo" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
                         </div>
                         <div class="form-group" id="codeLanguageGroup" style="display: none;">
                             <label for="codeLanguage">코드 언어:</label>
@@ -926,6 +1456,35 @@
         let trainingKey = null;
         let userRole = localStorage.getItem('admin_role') || 'admin';
         let isSupervisor = userRole === 'supervisor';
+        let adminAccountsCache = [];
+        let testScoreRowsCache = [];
+        let testScoreGroupCache = [];
+        let selectedTestScoreGroupKey = 'overall';
+        let assignmentUsersCache = [];
+        let assignmentResultRowsCache = [];
+        let assignmentTabCache = [];
+        let selectedAssignmentTabIndex = 0;
+        let assignmentPreviewRows = [];
+        let assignmentFeedbackTarget = null;
+
+        function getAdminLevel() {
+            const raw = localStorage.getItem('admin_level');
+            const parsed = Number(raw);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function canManageCourseAdmins() {
+            const adminLevel = getAdminLevel();
+            return adminLevel === 100 || adminLevel === 80;
+        }
+
+        function isRestrictedLabEditor() {
+            const adminLevel = getAdminLevel();
+            if (adminLevel === 100 || adminLevel === 80) {
+                return false;
+            }
+            return userRole === 'partner' || userRole === 'course_manager' || adminLevel === 50 || adminLevel === 30;
+        }
         
         // ===== 유틸리티 함수 =====
         // 쿼리스트링에서 training_key 추출
@@ -950,32 +1509,47 @@
         
         // 감독자인 경우 UI 조정
         if (isSupervisor) {
-            // 랩 관리 탭 숨기기
             document.addEventListener('DOMContentLoaded', function() {
                 const labTabBtn = document.querySelector('.tab-btn[onclick*="lab"]');
                 if (labTabBtn) {
                     labTabBtn.style.display = 'none';
                 }
-                
-                // 랩 탭 숨기기
+                const adminTabBtn = document.querySelector('.tab-btn[onclick*="admin"]');
+                if (adminTabBtn) {
+                    adminTabBtn.style.display = 'none';
+                }
+                const testTabBtn = document.querySelector('.tab-btn[onclick*="test"]');
+                if (testTabBtn) {
+                    testTabBtn.style.display = 'none';
+                }
+
                 const labTab = document.getElementById('lab-tab');
                 if (labTab) {
                     labTab.style.display = 'none';
                 }
-                
-                // 사용자 탭을 기본으로 활성화
+                const adminTab = document.getElementById('admin-tab');
+                if (adminTab) {
+                    adminTab.style.display = 'none';
+                }
+                const testTab = document.getElementById('test-tab');
+                if (testTab) {
+                    testTab.style.display = 'none';
+                }
+
                 const userTabBtn = document.querySelector('.tab-btn[onclick*="user"]');
                 if (userTabBtn) {
                     userTabBtn.classList.add('active');
-                    document.querySelector('.tab-btn.active:not([onclick*="user"])').classList.remove('active');
+                    const activeBtn = document.querySelector('.tab-btn.active:not([onclick*="user"])');
+                    if (activeBtn) {
+                        activeBtn.classList.remove('active');
+                    }
                 }
-                
+
                 const userTab = document.getElementById('user-tab');
                 if (userTab) {
                     userTab.classList.add('active');
                 }
-                
-                // 랩 탭에서 active 제거
+
                 document.querySelectorAll('.tab-pane').forEach(pane => {
                     if (pane.id !== 'user-tab') {
                         pane.classList.remove('active');
@@ -1000,6 +1574,736 @@
             }
             if (tabName === 'monitoring') {
                 startMonitoringPolling(true);
+            }
+            if (tabName === 'admin') {
+                loadCourseAdmins();
+            }
+            if (tabName === 'test') {
+                loadTestManagementScores();
+            }
+            if (tabName === 'resultfiles') {
+                loadAssignmentResults();
+            }
+        }
+
+        function canDeleteTestScores() {
+            return !isSupervisor;
+        }
+
+        function getTestScoreGroupKey(item) {
+            return `lab:${item.lab_id || ''}|content:${item.content_id || ''}`;
+        }
+
+        function getTestScoreGroupLabel(item) {
+            const subject = item.lab_content_subject || '테스트';
+            const contentNo = item.content_id || '-';
+            return `${subject} (#${contentNo})`;
+        }
+
+        function buildTestScoreGroups(rows) {
+            const groupMap = new Map();
+            rows.forEach(item => {
+                const key = getTestScoreGroupKey(item);
+                if (!groupMap.has(key)) {
+                    groupMap.set(key, {
+                        key,
+                        label: getTestScoreGroupLabel(item),
+                        lab_id: item.lab_id,
+                        content_id: item.content_id,
+                        created_sort: item.completed_at || item.create_date || '',
+                    });
+                }
+            });
+            return Array.from(groupMap.values()).sort((a, b) => String(a.created_sort).localeCompare(String(b.created_sort)));
+        }
+
+        function renderTestScoreFilterTabs() {
+            const container = document.getElementById('testScoreFilterTabs');
+            if (!container) {
+                return;
+            }
+
+            const tabs = [{ key: 'overall', label: '종합' }, ...testScoreGroupCache.map(group => ({ key: group.key, label: group.label }))];
+            container.innerHTML = tabs.map(tab => `
+                <button class="subtab-btn ${selectedTestScoreGroupKey === tab.key ? 'active' : ''}" onclick="selectTestScoreGroup('${tab.key.replace(/'/g, "\\'")}')">${tab.label}</button>
+            `).join('');
+        }
+
+        function renderTestScoreOverallTable() {
+            const thead = document.getElementById('testScoreHead');
+            const tbody = document.getElementById('testScoreList');
+            if (!thead || !tbody) {
+                return;
+            }
+
+            const groups = testScoreGroupCache;
+            thead.innerHTML = `
+                <tr>
+                    <th>사용자</th>
+                    ${groups.map(group => `<th>${group.label}</th>`).join('')}
+                    <th>평균</th>
+                    <th>점수 변화</th>
+                </tr>
+            `;
+
+            if (!Array.isArray(testScoreRowsCache) || testScoreRowsCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666;">저장된 테스트 결과가 없습니다.</td></tr>';
+                return;
+            }
+
+            const users = new Map();
+            testScoreRowsCache.forEach(item => {
+                const userKey = item.member_id || 'unknown';
+                if (!users.has(userKey)) {
+                    users.set(userKey, {
+                        member_id: item.member_id || '-',
+                        member_name: item.member_name || '-',
+                        byGroup: new Map(),
+                        history: [],
+                    });
+                }
+                const userEntry = users.get(userKey);
+                const groupKey = getTestScoreGroupKey(item);
+                const existing = userEntry.byGroup.get(groupKey);
+                const sortValue = item.completed_at || item.create_date || '';
+                if (!existing || String(existing.sortValue).localeCompare(String(sortValue)) < 0) {
+                    userEntry.byGroup.set(groupKey, {
+                        score: Number(item.score_percent || 0),
+                        completedAt: item.completed_at || item.create_date || '-',
+                        sortValue,
+                    });
+                }
+                userEntry.history.push({
+                    score: Number(item.score_percent || 0),
+                    sortValue,
+                });
+            });
+
+            const userRows = Array.from(users.values()).sort((a, b) => String(a.member_name).localeCompare(String(b.member_name)));
+            tbody.innerHTML = '';
+            userRows.forEach(user => {
+                const scoreCells = groups.map(group => {
+                    const data = user.byGroup.get(group.key);
+                    if (!data) {
+                        return '<td style="color:#999; text-align:center;">-</td>';
+                    }
+                    return `<td style="text-align:center;"><strong>${data.score.toFixed(1)}점</strong><div style="font-size:12px; color:#6b7280; margin-top:2px;">${data.completedAt}</div></td>`;
+                });
+
+                const scoreList = Array.from(user.byGroup.values()).map(v => v.score);
+                const avg = scoreList.length ? (scoreList.reduce((acc, cur) => acc + cur, 0) / scoreList.length) : null;
+
+                const sortedHistory = [...user.history].sort((a, b) => String(a.sortValue).localeCompare(String(b.sortValue)));
+                const trendText = sortedHistory.length
+                    ? sortedHistory.map(item => item.score.toFixed(1)).join(' → ')
+                    : '-';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${user.member_name} (${user.member_id})</td>
+                    ${scoreCells.join('')}
+                    <td style="text-align:center;">${avg != null ? `<strong>${avg.toFixed(1)}점</strong>` : '-'}</td>
+                    <td style="font-size:12px; color:#334155; white-space:nowrap;">${trendText}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTestScoreDetailTable(groupKey) {
+            const thead = document.getElementById('testScoreHead');
+            const tbody = document.getElementById('testScoreList');
+            if (!thead || !tbody) {
+                return;
+            }
+
+            thead.innerHTML = `
+                <tr>
+                    <th>시작 시간</th>
+                    <th>종료 시간</th>
+                    <th>사용자</th>
+                    <th>랩</th>
+                    <th>콘텐츠</th>
+                    <th>풀이</th>
+                    <th>정답</th>
+                    <th>점수</th>
+                    <th>관리</th>
+                </tr>
+            `;
+
+            const rows = testScoreRowsCache.filter(item => getTestScoreGroupKey(item) === groupKey);
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#666;">해당 테스트 결과가 없습니다.</td></tr>';
+                return;
+            }
+
+            const canDelete = canDeleteTestScores();
+            tbody.innerHTML = '';
+            rows.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.started_at || '-'}</td>
+                    <td>${item.completed_at || item.create_date || '-'}</td>
+                    <td>${item.member_name || '-'} (${item.member_id || '-'})</td>
+                    <td>${item.lab_name || '-'} (#${item.lab_id || '-'})</td>
+                    <td>${item.lab_content_subject || '-'} (#${item.content_id || '-'})</td>
+                    <td>${item.answered_questions || 0} / ${item.total_questions || 0}</td>
+                    <td>${item.solved_questions || 0} / ${item.total_questions || 0}</td>
+                    <td><strong>${Number(item.score_percent || 0).toFixed(1)}점</strong></td>
+                    <td>${canDelete ? `<button class="button danger" onclick="deleteTestManagementScore(${item.id})">삭제</button>` : '<span style="color:#999;">-</span>'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderSelectedTestScoreView() {
+            if (selectedTestScoreGroupKey === 'overall') {
+                renderTestScoreOverallTable();
+                return;
+            }
+            renderTestScoreDetailTable(selectedTestScoreGroupKey);
+        }
+
+        function selectTestScoreGroup(groupKey) {
+            selectedTestScoreGroupKey = groupKey;
+            renderTestScoreFilterTabs();
+            renderSelectedTestScoreView();
+        }
+
+        async function loadAssignmentResults() {
+            const tbody = document.getElementById('assignmentResultList');
+            const tabs = document.getElementById('assignmentResultTabs');
+            if (!tbody || !tabs) return;
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#666;">⏳ 불러오는 중...</td></tr>';
+            tabs.innerHTML = '';
+
+            try {
+                const [usersResp, resultsResp, labsResp] = await Promise.all([
+                    fetch(`/api/admin/users/course/${encodeURIComponent(trainingKey)}`),
+                    fetch(`/api/admin/assignment/results?training_key=${encodeURIComponent(trainingKey)}`),
+                    fetch(`/api/admin/labs?training_key=${encodeURIComponent(trainingKey)}`)
+                ]);
+
+                const usersRaw = await usersResp.text();
+                const resultsRaw = await resultsResp.text();
+                const labsRaw = await labsResp.text();
+                let users = [];
+                let results = [];
+                let labs = [];
+                try { users = JSON.parse(usersRaw) || []; } catch { users = []; }
+                try { results = JSON.parse(resultsRaw) || []; } catch { results = []; }
+                try { labs = JSON.parse(labsRaw) || []; } catch { labs = []; }
+
+                if (!usersResp.ok) throw new Error('사용자 목록을 불러오지 못했습니다.');
+                if (!resultsResp.ok) throw new Error((results && results.detail) || '제출 결과를 불러오지 못했습니다.');
+                if (!labsResp.ok) throw new Error('랩 목록을 불러오지 못했습니다.');
+
+                assignmentUsersCache = Array.isArray(users) ? users : [];
+                assignmentResultRowsCache = Array.isArray(results) ? results : [];
+
+                const labList = Array.isArray(labs)
+                    ? labs
+                    : (labs && Array.isArray(labs.labs) ? labs.labs : []);
+
+                const contentsByLab = await Promise.all(
+                    labList.map(async (lab) => {
+                        const labId = Number(lab.lab_id);
+                        try {
+                            const r = await fetch(`/api/admin/lab_contents?training_key=${encodeURIComponent(trainingKey)}&lab_id=${encodeURIComponent(labId)}`);
+                            if (!r.ok) return [];
+                            const arr = await r.json();
+                            if (!Array.isArray(arr)) return [];
+                            return arr
+                                .filter(c => Number(c.lab_content_type) === 5)
+                                .map(c => ({
+                                    key: `lab:${labId}|content:${c.content_id}`,
+                                    lab_id: labId,
+                                    content_id: Number(c.content_id),
+                                    label: `${c.lab_content_subject || '과제'} (#${c.content_id})`
+                                }));
+                        } catch (_) {
+                            return [];
+                        }
+                    })
+                );
+
+                assignmentTabCache = contentsByLab.flat().sort((a, b) => {
+                    if (a.lab_id !== b.lab_id) return a.lab_id - b.lab_id;
+                    return a.content_id - b.content_id;
+                });
+
+                if (assignmentTabCache.length === 0) {
+                    tabs.innerHTML = '';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:#888;">등록된 과제 콘텐츠가 없습니다.</td></tr>';
+                    const meta = document.getElementById('assignmentResultMeta');
+                    if (meta) meta.textContent = '';
+                    return;
+                }
+
+                if (selectedAssignmentTabIndex >= assignmentTabCache.length) {
+                    selectedAssignmentTabIndex = 0;
+                }
+
+                renderAssignmentResultTabs();
+                renderSelectedAssignmentResultRows();
+            } catch (err) {
+                const msg = err && err.message ? err.message : String(err);
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#ef4444;">오류: ${escapeHtml(msg)}</td></tr>`;
+            }
+        }
+
+        function renderAssignmentResultTabs() {
+            const tabs = document.getElementById('assignmentResultTabs');
+            if (!tabs) return;
+            tabs.innerHTML = assignmentTabCache.map((item, idx) => `
+                <button class="subtab-btn ${idx === selectedAssignmentTabIndex ? 'active' : ''}" onclick="selectAssignmentResultTab(${idx})">${escapeHtml(item.label)}</button>
+            `).join('');
+        }
+
+        function selectAssignmentResultTab(idx) {
+            selectedAssignmentTabIndex = idx;
+            renderAssignmentResultTabs();
+            renderSelectedAssignmentResultRows();
+        }
+
+        function renderSelectedAssignmentResultRows() {
+            const tbody = document.getElementById('assignmentResultList');
+            const meta = document.getElementById('assignmentResultMeta');
+            if (!tbody) return;
+            const tab = assignmentTabCache[selectedAssignmentTabIndex];
+            if (!tab) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">과제를 선택해주세요.</td></tr>';
+                if (meta) meta.textContent = '';
+                return;
+            }
+
+            const rowsForTab = assignmentResultRowsCache.filter(r => Number(r.lab_id) === Number(tab.lab_id) && Number(r.content_id) === Number(tab.content_id));
+            const byUser = new Map();
+            rowsForTab.forEach(r => {
+                const key = String(r.member_id || '');
+                const prev = byUser.get(key);
+                if (!prev || Number(r.id || 0) > Number(prev.id || 0)) {
+                    byUser.set(key, r);
+                }
+            });
+
+            const usersMap = new Map();
+            assignmentUsersCache.forEach(u => {
+                usersMap.set(String(u.member_id || ''), {
+                    member_id: String(u.member_id || ''),
+                    member_name: String(u.member_name || u.member_id || '')
+                });
+            });
+            byUser.forEach((v, k) => {
+                if (!usersMap.has(k)) {
+                    usersMap.set(k, {
+                        member_id: String(v.member_id || ''),
+                        member_name: String(v.member_name || v.member_id || '')
+                    });
+                }
+            });
+
+            const users = Array.from(usersMap.values()).sort((a, b) => String(a.member_name).localeCompare(String(b.member_name)));
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#888;">등록된 사용자가 없습니다.</td></tr>';
+                if (meta) meta.textContent = '';
+                return;
+            }
+
+            let submitCount = 0;
+            assignmentPreviewRows = [];
+            tbody.innerHTML = users.map((u, idx) => {
+                const submitted = byUser.get(u.member_id);
+                const isSubmitted = !!submitted;
+                if (isSubmitted) submitCount += 1;
+                const fileName = isSubmitted ? (submitted.file_name || '-') : '미제출';
+                const submittedAt = isSubmitted ? (submitted.submitted_at || '-') : '-';
+                const downloadCell = isSubmitted && submitted.file_url
+                    ? `<a href="${escapeHtml(submitted.file_url)}" target="_blank" style="color:#2563eb; text-decoration:underline;">다운로드</a>`
+                    : '<span style="color:#9ca3af;">-</span>';
+                const deleteCell = isSubmitted
+                    ? `<button class="button danger" style="padding:4px 10px; font-size:12px;" onclick="deleteAssignmentResult(${submitted.id})">삭제</button>`
+                    : '<span style="color:#9ca3af;">-</span>';
+                assignmentPreviewRows.push({
+                    submission_id: isSubmitted ? Number(submitted.id || 0) : 0,
+                    tab_label: tab.label,
+                    member_id: u.member_id,
+                    member_name: u.member_name,
+                    is_submitted: isSubmitted,
+                    file_name: isSubmitted ? (submitted.file_name || '-') : '미제출',
+                    submitted_at: submittedAt,
+                    file_url: isSubmitted ? (submitted.file_url || '') : '',
+                    feedback_text: isSubmitted ? String(submitted.feedback_text || '') : '',
+                    feedback_status: isSubmitted ? String(submitted.feedback_status || 'pending') : 'pending',
+                    feedback_at: isSubmitted ? String(submitted.feedback_at || '-') : '-',
+                    feedback_admin_name: isSubmitted ? String(submitted.feedback_admin_name || '') : ''
+                });
+                const fileCell = isSubmitted
+                    ? `<div style="display:flex; align-items:center; gap:8px;">
+                        <button class="button secondary" style="padding:2px 8px; font-size:12px; text-decoration:underline;" onclick="openAssignmentPreviewModal(${idx})">${escapeHtml(fileName)}</button>
+                        <button class="button" style="padding:4px 10px; font-size:12px;" onclick="openAssignmentPreviewModal(${idx})">미리 보기</button>
+                      </div>`
+                    : `<span style="color:#b91c1c; font-weight:700;">미제출</span>`;
+                const hasFeedback = isSubmitted && String(submitted.feedback_text || '').trim() !== '';
+                const statusCell = !isSubmitted
+                    ? '<span style="color:#b91c1c; font-weight:700;">미제출</span>'
+                    : hasFeedback
+                        ? '<span style="color:#065f46; font-weight:700;">답변 완료</span>'
+                        : '<span style="color:#b45309; font-weight:700;">검토 대기</span>';
+                const feedbackActionCell = isSubmitted
+                    ? `<button class="button" style="padding:4px 10px; font-size:12px;" onclick="openAssignmentFeedbackModal(${idx})">${hasFeedback ? '의견 수정' : '의견 달기'}</button>`
+                    : '<span style="color:#9ca3af;">-</span>';
+                const feedbackViewCell = hasFeedback
+                    ? `<button class="button secondary" style="padding:4px 10px; font-size:12px;" onclick="viewAssignmentFeedback(${idx})">답변보기</button>`
+                    : '<span style="color:#9ca3af;">-</span>';
+
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${escapeHtml(u.member_name)} (${escapeHtml(u.member_id)})</td>
+                        <td title="${escapeHtml(fileName)}">${fileCell}</td>
+                        <td>${submittedAt}</td>
+                        <td>${statusCell}</td>
+                        <td>${downloadCell}</td>
+                        <td>${feedbackActionCell}</td>
+                        <td>${feedbackViewCell}</td>
+                        <td>${deleteCell}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (meta) {
+                meta.textContent = `선택 과제: ${tab.label} | 제출 ${submitCount} / 전체 ${users.length}`;
+            }
+        }
+
+        function closeAssignmentPreviewModal() {
+            const modal = document.getElementById('assignmentPreviewModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function openAssignmentPreviewModal(index) {
+            const modal = document.getElementById('assignmentPreviewModal');
+            const body = document.getElementById('assignmentPreviewBody');
+            const row = assignmentPreviewRows[index];
+            if (!modal || !body || !row) return;
+
+            const isSubmitted = !!row.is_submitted;
+            const ext = String(row.file_name || '').toLowerCase().split('.').pop();
+            let previewHtml = '<div style="color:#9ca3af;">미리보기를 지원하지 않는 형식입니다. 다운로드 후 확인해주세요.</div>';
+
+            if (!isSubmitted) {
+                previewHtml = '<div style="color:#b91c1c; font-weight:700;">미제출 상태입니다.</div>';
+            } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext)) {
+                previewHtml = `<img src="${escapeHtml(row.file_url)}" alt="preview" style="max-width:100%; border:1px solid #e5e7eb; border-radius:8px;">`;
+            } else if (ext === 'pdf') {
+                previewHtml = `<iframe src="${escapeHtml(row.file_url)}" style="width:100%; height:62vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            } else if (['doc', 'docx'].includes(ext)) {
+                const officeSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(row.file_url)}`;
+                previewHtml = `<iframe src="${officeSrc}" style="width:100%; height:62vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            } else if (['ppt', 'pptx'].includes(ext)) {
+                const officeSrc = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(row.file_url)}`;
+                previewHtml = `<iframe src="${officeSrc}" style="width:100%; height:62vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            } else if (['txt', 'text', 'md', 'csv', 'log', 'json', 'xml', 'yaml', 'yml', 'ini', 'conf', 'sql'].includes(ext)) {
+                previewHtml = `<iframe src="${escapeHtml(row.file_url)}" style="width:100%; height:62vh; border:1px solid #e5e7eb; border-radius:8px;"></iframe>`;
+            }
+
+            body.innerHTML = `
+                <div style="margin-bottom:10px; font-size:14px; color:#334155;">
+                    <div><strong>과제:</strong> ${escapeHtml(row.tab_label || '-')}</div>
+                    <div><strong>수강생:</strong> ${escapeHtml(row.member_name || '-')} (${escapeHtml(row.member_id || '-')})</div>
+                    <div><strong>파일명:</strong> ${escapeHtml(row.file_name || '-')}</div>
+                    <div><strong>제출일시:</strong> ${escapeHtml(row.submitted_at || '-')}</div>
+                    ${isSubmitted ? `<div style="margin-top:6px;"><a href="${escapeHtml(row.file_url)}" target="_blank" style="color:#2563eb; text-decoration:underline;">새 창에서 파일 열기</a></div>` : ''}
+                </div>
+                <div>${previewHtml}</div>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        async function deleteAssignmentResult(submissionId) {
+            if (!confirm('이 제출 기록을 삭제하시겠습니까?')) return;
+            try {
+                const resp = await fetch(`/api/admin/assignment/results/${submissionId}?training_key=${encodeURIComponent(trainingKey)}`, { method: 'DELETE' });
+                if (!resp.ok) {
+                    const data = await resp.json().catch(() => ({}));
+                    alert(data.detail || '삭제 실패');
+                    return;
+                }
+                loadAssignmentResults();
+            } catch (err) {
+                alert(`삭제 실패: ${err.message}`);
+            }
+        }
+
+        function closeAssignmentFeedbackModal() {
+            const modal = document.getElementById('assignmentFeedbackModal');
+            const input = document.getElementById('assignmentFeedbackInput');
+            const meta = document.getElementById('assignmentFeedbackMeta');
+            const title = document.getElementById('assignmentFeedbackModalTitle');
+            if (modal) modal.style.display = 'none';
+            if (input) {
+                input.value = '';
+                input.readOnly = false;
+            }
+            if (meta) meta.textContent = '';
+            if (title) title.textContent = '과제 의견';
+            assignmentFeedbackTarget = null;
+        }
+
+        function openAssignmentFeedbackModal(index) {
+            const row = assignmentPreviewRows[index];
+            const modal = document.getElementById('assignmentFeedbackModal');
+            const input = document.getElementById('assignmentFeedbackInput');
+            const meta = document.getElementById('assignmentFeedbackMeta');
+            const title = document.getElementById('assignmentFeedbackModalTitle');
+            const saveBtn = document.getElementById('assignmentFeedbackSaveBtn');
+            if (!row || !row.is_submitted || !modal || !input || !meta || !title || !saveBtn) return;
+
+            assignmentFeedbackTarget = row;
+            title.textContent = '과제 의견 작성';
+            meta.textContent = `${row.member_name} (${row.member_id}) · ${row.file_name}`;
+            input.value = row.feedback_text || '';
+            input.readOnly = false;
+            saveBtn.style.display = '';
+            modal.style.display = 'flex';
+            setTimeout(() => input.focus(), 0);
+        }
+
+        function viewAssignmentFeedback(index) {
+            const row = assignmentPreviewRows[index];
+            const modal = document.getElementById('assignmentFeedbackModal');
+            const input = document.getElementById('assignmentFeedbackInput');
+            const meta = document.getElementById('assignmentFeedbackMeta');
+            const title = document.getElementById('assignmentFeedbackModalTitle');
+            const saveBtn = document.getElementById('assignmentFeedbackSaveBtn');
+            if (!row || !modal || !input || !meta || !title || !saveBtn) return;
+
+            title.textContent = '답변 보기';
+            const reviewer = row.feedback_admin_name ? ` · 작성자: ${row.feedback_admin_name}` : '';
+            const feedbackAt = row.feedback_at && row.feedback_at !== '-' ? ` · 작성일시: ${row.feedback_at}` : '';
+            meta.textContent = `${row.member_name} (${row.member_id})${reviewer}${feedbackAt}`;
+            input.value = row.feedback_text || '';
+            input.readOnly = true;
+            saveBtn.style.display = 'none';
+            modal.style.display = 'flex';
+        }
+
+        async function saveAssignmentFeedback() {
+            const row = assignmentFeedbackTarget;
+            const input = document.getElementById('assignmentFeedbackInput');
+            const saveBtn = document.getElementById('assignmentFeedbackSaveBtn');
+            if (!row || !row.submission_id || !input || !saveBtn) {
+                return;
+            }
+
+            const feedbackText = String(input.value || '').trim();
+            if (!feedbackText) {
+                alert('의견 내용을 입력해주세요.');
+                input.focus();
+                return;
+            }
+
+            const reviewerId = (localStorage.getItem('admin_id') || '').trim();
+            const reviewerName = (localStorage.getItem('admin_name') || reviewerId || '운영자').trim();
+            const reviewerRole = isSupervisor ? 'supervisor' : (localStorage.getItem('admin_role') || 'admin');
+
+            try {
+                saveBtn.disabled = true;
+                const resp = await fetch(`/api/admin/assignment/results/${row.submission_id}/feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        training_key: trainingKey,
+                        feedback_text: feedbackText,
+                        reviewer_id: reviewerId,
+                        reviewer_name: reviewerName,
+                        reviewer_role: reviewerRole,
+                    }),
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    throw new Error(data.detail || '의견 저장에 실패했습니다.');
+                }
+
+                closeAssignmentFeedbackModal();
+                await loadAssignmentResults();
+                alert('의견이 저장되었고, 제출자 짹짹으로 전달되었습니다.');
+            } catch (error) {
+                alert(error.message || '의견 저장 중 오류가 발생했습니다.');
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        async function loadTestManagementScores() {
+            const thead = document.getElementById('testScoreHead');
+            const tbody = document.getElementById('testScoreList');
+            if (!tbody) {
+                return;
+            }
+
+            if (thead) {
+                thead.innerHTML = '';
+            }
+
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#666;">불러오는 중...</td></tr>';
+
+            try {
+                const response = await fetch(`/api/admin/test-management/scores?training_key=${encodeURIComponent(trainingKey)}`);
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '테스트 결과를 불러오지 못했습니다.');
+                }
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    testScoreRowsCache = [];
+                    testScoreGroupCache = [];
+                    selectedTestScoreGroupKey = 'overall';
+                    renderTestScoreFilterTabs();
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#666;">저장된 테스트 결과가 없습니다.</td></tr>';
+                    return;
+                }
+
+                testScoreRowsCache = data;
+                testScoreGroupCache = buildTestScoreGroups(data);
+                if (selectedTestScoreGroupKey !== 'overall' && !testScoreGroupCache.some(group => group.key === selectedTestScoreGroupKey)) {
+                    selectedTestScoreGroupKey = 'overall';
+                }
+                renderTestScoreFilterTabs();
+                renderSelectedTestScoreView();
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#dc2626;">${error.message}</td></tr>`;
+            }
+        }
+
+        async function deleteTestManagementScore(resultId) {
+            if (!canDeleteTestScores()) {
+                alert('테스트 결과 삭제 권한이 없습니다.');
+                return;
+            }
+            if (!confirm('이 테스트 결과를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/test-management/scores/${resultId}?training_key=${encodeURIComponent(trainingKey)}`, {
+                    method: 'DELETE',
+                });
+                const raw = await response.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    data = null;
+                }
+                if (!response.ok) {
+                    throw new Error((data && data.detail) || raw || '삭제에 실패했습니다.');
+                }
+                await loadTestManagementScores();
+            } catch (error) {
+                alert(error.message || '테스트 결과 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function loadCourseAdmins() {
+            try {
+                const response = await fetch(`/api/admin/course-admins/${trainingKey}`);
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '과정 관리자 목록을 불러오지 못했습니다.');
+                }
+
+                const tbody = document.getElementById('courseAdminList');
+                tbody.innerHTML = '';
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td colspan="5" style="text-align:center; color:#666;">등록된 과정 관리자가 없습니다.</td>';
+                    tbody.appendChild(tr);
+                    return;
+                }
+
+                data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const roleLabel = item.role_type === 'partner' ? 'Partner' : 'Course Manager';
+                    const canManage = canManageCourseAdmins();
+                    tr.innerHTML = `
+                        <td>${item.admin_id || ''}</td>
+                        <td>${item.admin_name || ''}</td>
+                        <td>${roleLabel}</td>
+                        <td>${item.create_date || ''}</td>
+                        <td>${canManage ? `<button class="button danger" onclick="deleteCourseAdmin(${item.id})">삭제</button>` : '<span style="color:#999;">-</span>'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                const tbody = document.getElementById('courseAdminList');
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#dc2626;">${error.message}</td></tr>`;
+                }
+            }
+        }
+
+        async function showAddCourseAdminModal() {
+            if (isSupervisor || !canManageCourseAdmins()) {
+                alert('관리자 추가/삭제 권한이 없습니다. (Owner 100 / Contributor 80 전용)');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/admin-accounts');
+                const raw = await response.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    data = null;
+                }
+                if (!response.ok) {
+                    throw new Error((data && data.detail) || raw || '관리자 계정을 불러오지 못했습니다.');
+                }
+
+                adminAccountsCache = Array.isArray(data) ? data : [];
+                const select = document.getElementById('courseAdminSelect');
+                select.innerHTML = '<option value="">관리자 계정을 선택하세요</option>';
+                adminAccountsCache.forEach(acc => {
+                    const option = document.createElement('option');
+                    option.value = acc.member_id;
+                    const roleLabel = acc.role_label || (Number(acc.role) === 50 ? 'Partner' : 'Course Manager');
+                    option.textContent = `[${roleLabel}] ${acc.member_name || acc.member_id} (${acc.member_id})`;
+                    option.dataset.memberName = acc.member_name || acc.member_id;
+                    select.appendChild(option);
+                });
+                document.getElementById('courseAdminModal').style.display = 'flex';
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteCourseAdmin(recordId) {
+            if (!canManageCourseAdmins()) {
+                alert('관리자 추가/삭제 권한이 없습니다. (Owner 100 / Contributor 80 전용)');
+                return;
+            }
+            if (!confirm('이 과정 관리자를 삭제하시겠습니까?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/course-admins/${recordId}`, { method: 'DELETE' });
+                const raw = await response.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    data = null;
+                }
+                if (!response.ok) {
+                    throw new Error((data && data.detail) || raw || '삭제에 실패했습니다.');
+                }
+                loadCourseAdmins();
+            } catch (error) {
+                alert(error.message);
             }
         }
         
@@ -1123,6 +2427,14 @@
 
                         const labNameEscaped = (lab.lab_name || '').replace(/"/g, '&quot;');
                         const labContentEscaped = (lab.lab_content || '').replace(/"/g, '&quot;');
+                                                const restrictedEditor = isRestrictedLabEditor();
+                                                const labEditDeleteActions = restrictedEditor
+                                                    ? ``
+                                                        : `
+                                                                <button class="icon-btn" onclick="editLab(${lab.lab_id})" title="수정" aria-label="수정">✏️</button>
+                                                                <button class="icon-btn" onclick="copyLab(${lab.lab_id}, '${labNameEscaped}')" title="다른 과정으로 복사" aria-label="복사">📋</button>
+                                                                <button class="icon-btn delete" onclick="deleteLab(${lab.lab_id})" title="삭제" aria-label="삭제">🗑️</button>
+                                                            `;
                         
                         tr.innerHTML = `
                             <td>${lab.lab_id}</td>
@@ -1133,15 +2445,14 @@
                             <td>${lab.create_date || ''}</td>
                             <td>
                                 <div class="icon-actions">
-                                    <button class="icon-btn" onclick="editLab(${lab.lab_id})" title="수정" aria-label="수정">✏️</button>
-                                    <button class="icon-btn" onclick="copyLab(${lab.lab_id}, '${labNameEscaped}')" title="다른 과정으로 복사" aria-label="복사">📋</button>
-                                    <button class="icon-btn delete" onclick="deleteLab(${lab.lab_id})" title="삭제" aria-label="삭제">🗑️</button>
+                                    ${labEditDeleteActions}
                                 </div>
                             </td>
                             <td>
                                 <button
                                     class="status-text-btn ${lab.lab_status == 20 ? 'active' : 'inactive'}"
-                                    onclick="toggleLabStatus(${lab.lab_id}, ${lab.lab_status}, this)">
+                                    onclick="toggleLabStatus(${lab.lab_id}, ${lab.lab_status}, this)"
+                                    ${restrictedEditor ? 'disabled title="권한 없음"' : ''}>
                                     ${lab.lab_status == 20 ? 'Active' : 'Deactive'}
                                 </button>
                             </td>
@@ -1158,7 +2469,7 @@
                                 <div class="content-details" id="content-details-${lab.lab_id}">
                                     <div class="content-header">
                                         <h3 style="margin: 0; color: #333;">${lab.lab_name} - 콘텐츠 목록</h3>
-                                        <button class="icon-btn" onclick="showAddContentModal(${lab.lab_id})" title="콘텐츠 추가" aria-label="콘텐츠 추가">➕</button>
+                                        ${restrictedEditor ? '' : `<button class="icon-btn" onclick="showAddContentModal(${lab.lab_id})" title="콘텐츠 추가" aria-label="콘텐츠 추가">➕</button>`}
                                     </div>
                                     <div id="content-list-${lab.lab_id}">로딩 중...</div>
                                 </div>
@@ -1230,6 +2541,10 @@
         }
         // 랩 수정 모달 열기
         async function editLab(labId) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩을 수정할 수 없습니다.');
+                return;
+            }
             try {
                 
                 const res = await fetch(`/api/admin/labs/${labId}?training_key=${trainingKey}`);
@@ -1258,6 +2573,10 @@
         }
                  // 랩 상태 토글 (텍스트 버튼)
                  async function toggleLabStatus(labId, currentStatus, buttonEl) {
+                     if (isRestrictedLabEditor()) {
+                         alert('Partner/Course Manager 권한으로는 랩 상태를 변경할 수 없습니다.');
+                         return;
+                     }
                      const oldStatus = Number(currentStatus);
                      const newStatus = oldStatus === 20 ? 10 : 20;
                      const rowEl = buttonEl.closest('tr');
@@ -1308,6 +2627,10 @@
          
          // 콘텐츠 상태 토글 (텍스트 버튼)
          async function toggleContentStatus(labId, contentId, currentStatus, buttonEl) {
+             if (isRestrictedLabEditor()) {
+                 alert('Partner/Course Manager 권한으로는 콘텐츠를 수정할 수 없습니다.');
+                 return;
+             }
              const oldStatus = Number(currentStatus);
              const newStatus = oldStatus === 1 ? 0 : 1;
              const rowEl = buttonEl.closest('tr');
@@ -1355,6 +2678,10 @@
          
          // 랩 삭제
          async function deleteLab(labId) {
+             if (isRestrictedLabEditor()) {
+                 alert('Partner/Course Manager 권한으로는 랩을 삭제할 수 없습니다.');
+                 return;
+             }
              if (confirm('정말로 이 랩을 삭제하시겠습니까?')) {
                  const res = await fetch(`/api/admin/labs/${labId}?training_key=${encodeURIComponent(trainingKey)}`, { method: 'DELETE' });
                  if (res.ok) loadLabs();
@@ -1366,6 +2693,10 @@
             e.preventDefault();
             try {
                 const labId = document.getElementById('labId').value;
+                if (isRestrictedLabEditor() && labId && String(labId).trim() !== '') {
+                    alert('Partner/Course Manager 권한으로는 랩을 수정할 수 없습니다.');
+                    return;
+                }
                 const labName = document.getElementById('labName').value.trim();
                 const labContent = document.getElementById('labContent').value.trim();
                 const labStatus = parseInt(document.getElementById('labStatus').value);
@@ -1498,6 +2829,7 @@
                 `;
 
                 contents.forEach((content, index) => {
+                    const restrictedEditor = isRestrictedLabEditor();
                     let typeDisplay = '';
                     let typeIcon = '';
                     const contentType = String(content.lab_content_type).toLowerCase();
@@ -1533,26 +2865,36 @@
                         <div style="display:flex; align-items:center; gap:6px; justify-content:center;">
                             <span style="font-size:14px; font-weight:600; min-width:20px; text-align:center;">${content.view_number}</span>
                             <div style="display:flex; gap:2px;">
-                                <button class="icon-btn" onclick="changeContentOrder(${labId}, ${content.content_id}, ${content.view_number}, 'up')" title="위로 이동" style="width:22px; height:22px; font-size:10px; padding:0; ${isFirst ? 'opacity:0.3; cursor:not-allowed;' : ''}" ${isFirst ? 'disabled' : ''}>▲</button>
-                                <button class="icon-btn" onclick="changeContentOrder(${labId}, ${content.content_id}, ${content.view_number}, 'down')" title="아래로 이동" style="width:22px; height:22px; font-size:10px; padding:0; ${isLast ? 'opacity:0.3; cursor:not-allowed;' : ''}" ${isLast ? 'disabled' : ''}>▼</button>
+                                <button class="icon-btn" onclick="changeContentOrder(${labId}, ${content.content_id}, ${content.view_number}, 'up')" title="위로 이동" style="width:22px; height:22px; font-size:10px; padding:0; ${(isFirst || restrictedEditor) ? 'opacity:0.3; cursor:not-allowed;' : ''}" ${(isFirst || restrictedEditor) ? 'disabled' : ''}>▲</button>
+                                <button class="icon-btn" onclick="changeContentOrder(${labId}, ${content.content_id}, ${content.view_number}, 'down')" title="아래로 이동" style="width:22px; height:22px; font-size:10px; padding:0; ${(isLast || restrictedEditor) ? 'opacity:0.3; cursor:not-allowed;' : ''}" ${(isLast || restrictedEditor) ? 'disabled' : ''}>▼</button>
                             </div>
                         </div>
                     `;
 
+                    const contentTitleCell = restrictedEditor
+                        ? `<span style="padding:10px; display:block;">${content.lab_content_subject}</span>`
+                        : `<button class="content-title-btn" onclick="editContent(${labId}, ${content.content_id})" style="padding:10px;">${content.lab_content_subject}</button>`;
+
+                    const contentActionButtons = restrictedEditor
+                        ? ``
+                        : `
+                            <button class="icon-btn" onclick="editContent(${labId}, ${content.content_id})" title="수정" aria-label="수정">✏️</button>
+                            <button class="icon-btn" onclick="openMoveContentModal(${content.content_id}, ${labId})" title="다른 랩으로 이동" aria-label="이동">🚚</button>
+                            <button class="icon-btn" onclick="openCopyContentModal(${content.content_id}, ${labId}, '${escapedTitle}')" title="다른 과정/랩으로 복사" aria-label="복사">📋</button>
+                            <button class="icon-btn delete" onclick="deleteContent(${labId}, ${content.content_id})" title="삭제" aria-label="삭제">🗑️</button>
+                          `;
+
                     html += `
                         <tr style="${content.lab_content_status != 1 ? 'opacity:0.6;' : ''}" id="content-row-${labId}-${content.content_id}">
-                            <td style="text-align:center; ${isMulti ? '' : 'display:none;'}"><input type="checkbox" class="content-checkbox-${labId}" data-content-id="${content.content_id}" onchange="updateLabSelectedCount(${labId})" ${checked} /></td>
+                            <td style="text-align:center; ${(!isMulti || restrictedEditor) ? 'display:none;' : ''}"><input type="checkbox" class="content-checkbox-${labId}" data-content-id="${content.content_id}" onchange="updateLabSelectedCount(${labId})" ${checked} /></td>
                             <td style="text-align:center;">${orderButtons}</td>
-                            <td style="padding:0;"><button class="content-title-btn" onclick="editContent(${labId}, ${content.content_id})" style="padding:10px;">${content.lab_content_subject}</button></td>
+                            <td style="padding:0;">${contentTitleCell}</td>
                             <td style="text-align:center;">${typeIcon} ${typeDisplay}</td>
                             <td>${content.lab_content_create_date}</td>
-                            <td style="text-align:center;"><button class="status-text-btn ${content.lab_content_status == 1 ? 'active' : 'inactive'}" onclick="toggleContentStatus(${labId}, ${content.content_id}, ${content.lab_content_status}, this)">${content.lab_content_status == 1 ? 'Active' : 'Deactive'}</button></td>
+                            <td style="text-align:center;"><button class="status-text-btn ${content.lab_content_status == 1 ? 'active' : 'inactive'}" onclick="toggleContentStatus(${labId}, ${content.content_id}, ${content.lab_content_status}, this)" ${restrictedEditor ? 'disabled title="권한 없음"' : ''}>${content.lab_content_status == 1 ? 'Active' : 'Deactive'}</button></td>
                             <td style="text-align:center;">
                                 <div class="icon-actions">
-                                    <button class="icon-btn" onclick="editContent(${labId}, ${content.content_id})" title="수정" aria-label="수정">✏️</button>
-                                    <button class="icon-btn" onclick="openMoveContentModal(${content.content_id}, ${labId})" title="다른 랩으로 이동" aria-label="이동">🚚</button>
-                                    <button class="icon-btn" onclick="openCopyContentModal(${content.content_id}, ${labId}, '${escapedTitle}')" title="다른 과정/랩으로 복사" aria-label="복사">📋</button>
-                                    <button class="icon-btn delete" onclick="deleteContent(${labId}, ${content.content_id})" title="삭제" aria-label="삭제">🗑️</button>
+                                    ${contentActionButtons}
                                 </div>
                             </td>
                         </tr>
@@ -1602,6 +2944,7 @@
             if (value === 'web') return 1;
             if (value === 'markdown') return 2;
             if (value === 'code') return 3;
+            if (value === 'assignment') return 5;
             return 4;
         }
 
@@ -1773,7 +3116,29 @@
         }
         
         // 코드 언어 옵션 표시/숨김
+        function toggleAssignmentFileUI() {
+            const contentType = document.getElementById('contentType').value;
+            const assignmentFileGroup = document.getElementById('assignmentFileGroup');
+            if (contentType === 'assignment') {
+                assignmentFileGroup.style.display = 'block';
+            } else {
+                assignmentFileGroup.style.display = 'none';
+            }
+        }
+
         function toggleCodeLanguageOption() {
+            const contentType = document.getElementById('contentType').value;
+            const codeLanguageGroup = document.getElementById('codeLanguageGroup');
+            const assignmentFileGroup = document.getElementById('assignmentFileGroup');
+            if (contentType === 'code') {
+                codeLanguageGroup.style.display = 'block';
+            } else {
+                codeLanguageGroup.style.display = 'none';
+            }
+            toggleAssignmentFileUI();
+        }
+
+        function toggleCodeLanguageOption_old() {
             const contentType = document.getElementById('contentType').value;
             const codeLanguageGroup = document.getElementById('codeLanguageGroup');
             const codeLanguageSelect = document.getElementById('codeLanguage');
@@ -1991,6 +3356,10 @@
         
         // 콘텐츠 수정 모달 열기
         async function editContent(labId, contentId) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 콘텐츠를 수정할 수 없습니다.');
+                return;
+            }
             try {
                 const res = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${trainingKey}&lab_id=${labId}`);
                 if (!res.ok) throw new Error('콘텐츠 정보를 불러오는데 실패했습니다.');
@@ -2017,6 +3386,10 @@
         
         // 콘텐츠 삭제
         async function deleteContent(labId, contentId) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 콘텐츠를 삭제할 수 없습니다.');
+                return;
+            }
             if (!confirm('정말로 이 콘텐츠를 삭제하시겠습니까?')) return;
             
             try {
@@ -2047,20 +3420,62 @@
             }
         }
         
-        // 콘텐츠 폼 제출
         document.getElementById('contentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const labId = document.getElementById('contentLabId').value;
             const contentId = document.getElementById('contentId').value;
+            if (isRestrictedLabEditor() && contentId) {
+                alert('Partner/Course Manager 권한으로는 콘텐츠를 수정할 수 없습니다.');
+                return;
+            }
             const subject = document.getElementById('contentSubject').value.trim();
-            const body = document.getElementById('contentBody').value.trim();
-            const type = toDbContentType(document.getElementById('contentType').value);
+            let body = document.getElementById('contentBody').value.trim();
+            const uiType = document.getElementById('contentType').value;
+            const type = toDbContentType(uiType);
             const status = parseInt(document.getElementById('contentStatus').value);
             
             if (!subject) {
                 alert('콘텐츠 제목을 입력해주세요.');
                 return;
+            }
+            
+            // Handle assignment file upload
+            if (uiType === 'assignment') {
+                const fileInput = document.getElementById('assignmentFile');
+                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                if (hasFile) {
+                    // Upload file first
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('training_key', trainingKey);
+                    formData.append('lab_id', labId);
+                    formData.append('content_id', contentId || '0');
+                    try {
+                        const uploadResp = await fetch('/api/admin/lab_contents/upload-assignment', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const uploadText = await uploadResp.text();
+                        let uploadData;
+                        try { uploadData = JSON.parse(uploadText); } catch { uploadData = {}; }
+                        if (!uploadResp.ok) {
+                            let detail = uploadData.detail || uploadData.message || uploadText || '파일 업로드 실패';
+                            if (detail && typeof detail === 'object') detail = JSON.stringify(detail);
+                            throw new Error(`HTTP ${uploadResp.status} ${uploadResp.statusText} | ${String(detail)}`);
+                        }
+                        body = JSON.stringify({ url: uploadData.url, file_name: uploadData.file_name });
+                    } catch (err) {
+                        const msg = err && err.message ? err.message : String(err);
+                        alert(`파일 업로드 실패\n${msg}`);
+                        return;
+                    }
+                } else if (!body) {
+                    alert('과제 파일을 선택하거나 설명을 입력해주세요.');
+                    return;
+                } else {
+                    // body에 기존 값이 있으면 유지 (수정 시)
+                }
             }
             
             const payload = {
@@ -2104,15 +3519,26 @@
                     await loadLabContents(labId);
                 } else {
                     const errorText = await res.text();
-                    alert(`저장에 실패했습니다: ${errorText}`);
+                    let msg = errorText || `HTTP ${res.status}`;
+                    try {
+                        const parsed = JSON.parse(errorText);
+                        msg = parsed.detail || parsed.message || msg;
+                        if (msg && typeof msg === 'object') msg = JSON.stringify(msg);
+                    } catch (_) {}
+                    alert(`저장에 실패했습니다\nHTTP ${res.status} ${res.statusText}\n${msg}`);
                 }
             } catch (error) {
-                alert('저장 중 오류가 발생했습니다.');
+                const msg = error && error.message ? error.message : String(error);
+                alert(`저장 중 오류가 발생했습니다\n${msg}`);
             }
         });
         
         // 콘텐츠 순서 변경
         async function changeContentOrder(labId, contentId, currentOrder, direction) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 콘텐츠 순서를 변경할 수 없습니다.');
+                return;
+            }
             try {
                 const newOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1;
 
@@ -2140,6 +3566,9 @@
         const labSelectedContents = {};
 
         function toggleLabMultiSelect(labId) {
+            if (isRestrictedLabEditor()) {
+                return;
+            }
             labMultiSelectStates[labId] = !labMultiSelectStates[labId];
             if (!labMultiSelectStates[labId]) {
                 labSelectedContents[labId] = [];
@@ -2159,6 +3588,11 @@
         function refreshLabListHeaderControls() {
             const headerBtn = document.getElementById('labMultiSelectHeaderBtn');
             if (!headerBtn) {
+                return;
+            }
+
+            if (isRestrictedLabEditor()) {
+                headerBtn.style.display = 'none';
                 return;
             }
 
@@ -2246,6 +3680,10 @@
         }
 
         async function openLabBulkActionModal(labId, actionType) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             const selectedIds = labSelectedContents[labId] || [];
             const actionName = actionType === 'copy' ? '복사' : '이동';
 
@@ -2355,6 +3793,10 @@
 
         // 콘텐츠 이동 모달 열기
         async function openMoveContentModal(contentId, currentLabId) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             try {
                 document.getElementById('moveTargetTrainingGroup').style.display = 'none';
                 const res = await fetch(`/api/admin/labs?training_key=${trainingKey}`);
@@ -2434,6 +3876,10 @@
         // 콘텐츠 이동 처리
         document.getElementById('moveContentForm').onsubmit = async (e) => {
             e.preventDefault();
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             const contentIdInput = document.getElementById('moveContentId');
             const contentId = String(contentIdInput.value || '').trim();
             const currentLabId = contentIdInput.dataset.currentLabId;
@@ -2537,6 +3983,10 @@
 
         // 랩 복사 모달 열기
         async function copyLab(labId, labName) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             try {
                 // 과정 목록 가져오기
                 const response = await fetch('/api/admin/courses');
@@ -2573,6 +4023,10 @@
         // 랩 복사 폼 제출
         document.getElementById('copyLabForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             
             const labId = document.getElementById('copySourceLabId').value;
             const targetTrainingKey = document.getElementById('copyTargetTrainingKey').value;
@@ -2608,6 +4062,10 @@
 
         // 콘텐츠 복사 모달 열기
         async function openCopyContentModal(contentId, labId, contentName) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             document.getElementById('copyContentId').value = contentId;
             document.getElementById('copyContentLabId').value = labId;
             document.getElementById('copyContentName').value = contentName;
@@ -2680,6 +4138,10 @@
         // 콘텐츠 복사 폼 제출
         document.getElementById('copyContentForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 랩/콘텐츠 이동 또는 복사 기능을 사용할 수 없습니다.');
+                return;
+            }
             
             const contentId = document.getElementById('copyContentId').value;
             const labId = document.getElementById('copyContentLabId').value;
@@ -2714,6 +4176,49 @@
             }
         });
 
+            document.getElementById('courseAdminForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!canManageCourseAdmins()) {
+                    alert('관리자 추가/삭제 권한이 없습니다. (Owner 100 / Contributor 80 전용)');
+                    return;
+                }
+                const select = document.getElementById('courseAdminSelect');
+                const adminId = select.value;
+                const selectedOption = select.options[select.selectedIndex];
+                const adminName = selectedOption ? (selectedOption.dataset.memberName || adminId) : adminId;
+
+                if (!adminId) {
+                    alert('관리자 계정을 선택해주세요.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/admin/course-admins', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            training_key: trainingKey,
+                            admin_id: adminId,
+                            admin_name: adminName
+                        })
+                    });
+                    const raw = await response.text();
+                    let data = null;
+                    try {
+                        data = raw ? JSON.parse(raw) : null;
+                    } catch (e) {
+                        data = null;
+                    }
+                    if (!response.ok) {
+                        throw new Error((data && data.detail) || raw || '추가에 실패했습니다.');
+                    }
+                    closeModal('courseAdminModal');
+                    loadCourseAdmins();
+                } catch (error) {
+                    alert(error.message);
+                }
+            });
+
         // 사용자 목록 로드
         async function loadUsers() {
             try {
@@ -2735,7 +4240,7 @@
                 
                 if (users.length === 0) {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = '<td colspan="6" style="text-align:center;">등록된 사용자가 없습니다.</td>';
+                    tr.innerHTML = '<td colspan="5" style="text-align:center;">등록된 사용자가 없습니다.</td>';
                     tbody.appendChild(tr);
                     return;
                 }
@@ -2745,30 +4250,12 @@
                         const tr = document.createElement('tr');
                         const lastContent = user.last_content || '콘텐츠를 본 기록이 없습니다';
                         
-                        // 운영자 상태 표시
-                        const supervisorBadge = user.is_supervisor 
-                            ? '<span style="background:#4CAF50; color:white; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600;">운영자</span>'
-                            : '<span style="color:#999; font-size:12px;">-</span>';
-                        
-                        // 사용자 이름 안전하게 처리 (특수문자 이스케이프)
-                        const safeMemberName = (user.member_name || '').replace(/'/g, "\\'");
-                        
-                        // 운영자 지정/해제 버튼 (감독자에게는 숨김)
-                        let supervisorButton = '';
-                        if (typeof isSupervisor !== 'undefined' && !isSupervisor) {
-                            supervisorButton = user.is_supervisor
-                                ? `<button class="button secondary" onclick="removeSupervisor('${safeMemberName}')">운영자 해제</button>`
-                                : `<button class="button" onclick="assignSupervisor('${safeMemberName}')">운영자 지정</button>`;
-                        }
-                        
                         tr.innerHTML = `
                             <td>${user.member_id || ''}</td>
                             <td>${user.member_name || ''}</td>
                             <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lastContent}">${lastContent}</td>
                             <td>${user.create_date || ''}</td>
-                            <td style="text-align:center;">${supervisorBadge}</td>
                             <td>
-                                ${supervisorButton}
                                 <button class="button danger" onclick="deleteUser('${user.member_id}')">삭제</button>
                             </td>
                         `;
@@ -3023,57 +4510,6 @@
             }
         }
         
-        // 운영자 지정
-        async function assignSupervisor(memberName) {
-            if (confirm(`${memberName}님을 운영자로 지정하시겠습니까?\n운영자는 인원명단과 모니터링을 볼 수 있습니다.`)) {
-                try {
-                    const response = await fetch('/api/admin/assign-supervisor', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            training_key: trainingKey,
-                            member_name: memberName
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        alert('운영자로 지정되었습니다.');
-                        loadUsers(); // 사용자 목록 새로고침
-                    } else {
-                        alert(data.detail || '운영자 지정에 실패했습니다.');
-                    }
-                } catch (error) {
-                    alert('운영자 지정 중 오류가 발생했습니다: ' + error.message);
-                }
-            }
-        }
-        
-        // 운영자 해제
-        async function removeSupervisor(memberName) {
-            if (confirm(`${memberName}님의 운영자 권한을 해제하시겠습니까?`)) {
-                try {
-                    const response = await fetch(`/api/admin/remove-supervisor/${encodeURIComponent(trainingKey)}/${encodeURIComponent(memberName)}`, {
-                        method: 'DELETE'
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        alert('운영자 권한이 해제되었습니다.');
-                        loadUsers(); // 사용자 목록 새로고침
-                    } else {
-                        alert(data.detail || '운영자 권한 해제에 실패했습니다.');
-                    }
-                } catch (error) {
-                    alert('운영자 권한 해제 중 오류가 발생했습니다: ' + error.message);
-                }
-            }
-        }
-        
                  // 자동 새로고침 관련 변수
          let autoRefreshInterval = null;
          
@@ -3118,6 +4554,11 @@
              try {
                  // 페이지 상태 업데이트 (가장 먼저)
                  const pageStatus = document.getElementById('pageStatus');
+                 const loggedInAdminName = document.getElementById('loggedInAdminName');
+                 const displayName = localStorage.getItem('admin_name') || localStorage.getItem('admin_id') || '';
+                 if (loggedInAdminName && displayName) {
+                     loggedInAdminName.textContent = `${displayName}님`;
+                 }
                  if (pageStatus) {
                      pageStatus.textContent = '✓ 페이지 준비 완료';
                      pageStatus.style.background = '#28a745';
@@ -3153,6 +4594,34 @@
                          return;
                      }
                  }
+
+                if (!isSupervisor) {
+                    const assignedJson = localStorage.getItem('admin_assigned_training_keys') || '[]';
+                    let assignedKeys = [];
+                    try {
+                        assignedKeys = JSON.parse(assignedJson);
+                    } catch (e) {
+                        assignedKeys = [];
+                    }
+                    const adminRole = localStorage.getItem('admin_role') || 'admin';
+                    if ((adminRole === 'course_manager' || adminRole === 'partner') && Array.isArray(assignedKeys) && assignedKeys.length > 0) {
+                        if (!assignedKeys.includes(trainingKey)) {
+                            alert('접근 권한이 없습니다. 배정된 과정만 접근할 수 있습니다.');
+                            window.location.href = '/admin';
+                            return;
+                        }
+                    }
+                }
+
+                const adminRole = localStorage.getItem('admin_role') || 'admin';
+                const adminMgmtTabBtn = document.getElementById('adminMgmtTabBtn');
+                if (adminMgmtTabBtn) {
+                    adminMgmtTabBtn.style.display = isSupervisor ? 'none' : '';
+                }
+                const adminAddBtn = document.querySelector('#admin-tab button.button');
+                if (adminAddBtn && (isSupervisor || adminRole === 'partner' || adminRole === 'course_manager' || !canManageCourseAdmins())) {
+                    adminAddBtn.style.display = 'none';
+                }
                  
                  // 초기 데이터 로드
                  try {
@@ -3169,6 +4638,16 @@
                      loadUsers();
                  } catch (e) {
                  }
+
+                 try {
+                     startJjekLabUnreadPolling();
+                 } catch (e) {
+                 }
+
+                try {
+                    loadCourseAdmins();
+                } catch (e) {
+                }
                  
                  const monitoringInput = document.getElementById('monitoringIntervalSec');
                  if (monitoringInput) {
@@ -3192,6 +4671,458 @@
              stopAutoRefresh();
              stopMonitoringPolling();
          });
+         
+         // Jjek-Jjek Lab 메신저 기능
+         let selectedLabTrainee = null;
+         let selectedLabReceiverId = '__all__';
+         let jjekLabMessages = [];
+         let jjekLabUserList = [];
+         let jjekLabPollTimer = null;
+         let jjekLabUnreadTimer = null;
+         let jjekLabSendInFlight = false;
+
+         function getJjekLabReaderInfo() {
+             const readerMemberId = (localStorage.getItem('admin_id') || localStorage.getItem('admin_name') || '').trim();
+             const readerRole = isSupervisor ? 'supervisor' : (localStorage.getItem('admin_role') || 'admin');
+             return {
+                 readerMemberId,
+                 readerRole,
+             };
+         }
+
+         function isJjekLabMessengerOpen() {
+             const panel = document.getElementById('jjekLabMessengerPanel');
+             return Boolean(panel && !panel.hasAttribute('hidden'));
+         }
+
+         function setJjekLabUnreadBadge(count) {
+             const badge = document.getElementById('jjekLabUnreadBadge');
+             if (!badge) {
+                 return;
+             }
+
+             const unreadCount = Math.max(0, Number(count) || 0);
+             if (unreadCount <= 0) {
+                 badge.hidden = true;
+                 badge.textContent = '0';
+                 return;
+             }
+
+             badge.hidden = false;
+             badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+         }
+
+         async function refreshJjekLabUnreadCount() {
+             if (!trainingKey) {
+                 setJjekLabUnreadBadge(0);
+                 return;
+             }
+
+             if (isJjekLabMessengerOpen()) {
+                 setJjekLabUnreadBadge(0);
+                 return;
+             }
+
+             const readerInfo = getJjekLabReaderInfo();
+             if (!readerInfo.readerMemberId) {
+                 setJjekLabUnreadBadge(0);
+                 return;
+             }
+
+             try {
+                 const params = new URLSearchParams({
+                     training_key: trainingKey,
+                     reader_member_id: readerInfo.readerMemberId,
+                     reader_role: readerInfo.readerRole,
+                 });
+                 const response = await fetch(`/api/jjek/messages/unread-count?${params.toString()}`);
+                 if (!response.ok) {
+                     return;
+                 }
+                 const data = await response.json();
+                 setJjekLabUnreadBadge(data.unread_count || 0);
+             } catch (_error) {
+                 // 카운트 조회 실패는 다음 주기에 재시도
+             }
+         }
+
+         function startJjekLabUnreadPolling() {
+             if (jjekLabUnreadTimer) {
+                 return;
+             }
+             refreshJjekLabUnreadCount();
+             jjekLabUnreadTimer = setInterval(refreshJjekLabUnreadCount, 5000);
+         }
+
+         async function markJjekLabMessagesRead() {
+             if (!trainingKey) {
+                 return;
+             }
+
+             setJjekLabUnreadBadge(0);
+
+             const readerInfo = getJjekLabReaderInfo();
+             if (!readerInfo.readerMemberId) {
+                 return;
+             }
+
+             try {
+                 await fetch('/api/jjek/messages/mark-read', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                         training_key: trainingKey,
+                         reader_member_id: readerInfo.readerMemberId,
+                         reader_role: readerInfo.readerRole,
+                     }),
+                 });
+                 refreshJjekLabUnreadCount();
+             } catch (_error) {
+                 // 읽음 처리 실패는 다음 주기에 재시도
+             }
+         }
+
+         function toggleJjekLabMessenger() {
+             const panel = document.getElementById('jjekLabMessengerPanel');
+             if (panel.hasAttribute('hidden')) {
+                 panel.removeAttribute('hidden');
+                 setJjekLabUnreadBadge(0);
+                 loadLabTraineeList();
+                 loadLabMessagesForAdmin();
+                 startLabMessengerPolling();
+                 markJjekLabMessagesRead();
+             } else {
+                 closeJjekLabMessenger();
+             }
+         }
+
+         function closeJjekLabMessenger() {
+             document.getElementById('jjekLabMessengerPanel').setAttribute('hidden', '');
+             stopLabMessengerPolling();
+             refreshJjekLabUnreadCount();
+         }
+
+         function startLabMessengerPolling() {
+             if (jjekLabPollTimer) {
+                 return;
+             }
+             jjekLabPollTimer = setInterval(() => {
+                 loadLabMessagesForAdmin();
+             }, 5000);
+         }
+
+         function switchJjekLabTab(tab, event) {
+             document.querySelectorAll('.jjek-lab-messenger-tab').forEach((t) => t.classList.remove('active'));
+             if (event && event.currentTarget) {
+                 event.currentTarget.classList.add('active');
+             }
+
+             const listTab = document.getElementById('jjekLabListTab');
+             const chatTab = document.getElementById('jjekLabChatTab');
+             if (!listTab || !chatTab) {
+                 return;
+             }
+
+             if (tab === 'list') {
+                 listTab.style.display = 'flex';
+                 chatTab.style.display = 'none';
+             } else {
+                 listTab.style.display = 'none';
+                 chatTab.style.display = 'flex';
+             }
+         }
+
+         function stopLabMessengerPolling() {
+             if (jjekLabPollTimer) {
+                 clearInterval(jjekLabPollTimer);
+                 jjekLabPollTimer = null;
+             }
+         }
+
+         function handleJjekLabInputKeydown(event) {
+             if (!event) {
+                 return;
+             }
+             if (event.key === 'Enter' && !event.shiftKey) {
+                 event.preventDefault();
+                 submitLabMessage();
+             }
+         }
+
+         async function loadLabTraineeList() {
+             if (!trainingKey) {
+                 renderLabReceiverOptions();
+                 return;
+             }
+
+             try {
+                 const response = await fetch(`/api/admin/users/course/${encodeURIComponent(trainingKey)}`);
+                 if (!response.ok) throw new Error('Failed to fetch');
+
+                 const users = await response.json();
+                 jjekLabUserList = (Array.isArray(users) ? users : []).filter((user) => {
+                     const role = String(user.role || '').toLowerCase();
+                     return role !== 'admin' && role !== 'supervisor';
+                 });
+
+                 renderLabReceiverOptions();
+             } catch (error) {
+                 console.error('Load trainee list error:', error);
+                 renderLabReceiverOptions();
+             }
+         }
+
+         function renderLabReceiverOptions() {
+             const selectEl = document.getElementById('jjekLabReceiverSelect');
+             if (!selectEl) {
+                 return;
+             }
+
+             const options = ['<option value="__all__">전체 사용자</option>'];
+             options.push(...jjekLabUserList.map((user) => (
+                 `<option value="${escapeLabHtml(user.member_id)}">${escapeLabHtml(user.member_name || user.member_id)}</option>`
+             )));
+             selectEl.innerHTML = options.join('');
+
+             const hasSelection = selectedLabReceiverId !== '__all__' && jjekLabUserList.some((u) => String(u.member_id) === String(selectedLabReceiverId));
+             selectEl.value = hasSelection ? selectedLabReceiverId : '__all__';
+             if (!hasSelection) {
+                 selectedLabReceiverId = '__all__';
+             }
+         }
+
+         function renderLabTraineeList() {
+             const container = document.getElementById('jjekLabListTab');
+             if (!container) {
+                 return;
+             }
+             if (jjekLabUserList.length === 0) {
+                 container.innerHTML = '<div class="jjek-lab-empty-state"><div class="jjek-lab-empty-state-icon">👥</div><div>수강생 없음</div></div>';
+                 return;
+             }
+
+             container.innerHTML = jjekLabUserList.map(user => `
+                 <div class="jjek-lab-trainee-item ${selectedLabTrainee?.member_id === user.member_id ? 'active' : ''}"
+                      onclick="selectLabTrainee(event, '${user.member_id}', '${user.member_name}')">
+                     <span>${user.member_name}</span>
+                 </div>
+             `).join('');
+         }
+
+         async function selectLabTrainee(evt, member_id, member_name) {
+             selectedLabTrainee = { member_id: member_id, member_name: member_name };
+             selectedLabReceiverId = String(member_id);
+
+             document.querySelectorAll('.jjek-lab-trainee-item').forEach(item => {
+                 item.classList.remove('active');
+             });
+             evt.currentTarget.classList.add('active');
+
+             const inputEl = document.getElementById('jjekLabMessageInput');
+             const selectEl = document.getElementById('jjekLabReceiverSelect');
+             if (selectEl) {
+                 selectEl.value = selectedLabReceiverId;
+             }
+             inputEl.focus();
+
+             await loadLabMessagesForAdmin();
+             switchJjekLabTab('chat');
+             const chatButton = document.querySelectorAll('.jjek-lab-messenger-tab')[1];
+             if (chatButton) {
+                 chatButton.classList.add('active');
+             }
+         }
+
+         function handleLabReceiverChange(event) {
+             const value = event && event.target ? String(event.target.value || '__all__') : '__all__';
+             selectedLabReceiverId = value || '__all__';
+             renderLabMessages();
+         }
+
+         function escapeLabHtml(value) {
+             const map = {
+                 '&': '&amp;',
+                 '<': '&lt;',
+                 '>': '&gt;',
+                 '"': '&quot;',
+                 "'": '&#039;'
+             };
+             return String(value || '').replace(/[&<>"']/g, m => map[m]);
+         }
+
+         function getLabTimeLabel(timestampText) {
+             if (timestampText) {
+                 const parsed = new Date(timestampText);
+                 if (!Number.isNaN(parsed.getTime())) {
+                     return parsed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                 }
+             }
+             const now = new Date();
+             const h = String(now.getHours()).padStart(2, '0');
+             const m = String(now.getMinutes()).padStart(2, '0');
+             return `${h}:${m}`;
+         }
+
+         function buildLabAdminDisplayName(senderName, senderMemberId) {
+             const name = String(senderName || '').trim();
+             const memberId = String(senderMemberId || '').trim();
+             const genericNames = ['관리자', '운영진', 'admin', 'supervisor', 'system'];
+
+             if (!name && memberId) {
+                 return memberId;
+             }
+             if (!memberId) {
+                 return name || '운영자';
+             }
+             if (!name || genericNames.includes(name.toLowerCase())) {
+                 return memberId;
+             }
+             if (name === memberId) {
+                 return name;
+             }
+             return `${name} (${memberId})`;
+         }
+
+         function renderLabMessages() {
+             const allMessages = Array.isArray(jjekLabMessages) ? jjekLabMessages : [];
+             const msgs = allMessages.filter((msg) => {
+                 const receiverMemberId = String(msg.receiverMemberId || '').trim();
+                 const senderMemberId = String(msg.senderMemberId || '').trim();
+
+                 if (selectedLabReceiverId === '__all__') {
+                     return !receiverMemberId;
+                 }
+
+                 return !receiverMemberId
+                     || receiverMemberId === selectedLabReceiverId
+                     || senderMemberId === selectedLabReceiverId;
+             });
+
+             if (msgs.length === 0) {
+                 document.getElementById('jjekLabChatMessages').innerHTML =
+                     '<div class="jjek-lab-empty-state"><div class="jjek-lab-empty-state-icon">💬</div><div>표시할 메시지가 없습니다</div></div>';
+                 return;
+             }
+
+             const container = document.getElementById('jjekLabChatMessages');
+             container.innerHTML = msgs.map(msg => `
+                 <div class="jjek-lab-chat-msg ${msg.role}">
+                     <div>
+                         ${msg.role === 'admin' ? `<div class="jjek-lab-chat-operator-badge">운영자 ${escapeLabHtml(msg.adminDisplayName || msg.sender)}</div>` : ''}
+                         <div class="jjek-lab-chat-recipient">${escapeLabHtml(msg.sender)}</div>
+                         <div class="jjek-lab-chat-bubble">${escapeLabHtml(msg.text)}</div>
+                         <div class="jjek-lab-chat-time">${escapeLabHtml(msg.sender)} · ${msg.time}</div>
+                     </div>
+                 </div>
+             `).join('');
+             container.scrollTop = container.scrollHeight;
+         }
+
+         async function loadLabMessagesForAdmin() {
+             if (!trainingKey) {
+                 return;
+             }
+
+             try {
+                 const params = new URLSearchParams({
+                     training_key: trainingKey,
+                     limit: '200',
+                 });
+                 const response = await fetch(`/api/jjek/messages/admin-view?${params.toString()}`);
+                 if (!response.ok) {
+                     throw new Error('메시지 조회 실패');
+                 }
+
+                 const data = await response.json();
+                 const messages = Array.isArray(data.messages) ? data.messages : [];
+                 jjekLabMessages = messages.map((msg) => {
+                     const isTrainee = String(msg.sender_role || '').toLowerCase() === 'trainee';
+                     const senderMemberId = String(msg.sender_member_id || '').trim();
+                     const receiverId = String(msg.receiver_member_id || '').trim();
+                     const receiverUser = receiverId ? jjekLabUserList.find((u) => String(u.member_id) === receiverId) : null;
+                     return {
+                         role: isTrainee ? 'trainee' : 'admin',
+                         senderMemberId,
+                         receiverMemberId: receiverId,
+                         sender: msg.sender_name || (isTrainee ? '수강생' : '운영진'),
+                         adminDisplayName: isTrainee ? '' : buildLabAdminDisplayName(msg.sender_name, senderMemberId),
+                         target: receiverId ? (receiverUser?.member_name || receiverId) : '전체',
+                         text: msg.message_text || '',
+                         time: getLabTimeLabel(msg.create_date),
+                     };
+                 });
+                 renderLabMessages();
+                 markJjekLabMessagesRead();
+             } catch (error) {
+                 console.error('Load lab messages error:', error);
+             }
+         }
+
+         async function submitLabMessage(event) {
+             if (event) {
+                 event.preventDefault();
+             }
+
+             if (jjekLabSendInFlight) {
+                 return;
+             }
+
+             const inputEl = document.getElementById('jjekLabMessageInput');
+             const receiverEl = document.getElementById('jjekLabReceiverSelect');
+             const sendBtn = document.getElementById('jjekLabSendBtn');
+             const text = inputEl.value.trim();
+             if (!text) {
+                 return;
+             }
+
+             const receiverValue = receiverEl ? String(receiverEl.value || '__all__') : '__all__';
+             const receiverMemberId = receiverValue === '__all__' ? null : receiverValue;
+
+             const senderName = (localStorage.getItem('admin_name') || localStorage.getItem('admin_id') || '관리자').trim();
+             const senderId = (localStorage.getItem('admin_id') || senderName || 'admin').trim();
+             const senderRole = isSupervisor ? 'supervisor' : 'admin';
+
+             try {
+                 jjekLabSendInFlight = true;
+                 if (sendBtn) {
+                     sendBtn.disabled = true;
+                 }
+
+                 const response = await fetch('/api/jjek/messages/send', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                         training_key: trainingKey,
+                         sender_member_id: senderId,
+                         sender_name: senderName,
+                         sender_role: senderRole,
+                         receiver_member_id: receiverMemberId,
+                         message_text: text,
+                     }),
+                 });
+
+                 if (!response.ok) {
+                     const payload = await response.json().catch(() => ({}));
+                     throw new Error(payload.detail || '메시지 전송 실패');
+                 }
+
+                 inputEl.value = '';
+                 inputEl.focus();
+                 await loadLabMessagesForAdmin();
+                 refreshJjekLabUnreadCount();
+             } catch (error) {
+                 alert(`메시지 전송 실패: ${error.message || error}`);
+             } finally {
+                 jjekLabSendInFlight = false;
+                 if (sendBtn) {
+                     sendBtn.disabled = false;
+                 }
+             }
+         }
          
          // 과정 목록으로 돌아가기
          function goBackToCourseList() {

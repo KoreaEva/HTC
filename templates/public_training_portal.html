@@ -24,7 +24,7 @@
             .header { flex-direction: column; gap: 15px; align-items: flex-start; }
             .labs-container { grid-template-columns: 1fr; }
             .content-layout { flex-direction: column; }
-            .content-sidebar { width: 100%; margin-bottom: 20px; }
+            .content-sidebar { width: 100%; margin-bottom: 20px; position: static; top: auto; max-height: none; overflow-y: visible; }
             .content-viewer { min-height: 400px; padding: 15px; }
             .lab-card { padding: 15px; }
             .content-item { padding: 12px; }
@@ -90,8 +90,8 @@
         /* 콘텐츠 목록 스타일 */
         .content-section { margin-bottom:30px; }
         .content-section h2 { color:var(--accent); margin-bottom:15px; }
-        .content-layout { display:flex; gap:20px; }
-        .content-sidebar { width:300px; flex-shrink:0; }
+        .content-layout { display:flex; gap:20px; align-items:flex-start; }
+        .content-sidebar { width:300px; flex-shrink:0; position:sticky; top:20px; max-height:calc(100vh - 40px); overflow-y:auto; }
         .content-main { flex:1; }
         .content-list { background:var(--panel); border:1px solid var(--border); border-radius:12px; max-height:600px; overflow-y:auto; box-shadow: var(--shadow); }
         .content-item { padding:15px; border-bottom:1px solid var(--border); cursor:pointer; transition:all 0.3s ease; }

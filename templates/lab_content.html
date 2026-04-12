@@ -308,6 +308,11 @@
                 <div class="form-group">
                     <label id="labContentLabel" for="labContent">내용 (Markdown)</label>
                     <textarea id="labContent" placeholder="Markdown 형식의 콘텐츠 내용을 입력하세요." rows="10" oninput="detectContentType()"></textarea>
+                    <!-- 과제 파일 선택 영역 -->
+                    <div id="assignmentFileGroup" style="display:none;">
+                        <input type="file" id="assignmentFile" style="margin-top:6px; width:100%;">
+                        <div id="assignmentFileInfo" style="margin-top:8px; font-size:13px; color:var(--muted);"></div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="labContentType">콘텐츠 타입</label>
@@ -316,6 +321,7 @@
                         <option value="1">웹페이지</option>
                         <option value="2">Text(Markdown)</option>
                         <option value="3">프롬프트</option>
+                        <option value="5">과제 (파일)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -475,6 +481,8 @@
             modalTitle.innerText = '콘텐츠 추가';
             contentIdField.value = '';
             contentForm.reset();
+            document.getElementById('assignmentFile').value = '';
+            document.getElementById('assignmentFileInfo').textContent = '';
             labContentTypeField.value = '2'; // Default to Text(Markdown)
             labContentStatusField.value = '1'; // Default to active
             updateContentTypeLabel(); // 모달 열 때 레이블 초기화
@@ -492,10 +500,23 @@
                 const content = await response.json();
                 contentIdField.value = content.content_id;
                 labContentSubjectField.value = content.lab_content_subject;
-                labContentField.value = content.lab_content;
-                labContentTypeField.value = content.lab_content_type; // DB 값 로드
+                labContentTypeField.value = content.lab_content_type;
                 labContentStatusField.value = content.lab_content_status;
-                updateContentTypeLabel(); // 수정 모달 열 때 레이블 설정
+                document.getElementById('assignmentFile').value = '';
+                document.getElementById('assignmentFileInfo').textContent = '';
+                if (String(content.lab_content_type) === '5') {
+                    // 과제 타입: 기존 파일 정보 표시, textarea는 파일 URL 저장용으로 값 유지
+                    labContentField.value = content.lab_content;
+                    let fileInfoText = '첫부 파일 없음';
+                    try {
+                        const parsed = JSON.parse(content.lab_content);
+                        if (parsed && parsed.file_name) fileInfoText = `첫부 파일: ${parsed.file_name}`;
+                    } catch {}
+                    document.getElementById('assignmentFileInfo').textContent = fileInfoText + ' (새 파일을 선택하면 교체됩니다)';
+                } else {
+                    labContentField.value = content.lab_content;
+                }
+                updateContentTypeLabel();
                 contentModal.style.display = 'flex';
             } catch (error) {
                 alert(`콘텐츠 정보를 불러오는데 실패했습니다: ${error.message}`);
@@ -528,6 +549,17 @@
                 label.innerText = '내용 (프롬프트)';
                 textarea.placeholder = 'ChatGPT 등 AI 도구에 사용할 프롬프트를 입력하세요. (예: 다음 Python 코드를 리뷰해주세요...)';
                 textarea.rows = 15; // 프롬프트는 충분한 줄 필요
+            }
+
+            // 과제(파일) 타입일 때 textarea 숨기고 파일 입력 표시
+            const fileGroup = document.getElementById('assignmentFileGroup');
+            if (type === '5') {
+                textarea.style.display = 'none';
+                fileGroup.style.display = 'block';
+                label.innerText = '첨부 파일 (과제)';
+            } else {
+                textarea.style.display = '';
+                fileGroup.style.display = 'none';
             }
         }
 
@@ -566,18 +598,63 @@
                 ? `/api/admin/lab_contents/${contentId}`
                 : `/api/admin/lab_contents`;
             const method = contentId ? 'PUT' : 'POST';
+            const selectedType = parseInt(labContentTypeField.value);
+
+            let labContentValue = labContentField.value;
+
+            // 과제(파일) 타입이면 먼저 파일 업로드 후 URL 획득
+            if (selectedType === 5) {
+                const fileInput = document.getElementById('assignmentFile');
+                const hasNewFile = fileInput.files && fileInput.files.length > 0;
+                if (hasNewFile) {
+                    const normalizedLabId = Number.parseInt(String(currentLabId || '').trim(), 10);
+                    const normalizedContentId = Number.parseInt(String(contentId || '0').trim(), 10);
+                    if (!Number.isInteger(normalizedLabId)) {
+                        alert(`파일 업로드 실패\nlab_id가 올바르지 않습니다: ${String(currentLabId)}`);
+                        return;
+                    }
+                    const formData = new FormData();
+                    formData.append('file', fileInput.files[0]);
+                    formData.append('training_key', currentTrainingKey);
+                    formData.append('lab_id', String(normalizedLabId));
+                    formData.append('content_id', String(Number.isInteger(normalizedContentId) ? normalizedContentId : 0));
+                    try {
+                        const uploadResp = await fetch('/api/admin/lab_contents/upload-assignment', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const uploadText = await uploadResp.text();
+                        let uploadData;
+                        try { uploadData = JSON.parse(uploadText); } catch { uploadData = {}; }
+                        if (!uploadResp.ok) {
+                            let detail = uploadData.detail || uploadData.message || uploadText || '파일 업로드 실패';
+                            if (detail && typeof detail === 'object') detail = JSON.stringify(detail);
+                            throw new Error(`HTTP ${uploadResp.status} ${uploadResp.statusText} | ${String(detail)}`);
+                        }
+                        labContentValue = JSON.stringify({ url: uploadData.url, file_name: uploadData.file_name });
+                    } catch (err) {
+                        const msg = err && err.message ? err.message : String(err);
+                        alert(`파일 업로드 실패\n${msg}`);
+                        return;
+                    }
+                } else if (!labContentValue) {
+                    alert('과제 파일을 선택해주세요.');
+                    return;
+                }
+                // 기존 파일 유지(수정 시 파일 미선택) — labContentValue는 기존 값 유지
+            }
 
             const data = {
                 training_key: currentTrainingKey,
                 lab_id: parseInt(currentLabId),
                 lab_content_subject: labContentSubjectField.value,
-                lab_content: labContentField.value,
-                lab_content_type: parseInt(labContentTypeField.value),
+                lab_content: labContentValue,
+                lab_content_type: selectedType,
                 lab_content_status: parseInt(labContentStatusField.value)
             };
 
             if (method === 'PUT') {
-                data.content_id = parseInt(contentId); // For PUT, content_id must be in body if not in URL
+                data.content_id = parseInt(contentId);
             }
 
             try {

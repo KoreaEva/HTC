@@ -361,36 +361,14 @@
     <div id="loginContainer" style="display:flex; align-items:center; justify-content:center; min-height:85vh;">
         <div style="background:var(--panel); padding:36px; border-radius:12px; box-shadow:var(--shadow); width:100%; max-width:420px; border:1px solid var(--border);">
             <h1 style="text-align:center; color:var(--accent); margin-bottom:16px; font-size:1.8em;">관리자 로그인</h1>
-            
-            <!-- 로그인 유형 선택 탭 -->
-            <div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:2px solid var(--border); padding-bottom:8px;">
-                <button type="button" id="adminLoginTab" class="login-tab-btn active" onclick="switchLoginMode('admin')" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.3s;">관리자</button>
-                <button type="button" id="supervisorLoginTab" class="login-tab-btn" onclick="switchLoginMode('supervisor')" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.3s;">감독자</button>
-            </div>
-            
-            <!-- 관리자 로그인 폼 -->
             <form id="loginForm" style="display:flex; flex-direction:column; gap:14px;">
-                <div id="adminLoginFields">
-                    <div>
-                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">아이디</label>
-                        <input type="text" id="username" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
-                    </div>
-                    <div style="margin-top:14px;">
-                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">비밀번호</label>
-                        <input type="password" id="password" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
-                    </div>
+                <div>
+                    <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">아이디</label>
+                    <input type="text" id="username" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
                 </div>
-                
-                <!-- 감독자 로그인 폼 -->
-                <div id="supervisorLoginFields" style="display:none;">
-                    <div>
-                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">과정 키</label>
-                        <input type="text" id="trainingKey" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
-                    </div>
-                    <div style="margin-top:14px;">
-                        <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">이름</label>
-                        <input type="text" id="supervisorName" style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
-                    </div>
+                <div style="margin-top:14px;">
+                    <label style="display:block; margin-bottom:8px; font-weight:600; color:var(--text);">비밀번호</label>
+                    <input type="password" id="password" required style="width:100%; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:15px; box-sizing:border-box;">
                 </div>
                 
                 <button type="submit" class="button primary" style="width:100%; margin:4px 0 0 0;">Login</button>
@@ -412,7 +390,7 @@
 
     <div class="admin-section" id="courseManagementSection">
         <p style="color: var(--muted); margin-bottom: 10px;">과정명을 클릭하면 해당 과정의 사용자 관리 / 랩 관리 / 모니터링 화면으로 이동합니다.</p>
-        <button class="button" onclick="showAddCourseModal()">Add Course</button>
+        <button id="addCourseBtn" class="button" onclick="showAddCourseModal()">Add Course</button>
         <table class="user-list" style="margin-top:10px;">
             <thead>
                 <tr>
@@ -778,6 +756,10 @@
             <form id="courseForm">
                 <input type="hidden" id="modalTrainingKey">
                 <div class="form-group" style="margin-bottom:18px;">
+                    <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600; display:block;">과정명</label>
+                    <input type="text" id="modalCourseName" required style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom:18px;">
                     <label style="font-size:15px; margin-bottom:6px; color:var(--text); font-weight:600;">최대인원</label>
                     <input type="number" id="modalMaxMember" min="1" style="font-size:16px; padding:12px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); width:100%; box-sizing:border-box;">
                 </div>
@@ -1059,7 +1041,10 @@
         function logout() {
             localStorage.removeItem('admin_logged_in');
             localStorage.removeItem('admin_id');
+            localStorage.removeItem('admin_name');
             localStorage.removeItem('admin_role');
+            localStorage.removeItem('admin_level');
+                localStorage.removeItem('admin_assigned_training_keys');
             localStorage.removeItem('admin_training_key');
             localStorage.removeItem('admin_course_name');
             document.getElementById('adminContainer').style.display = 'none';
@@ -1087,15 +1072,87 @@
             }
         }
 
+        function isRestrictedCourseManager() {
+            const role = localStorage.getItem('admin_role') || 'admin';
+            const levelRaw = localStorage.getItem('admin_level') || '';
+            const level = parseInt(levelRaw, 10);
+            if (!Number.isNaN(level) && (level === 100 || level === 80)) {
+                return false;
+            }
+            if (!Number.isNaN(level) && (level === 30 || level === 50)) {
+                return true;
+            }
+            if (role === 'partner' || role === 'course_manager') {
+                return true;
+            }
+            return false;
+        }
+
+        function ensureCourseManagementPermission() {
+            if (!isRestrictedCourseManager()) {
+                return true;
+            }
+            alert('제한 권한으로는 과정 상태 변경 및 관리 기능을 사용할 수 없습니다.');
+            return false;
+        }
+
         // 코스 목록 가져오기
         async function loadCourses() {
             try {
                 const response = await fetch('/api/admin/courses');
                 const data = await response.json();
+                    const restrictedManager = isRestrictedCourseManager();
+                    const addCourseBtn = document.getElementById('addCourseBtn');
+                    if (addCourseBtn) {
+                        addCourseBtn.style.display = restrictedManager ? 'none' : 'inline-block';
+                    }
+                    const currentRole = localStorage.getItem('admin_role') || 'admin';
+                    const currentAdminId = localStorage.getItem('admin_id') || '';
+                    let assignedKeys = [];
+                    try {
+                        assignedKeys = JSON.parse(localStorage.getItem('admin_assigned_training_keys') || '[]');
+                    } catch (e) {
+                        assignedKeys = [];
+                    }
+
+                    if ((currentRole === 'course_manager' || currentRole === 'partner') && currentAdminId) {
+                        try {
+                            const assignRes = await fetch(`/api/admin/course-admins/by-admin/${encodeURIComponent(currentAdminId)}`);
+                            if (assignRes.ok) {
+                                const assignData = await assignRes.json();
+                                if (Array.isArray(assignData.assigned_training_keys)) {
+                                    assignedKeys = assignData.assigned_training_keys;
+                                    localStorage.setItem('admin_assigned_training_keys', JSON.stringify(assignedKeys));
+                                }
+                                if (assignData.role === 'partner' || assignData.role === 'course_manager') {
+                                    localStorage.setItem('admin_role', assignData.role);
+                                }
+                            }
+                        } catch (e) {
+                            // 서버 동기화 실패 시 로컬 캐시 사용
+                        }
+                    }
+                    const assignedKeySet = new Set((Array.isArray(assignedKeys) ? assignedKeys : []).map(key => String(key).trim()));
+
+                    const courses = (Array.isArray(data) ? data : []).filter(course => {
+                        if (currentRole === 'course_manager' || currentRole === 'partner') {
+                            return assignedKeySet.has(String(course.training_key || '').trim());
+                        }
+                        return true;
+                    });
+
                 const tableBody = document.getElementById('courseTableBody');
                 tableBody.innerHTML = '';
-                data.forEach(course => {
+                courses.forEach(course => {
                     const row = document.createElement('tr');
+                    const escapedCourseName = String(course.course_name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const courseNameCell = `<a href="#" onclick="goLabPage('${course.training_key}')" class="course-link">${course.course_name}</a>`;
+                    const statusCell = restrictedManager
+                        ? `<span class="status-badge ${course.training_status === 20 ? 'status-active' : 'status-ready'}">${course.training_status === 20 ? 'Active' : 'Deactive'}</span>`
+                        : `<button class="status-toggle-btn ${course.training_status === 20 ? 'active' : 'deactive'}" onclick="toggleCourseStatus('${course.training_key}')">${course.training_status === 20 ? 'Active' : 'Deactive'}</button>`;
+                    const manageActionsCell = restrictedManager
+                        ? `<span style="color:var(--muted);">-</span>`
+                        : `<div class="icon-actions"><button class="icon-btn" onclick="editCourse('${course.training_key}')" title="수정" aria-label="수정">✏️</button><button class="icon-btn" onclick="copyCourse('${course.training_key}', '${escapedCourseName}')" title="복사" aria-label="복사">📄</button><button class="icon-btn delete" onclick="deleteCourse('${course.training_key}')" title="삭제" aria-label="삭제">🗑️</button></div>`;
                     row.innerHTML = `
                         <td>
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -1103,24 +1160,20 @@
                                 <button class="icon-btn" onclick="copyTrainingKey('${course.training_key}')" title="과정 키 복사" aria-label="과정 키 복사">📋</button>
                             </div>
                         </td>
-                        <td><a href="#" onclick="goLabPage('${course.training_key}')" class="course-link">${course.course_name}</a></td>
+                        <td>${courseNameCell}</td>
                         <td>${course.max_member || ''}</td>
                         <td>${course.create_date || ''}</td>
-                        <td>
-                            <button class="status-toggle-btn ${course.training_status === 20 ? 'active' : 'deactive'}" onclick="toggleCourseStatus('${course.training_key}')">
-                                ${course.training_status === 20 ? 'Active' : 'Deactive'}
-                            </button>
-                        </td>
-                        <td>
-                            <div class="icon-actions">
-                                <button class="icon-btn" onclick="editCourse('${course.training_key}')" title="수정" aria-label="수정">✏️</button>
-                                <button class="icon-btn" onclick="copyCourse('${course.training_key}', '${course.course_name}')" title="복사" aria-label="복사">📄</button>
-                                <button class="icon-btn delete" onclick="deleteCourse('${course.training_key}')" title="삭제" aria-label="삭제">🗑️</button>
-                            </div>
-                        </td>
+                        <td>${statusCell}</td>
+                        <td>${manageActionsCell}</td>
                     `;
                     tableBody.appendChild(row);
                 });
+
+                if (courses.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="6" style="text-align:center; color:var(--muted);">조회 가능한 과정이 없습니다.</td>';
+                    tableBody.appendChild(row);
+                }
             } catch (error) {
             }
         }
@@ -1144,6 +1197,9 @@
 
         // 코스 추가/수정 모달 열기
         function showAddCourseModal() {
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             document.getElementById('courseModalTitle').textContent = '코스 추가';
             document.getElementById('modalTrainingKey').value = '';
             document.getElementById('modalCourseName').value = '';
@@ -1159,6 +1215,9 @@
         }
         // 코스 수정 모달 열기
         async function editCourse(trainingKey) {
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             try {
                 const response = await fetch(`/api/admin/courses/${trainingKey}`);
                 const course = await response.json();
@@ -1204,6 +1263,9 @@
         
         // 코스 상태 토글
         async function toggleCourseStatus(trainingKey) {
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             const button = event.target.closest('button');
             const isCurrentlyActive = button.classList.contains('active');
             const originalClass = button.className;
@@ -1254,6 +1316,9 @@
         
         // 코스 삭제
         async function deleteCourse(trainingKey) {
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             if (confirm('정말로 이 코스를 삭제하시겠습니까?')) {
                 try {
                     const response = await fetch(`/api/admin/courses/${trainingKey}`, { method: 'DELETE' });
@@ -1270,6 +1335,9 @@
         // 코스 추가/수정 폼 제출
         document.getElementById('courseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             const trainingKey = document.getElementById('modalTrainingKey').value;
             const courseName = document.getElementById('modalCourseName').value;
             const maxMember = document.getElementById('modalMaxMember').value;
@@ -1316,40 +1384,6 @@
             label.textContent = this.checked ? '공개' : '비공개';
         });
         
-        // 로그인 모드 전환 함수
-        let currentLoginMode = 'admin';
-        
-        function switchLoginMode(mode) {
-            currentLoginMode = mode;
-            const adminTab = document.getElementById('adminLoginTab');
-            const supervisorTab = document.getElementById('supervisorLoginTab');
-            const adminFields = document.getElementById('adminLoginFields');
-            const supervisorFields = document.getElementById('supervisorLoginFields');
-            const loginError = document.getElementById('loginError');
-            
-            loginError.style.display = 'none';
-            
-            if (mode === 'admin') {
-                adminTab.classList.add('active');
-                supervisorTab.classList.remove('active');
-                adminFields.style.display = 'block';
-                supervisorFields.style.display = 'none';
-                document.getElementById('username').required = true;
-                document.getElementById('password').required = true;
-                document.getElementById('trainingKey').required = false;
-                document.getElementById('supervisorName').required = false;
-            } else {
-                supervisorTab.classList.add('active');
-                adminTab.classList.remove('active');
-                supervisorFields.style.display = 'block';
-                adminFields.style.display = 'none';
-                document.getElementById('username').required = false;
-                document.getElementById('password').required = false;
-                document.getElementById('trainingKey').required = true;
-                document.getElementById('supervisorName').required = true;
-            }
-        }
-
         function switchManagementTab(tab) {
             const courseTabBtn = document.getElementById('courseTabBtn');
             const testTabBtn = document.getElementById('testTabBtn');
@@ -1572,48 +1606,21 @@
 
                 const modeText = `${item.is_full_selection === 1 ? '전체' : '선택'}/${item.is_random_order === 1 ? '랜덤' : '순차'}`;
                 metaEl.textContent = `${item.generated_name} | ${item.test_category_name} | ${item.question_count}문항 | ${modeText}`;
-                const questions = Array.isArray(item.questions) ? item.questions : [];
-                contentEl.innerHTML = questions.map((question, index) => {
-                    const type = String(question.question_type || '').toLowerCase();
-                    let bodyHtml = '';
-                    if (type === 'yes_no') {
-                        bodyHtml = (question.items || []).map(subItem => `
-                            <div style="padding:8px 10px; border-radius:8px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px;">
-                                <div style="font-size:14px; color:var(--text); margin-bottom:6px;">${escapeHtml(String(subItem.text || ''))}</div>
-                                <div style="font-size:12px; color:#166534; font-weight:700;">정답: ${escapeHtml(String(subItem.answer || ''))}</div>
-                            </div>
-                        `).join('');
-                    } else if (type === 'matching') {
-                        const optionsHtml = (question.options || []).map(option => `<li>${escapeHtml(String(option || ''))}</li>`).join('');
-                        const itemsHtml = (question.items || []).map(subItem => `<li>${escapeHtml(String(subItem.text || ''))} <strong style="color:#166534;">→ ${escapeHtml(String(subItem.answer || ''))}</strong></li>`).join('');
-                        bodyHtml = `
-                            <div style="display:grid; grid-template-columns:minmax(160px, 220px) minmax(0, 1fr); gap:14px;">
-                                <div><div style="font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700;">OPTIONS</div><ol style="margin:0; padding-left:18px; line-height:1.8;">${optionsHtml}</ol></div>
-                                <div><div style="font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700;">문제와 정답</div><ol style="margin:0; padding-left:18px; line-height:1.8;">${itemsHtml}</ol></div>
-                            </div>`;
-                    } else {
-                        const options = question.options || {};
-                        bodyHtml = Object.keys(options).map(key => `
-                            <div style="display:flex; gap:8px; padding:8px 10px; border-radius:8px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px;">
-                                <strong style="color:var(--accent);">${escapeHtml(String(key))}.</strong>
-                                <span style="flex:1;">${escapeHtml(String(options[key]))}</span>
-                                ${String(question.answer || '').toUpperCase() === String(key).toUpperCase() ? '<strong style="color:#166534;">정답</strong>' : ''}
-                            </div>
-                        `).join('');
-                    }
-
-                    return `
-                        <div style="padding:16px; border-radius:12px; border:1px solid var(--border); background:var(--hover); margin-bottom:12px;">
-                            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
-                                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:999px; background:var(--accent); color:#fff; font-size:12px; font-weight:700;">${index + 1}</span>
-                                <span style="font-size:12px; color:var(--muted); font-weight:700;">${escapeHtml(question.question_category_name || 'None')}</span>
-                                <span style="font-size:12px; color:#854d0e; background:#fef3c7; padding:3px 8px; border-radius:999px; font-weight:700;">${escapeHtml(type || 'multiple_choice')}</span>
-                            </div>
-                            <div style="font-size:15px; color:var(--text); font-weight:600; line-height:1.6; margin-bottom:12px;">${escapeHtml(question.question_text || question.question_title || '')}</div>
-                            ${bodyHtml}
+                contentEl.innerHTML = `
+                    <div style="padding:16px; border-radius:12px; border:1px solid var(--border); background:var(--hover); margin-bottom:12px;">
+                        <h3 style="margin:0 0 10px 0; color:var(--text);">할당/생성 요약</h3>
+                        <div style="line-height:1.9; color:var(--text); font-size:14px;">
+                            <div><strong>테스트명:</strong> ${escapeHtml(item.generated_name || '-')}</div>
+                            <div><strong>테스트 종목:</strong> ${escapeHtml(item.test_category_name || '-')}</div>
+                            <div><strong>총 문항수:</strong> ${Number(item.question_count || 0)}문항</div>
+                            <div><strong>출제 방식:</strong> ${escapeHtml(modeText)}</div>
+                            <div><strong>생성일:</strong> ${escapeHtml(item.create_date || '-')}</div>
                         </div>
-                    `;
-                }).join('');
+                    </div>
+                    <div style="font-size:13px; color:var(--muted); padding:10px 2px;">
+                        문제 상세/정답 내용은 이 화면에서 노출하지 않습니다.
+                    </div>
+                `;
             } catch (error) {
                 contentEl.innerHTML = `<p style="color:#ef4444;">${escapeHtml(error.message)}</p>`;
             }
@@ -2667,62 +2674,32 @@
             loginError.style.display = 'none';
 
             try {
-                let response, data;
-                
-                if (currentLoginMode === 'admin') {
-                    const username = document.getElementById('username').value.trim();
-                    const password = document.getElementById('password').value.trim();
-                    
-                    response = await fetch('/api/admin/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password })
-                    });
-                    data = await response.json();
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value.trim();
 
-                    if (response.ok) {
-                        localStorage.setItem('admin_logged_in', 'true');
-                        localStorage.setItem('admin_id', data.admin_id);
-                        localStorage.setItem('admin_role', 'admin');
-                        localStorage.removeItem('admin_training_key');
-                        document.getElementById('loginContainer').style.display = 'none';
-                        document.getElementById('adminContainer').style.display = 'block';
-                        switchManagementTab('course');
-                        loadCourses();
-                    } else {
-                        loginError.textContent = data.detail || '로그인에 실패했습니다.';
-                        loginError.style.display = 'block';
-                    }
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('admin_logged_in', 'true');
+                    localStorage.setItem('admin_id', data.admin_id);
+                    localStorage.setItem('admin_name', data.admin_name || data.admin_id);
+                    localStorage.setItem('admin_role', data.role || 'admin');
+                    localStorage.setItem('admin_level', data.admin_level != null ? String(data.admin_level) : '');
+                    localStorage.setItem('admin_assigned_training_keys', JSON.stringify(data.assigned_training_keys || []));
+                    localStorage.removeItem('admin_training_key');
+                    localStorage.removeItem('admin_course_name');
+                    document.getElementById('loginContainer').style.display = 'none';
+                    document.getElementById('adminContainer').style.display = 'block';
+                    switchManagementTab('course');
+                    loadCourses();
                 } else {
-                    // 감독자 로그인
-                    const trainingKey = document.getElementById('trainingKey').value.trim();
-                    const supervisorName = document.getElementById('supervisorName').value.trim();
-                    
-                    response = await fetch('/api/supervisor/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ training_key: trainingKey, supervisor_name: supervisorName })
-                    });
-                    data = await response.json();
-
-                    if (response.ok) {
-                        localStorage.setItem('admin_logged_in', 'true');
-                        localStorage.setItem('admin_id', data.supervisor_name);
-                        localStorage.setItem('admin_role', 'supervisor');
-                        localStorage.setItem('admin_training_key', data.training_key);
-                        localStorage.setItem('admin_course_name', data.course_name);
-                        
-                        // 감독자용 저장소에도 정보 저장 (supervisor.html에서 사용)
-                        localStorage.setItem('supervisor_training_key', data.training_key);
-                        localStorage.setItem('supervisor_name', data.supervisor_name);
-                        localStorage.setItem('supervisor_course_name', data.course_name);
-                        
-                        // 감독자는 모니터링 페이지로 이동
-                        window.location.href = `/supervisor/monitoring`;
-                    } else {
-                        loginError.textContent = data.detail || '로그인에 실패했습니다.';
-                        loginError.style.display = 'block';
-                    }
+                    loginError.textContent = data.detail || '로그인에 실패했습니다.';
+                    loginError.style.display = 'block';
                 }
             } catch (error) {
                 loginError.textContent = '로그인 중 오류가 발생했습니다.';
@@ -2751,6 +2728,9 @@
 
         // 과정 복사 모달 열기
         async function copyCourse(trainingKey, courseName) {
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             try {
                 // 원본 과정 정보 가져오기
                 const response = await fetch(`/api/admin/courses/${trainingKey}`);
@@ -2859,7 +2839,10 @@
                 }
                 closeGeneratedTestAssignModal();
                 const createdInfo = data.created_test_center ? ' (테스트 센터 신규 생성)' : '';
-                alert(`할당 완료: ${data.lab_name}${createdInfo} / 콘텐츠 ${data.content_id}`);
+                const courseLabel = data.course_name || data.training_key || trainingKey;
+                const testLabel = data.generated_name || subject;
+                const countLabel = Number(data.question_count || 0);
+                alert(`할당 완료\n과정: ${courseLabel}\n테스트: ${testLabel}\n할당 문항수: ${countLabel}문항\n배치 랩: ${data.lab_name}${createdInfo}`);
             } catch (error) {
                 alert(error.message);
             }
@@ -3088,6 +3071,9 @@
         // 복사 폼 제출
         document.getElementById('copyForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!ensureCourseManagementPermission()) {
+                return;
+            }
             const sourceTrainingKey = document.getElementById('copySourceTrainingKey').value;
             const newCourseName = document.getElementById('copyNewCourseName').value;
             const maxMember = document.getElementById('copyMaxMember').value;
