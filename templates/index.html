@@ -61,6 +61,65 @@
         /* 탭 콘텐츠 */
         .tab-content { display:none; }
         .tab-content.active { display:block; }
+
+        .welcome-banner {
+            margin: 18px 0 10px;
+            padding: 18px 20px;
+            background: linear-gradient(135deg, #dbeafe, #eef2ff);
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            text-align: center;
+            font-size: 1.15em;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+
+        .login-type-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        .login-type-btn {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .login-type-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .login-type-content { display: none; }
+        .login-type-content.active { display: block; }
+
+        .my-courses-panel {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+        }
+
+        .enter-course-btn {
+            background: #16a34a;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .enter-course-btn:hover {
+            background: #15803d;
+        }
         
         /* 로그인 폼 스타일 */
         .login-container { max-width:400px; margin:40px auto; padding:30px; background:var(--panel); border-radius:12px; border:1px solid var(--border); box-shadow: var(--shadow); }
@@ -159,38 +218,53 @@
     </style>
 </head>
 <body>
-    <h1>Hello AI HTC</h1>
+    <h1>Hello AI Training Center</h1>
+    <div class="welcome-banner">Hello AI Training Center에 오신 여러분을 환영합니다.</div>
     
-    <!-- 탭 네비게이션 -->
-    <div class="tab-container">
-        <button class="tab-button active" onclick="showTab('courses', this)">Active Courses</button>
-        <button class="tab-button" onclick="showTab('training', this)">Training Center</button>
-        <button class="tab-button" onclick="window.location.href='/admin'">Admin</button>
-    </div>
-    
-    <!-- 활성화된 과정 탭 -->
-    <div id="courses-tab" class="tab-content active">
-        <div id="coursesList"></div>
-    </div>
-    
-    <!-- Training Center 탭 -->
-    <div id="training-tab" class="tab-content">
+    <div id="training-tab" class="tab-content active" style="display:block;">
         <div class="login-container">
-            <h2>Training Center 로그인</h2>
-            <form id="loginForm" class="login-form">
-                <div class="form-group">
-                    <label for="trainingKey">트레이닝 키 (관리자는 비워둘 수 있음)</label>
-                    <input type="text" id="trainingKey" name="trainingKey" placeholder="트레이닝 키를 입력하세요 (관리자는 비워둘 수 있음)">
+            <h2>로그인</h2>
+            <div class="login-type-tabs">
+                <button type="button" id="generalLoginTabBtn" class="login-type-btn active" onclick="showLoginType('general')">일반 로그인</button>
+                <button type="button" id="adminLoginTabBtn" class="login-type-btn" onclick="showLoginType('admin')">🔐 관리자</button>
+            </div>
+
+            <div id="general-login-content" class="login-type-content active">
+                <form id="generalLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="trainingKey">트레이닝 키</label>
+                        <input type="text" id="trainingKey" name="trainingKey" required placeholder="트레이닝 키를 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="username">이름</label>
+                        <input type="text" id="username" name="username" required placeholder="이름을 입력하세요">
+                    </div>
+                    <button type="submit" class="login-button">로그인</button>
+                </form>
+                <div style="margin-top:20px; text-align:center;">
+                    <button type="button" class="register-button" onclick="showRegisterForm()">회원가입</button>
                 </div>
-                <div class="form-group">
-                    <label for="username">이름</label>
-                    <input type="text" id="username" name="username" required placeholder="이름을 입력하세요">
-                </div>
-                <button type="submit" class="login-button">Login</button>
-            </form>
+            </div>
+
+            <div id="admin-login-content" class="login-type-content">
+                <form id="adminLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="adminUsername">관리자 아이디</label>
+                        <input type="text" id="adminUsername" name="adminUsername" required placeholder="관리자 아이디를 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword">비밀번호</label>
+                        <input type="password" id="adminPassword" name="adminPassword" required placeholder="비밀번호를 입력하세요">
+                    </div>
+                    <button type="submit" class="login-button">관리자 로그인</button>
+                </form>
+            </div>
+
             <div id="loginMessage" style="margin-top:15px; text-align:center; color:var(--muted);"></div>
-            <div style="margin-top:20px; text-align:center;">
-                <button type="button" class="register-button" onclick="showRegisterForm()">Sign Up</button>
+
+            <div id="myCoursesPanel" class="my-courses-panel" style="display:none;">
+                <h3 style="margin:0 0 10px; color:var(--accent);">로그인한 과정 목록</h3>
+                <div id="myCoursesList"></div>
             </div>
         </div>
     </div>
@@ -270,37 +344,45 @@
             window.location.href = window.location.href.replace('0.0.0.0', 'localhost');
         }
         
-        // 탭 전환 함수
-        function showTab(tabName, buttonElement) {
-            // 모든 탭 버튼에서 active 클래스 제거
-            document.querySelectorAll('.tab-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // 모든 탭 콘텐츠에서 active 클래스 제거
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // 버튼 요소가 전달된 경우 해당 버튼 활성화, 아니면 탭명으로 찾기
-            if (buttonElement) {
-                buttonElement.classList.add('active');
+        function showLoginType(type) {
+            document.querySelectorAll('.login-type-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.login-type-content').forEach(content => content.classList.remove('active'));
+
+            if (type === 'general') {
+                document.getElementById('generalLoginTabBtn').classList.add('active');
+                document.getElementById('general-login-content').classList.add('active');
             } else {
-                // 버튼을 찾아서 활성화 (텍스트로 매칭)
-                document.querySelectorAll('.tab-button').forEach(btn => {
-                    if (tabName === 'courses' && btn.textContent.includes('Active Courses')) {
-                        btn.classList.add('active');
-                    } else if (tabName === 'training' && btn.textContent.includes('Training Center')) {
-                        btn.classList.add('active');
-                    }
-                });
+                document.getElementById('adminLoginTabBtn').classList.add('active');
+                document.getElementById('admin-login-content').classList.add('active');
             }
-            
-            // 선택된 탭 콘텐츠에 active 클래스 추가
-            const tabElement = document.getElementById(tabName + '-tab');
-            if (tabElement) {
-                tabElement.classList.add('active');
+            document.getElementById('loginMessage').textContent = '';
+        }
+
+        function renderMyCourses(courses) {
+            const listEl = document.getElementById('myCoursesList');
+            const panelEl = document.getElementById('myCoursesPanel');
+
+            if (!Array.isArray(courses) || courses.length === 0) {
+                panelEl.style.display = 'none';
+                return;
             }
+
+            listEl.innerHTML = courses.map(course => `
+                <div class="course-card" style="margin-bottom:10px; cursor:default;">
+                    <div class="course-title">${course.course_name || '과정명 없음'}</div>
+                    <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
+                    <div class="course-info">
+                        <span>과정 키: ${course.training_key || '-'}</span>
+                        <button class="enter-course-btn" onclick="enterCourse('${course.training_key || ''}')">과정 입장</button>
+                    </div>
+                </div>
+            `).join('');
+            panelEl.style.display = 'block';
+        }
+
+        function enterCourse(trainingKey) {
+            if (!trainingKey) return;
+            window.location.href = `/training-portal?training_key=${trainingKey}`;
         }
 
 
@@ -431,16 +513,16 @@
             scheduleContainer.innerHTML = table;
         }
 
-        // 로그인 폼 제출 이벤트
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        // 일반 로그인 폼 제출 이벤트
+        document.getElementById('generalLoginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const trainingKey = document.getElementById('trainingKey').value;
-            const username = document.getElementById('username').value;
+            const trainingKey = document.getElementById('trainingKey').value.trim();
+            const username = document.getElementById('username').value.trim();
             const messageDiv = document.getElementById('loginMessage');
             
-            if (!username) {
-                messageDiv.textContent = '아이디를 입력해주세요.';
+            if (!trainingKey || !username) {
+                messageDiv.textContent = '트레이닝 키와 이름을 입력해주세요.';
                 messageDiv.style.color = '#FF6B6B';
                 return;
             }
@@ -460,45 +542,25 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    // 로그인 성공
-                    const role = result.role;
-                    
-                    // role 값에 따라 다른 메시지와 이동 경로 설정
-                    if (role >= 100) {
-                        // 관리자 (role >= 100)
-                        messageDiv.textContent = '로그인 성공! 관리자 포털로 이동합니다...';
+                    sessionStorage.setItem('loginInfo', JSON.stringify({
+                        training_key: result.training_key || trainingKey,
+                        member_id: result.member_id || username,
+                        member_name: result.member_name || username,
+                        role: result.role
+                    }));
+
+                    if (result.is_admin || result.redirect_to === 'admin') {
+                        messageDiv.textContent = '로그인 성공! 관리자 페이지로 이동합니다...';
                         messageDiv.style.color = '#4CAF50';
-                        
-                        // 로그인 정보를 세션에 저장
-                        sessionStorage.setItem('loginInfo', JSON.stringify({
-                            training_key: result.training_key || trainingKey,
-                            member_id: result.member_id || username,
-                            member_name: result.member_name || username,
-                            role: role
-                        }));
-                        
-                        // 잠시 후 관리자 포털로 이동
                         setTimeout(() => {
                             window.location.href = '/admin';
-                        }, 1000);
-                    } else {
-                        // 일반 사용자 (role < 100)
-                        messageDiv.textContent = '로그인 성공! 포털로 이동합니다...';
-                        messageDiv.style.color = '#4CAF50';
-                        
-                        // 로그인 정보를 세션에 저장
-                        sessionStorage.setItem('loginInfo', JSON.stringify({
-                            training_key: result.training_key || trainingKey,
-                            member_id: result.member_id || username,
-                            member_name: result.member_name || username,
-                            role: role
-                        }));
-                        
-                        // 잠시 후 선택된 과정의 포털로 이동
-                        setTimeout(() => {
-                            window.location.href = `/training-portal?training_key=${result.training_key || trainingKey}`;
-                        }, 1000);
+                        }, 700);
+                        return;
                     }
+
+                    messageDiv.textContent = '로그인 성공! 과정 목록을 불러왔습니다.';
+                    messageDiv.style.color = '#4CAF50';
+                    renderMyCourses(result.courses || []);
                     
                 } else {
                     // 로그인 실패
@@ -508,6 +570,49 @@
                 
             } catch (error) {
                 messageDiv.textContent = '로그인 중 오류가 발생했습니다.';
+                messageDiv.style.color = '#FF6B6B';
+            }
+        });
+
+        // 관리자/파트너/과정관리자 로그인
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('adminUsername').value.trim();
+            const password = document.getElementById('adminPassword').value.trim();
+            const messageDiv = document.getElementById('loginMessage');
+
+            if (!username || !password) {
+                messageDiv.textContent = '관리자 아이디와 비밀번호를 입력해주세요.';
+                messageDiv.style.color = '#FF6B6B';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    messageDiv.textContent = result.detail || '관리자 로그인에 실패했습니다.';
+                    messageDiv.style.color = '#FF6B6B';
+                    return;
+                }
+
+                sessionStorage.setItem('adminLoginInfo', JSON.stringify(result));
+                messageDiv.textContent = '로그인 성공! 관리자 페이지로 이동합니다...';
+                messageDiv.style.color = '#4CAF50';
+                setTimeout(() => {
+                    window.location.href = '/admin';
+                }, 700);
+            } catch (error) {
+                messageDiv.textContent = '관리자 로그인 중 오류가 발생했습니다.';
                 messageDiv.style.color = '#FF6B6B';
             }
         });
@@ -655,90 +760,7 @@
             }
         });
 
-        // 과정 목록 로드 함수
-        async function loadCourses() {
-            try {
-                const response = await fetch('/api/active-courses');
-                
-                // API 응답 상태 확인
-                if (!response.ok) {
-                    throw new Error(`API 오류: ${response.status} ${response.statusText}`);
-                }
-                
-                const courses = await response.json();
-                
-                // 응답이 배열인지 확인
-                if (!Array.isArray(courses)) {
-                    console.error('API 응답이 배열이 아닙니다:', courses);
-                    document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록 형식이 잘못되었습니다.</p>';
-                    return;
-                }
-                
-                const coursesContainer = document.getElementById('coursesList');
-                
-                if (courses.length === 0) {
-                    coursesContainer.innerHTML = '<p style="text-align:center; color:var(--muted); margin-top:40px;">현재 활성화된 과정이 없습니다.</p>';
-                    return;
-                }
-                
-                let coursesHTML = '';
-                courses.forEach(course => {
-                    // 공개 과정인지 확인 (is_public 필드가 있으면 공개 과정)
-                    if (course.is_public) {
-                        // 공개 과정 - 로그인 없이 접근 가능
-                        coursesHTML += `
-                            <div class="public-course-card" onclick="openPublicCourse('${course.training_key}')">
-                                <div class="public-course-badge">🔓 공개 과정</div>
-                                <div class="public-course-title">${course.course_name}</div>
-                                <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
-                                <div class="course-info">
-                                    <span>최대 인원: ${course.max_member}명</span>
-                                    <span style="background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em;">무료 학습</span>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // 일반 과정 - 로그인 필요
-                        coursesHTML += `
-                            <div class="course-card" onclick="selectCourse('${course.training_key}')">
-                                <div class="course-title">${course.course_name}</div>
-                                <div class="course-content">${course.course_content || '과정 설명이 없습니다.'}</div>
-                                <div class="course-info">
-                                    <span>최대 인원: ${course.max_member}명</span>
-                                    <span class="course-status">활성</span>
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                coursesContainer.innerHTML = coursesHTML;
-            } catch (error) {
-                console.error('과정 목록 로드 오류:', error);
-                document.getElementById('coursesList').innerHTML = '<p style="text-align:center; color:#FF6B6B; margin-top:40px;">과정 목록을 불러오는 중 오류가 발생했습니다.<br><small style="color:var(--muted);">' + error.message + '</small></p>';
-            }
-        }
-        
-        // 과정 선택 함수
-        function selectCourse(trainingKey) {
-            // 선택된 과정의 training_key를 저장하고 로그인 탭으로 이동
-            sessionStorage.setItem('selectedTrainingKey', trainingKey);
-            showTab('training');
-            
-            // 트레이닝 키 입력 필드에 자동으로 설정하지 않음
-            // document.getElementById('trainingKey').value = trainingKey;
-        }
-        
-        // 공개 과정 열기 함수
-        function openPublicCourse(trainingKey) {
-            // 공개 과정은 로그인 없이 바로 포털로 이동
-            window.location.href = `/public-training-portal?training_key=${trainingKey}`;
-        }
-        
-        // 페이지 로드 시 실행
-        document.addEventListener('DOMContentLoaded', ()=>{
-            loadCourses();
-        });
+        // 로그인 화면만 제공: 별도 초기화 작업 없음
     </script>
 </body>
 </html>

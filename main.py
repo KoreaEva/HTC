@@ -960,6 +960,16 @@ class LoginRequest(BaseModel):
     training_key: str
     username: str
 
+
+def is_admin_like_role(raw_role) -> bool:
+    role_text = str(raw_role or "").strip().lower()
+    if role_text in ("admin", "partner", "course_manager", "manager", "supervisor"):
+        return True
+    try:
+        return int(float(role_text)) >= 100
+    except Exception:
+        return False
+
 class MoveContentRequest(BaseModel):
     new_lab_id: int
 
@@ -1050,6 +1060,27 @@ async def login(data: LoginRequest):
             role = result['role']
             member_id = result['member_id']
             training_key = data.training_key
+            is_admin = is_admin_like_role(role)
+
+            cursor.execute(
+                """
+                SELECT training_key, course_name, course_content, training_status, is_public
+                FROM training
+                WHERE training_key = %s
+                LIMIT 1
+                """,
+                (training_key,)
+            )
+            training_info = cursor.fetchone() or {}
+            courses = []
+            if training_info:
+                courses.append({
+                    "training_key": training_info.get("training_key"),
+                    "course_name": training_info.get("course_name") or "과정명 없음",
+                    "course_content": training_info.get("course_content") or "",
+                    "training_status": training_info.get("training_status"),
+                    "is_public": training_info.get("is_public") if training_info.get("is_public") is not None else 0
+                })
             
             # 로그인 이벤트 기록
             log_monitoring_event(
@@ -1065,9 +1096,12 @@ async def login(data: LoginRequest):
         return {
             "message": "Login successful", 
             "role": role, 
+            "is_admin": is_admin,
+            "redirect_to": "admin" if is_admin else "courses",
             "training_key": training_key,
             "member_id": member_id,
-            "member_name": data.username
+            "member_name": data.username,
+            "courses": courses
         }
     finally:
         conn.close()
