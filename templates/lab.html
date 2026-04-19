@@ -319,6 +319,25 @@
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        .result-badge {
+            display: inline-block;
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .result-badge.correct {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .result-badge.wrong {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .result-badge.unanswered {
+            background: #e5e7eb;
+            color: #374151;
+        }
         .content-row {
             background: #f8f9fa;
         }
@@ -1245,6 +1264,17 @@
         </div>
     </div>
 
+    <div id="testScoreDetailModal" class="modal">
+        <div class="modal-content" style="max-width:1100px; width:94%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 id="testScoreDetailTitle" style="margin:0;">문항별 결과</h2>
+                <button class="button secondary" onclick="closeModal('testScoreDetailModal')">닫기</button>
+            </div>
+            <div id="testScoreDetailMeta" style="font-size:13px; color:#475569; margin-bottom:10px;"></div>
+            <div id="testScoreDetailBody" style="max-height:70vh; overflow:auto;"></div>
+        </div>
+    </div>
+
     <!-- 랩 추가/수정 모달 -->
     <!-- Course Admin 추가 모달 -->
     <div id="courseAdminModal" class="modal">
@@ -1466,6 +1496,7 @@
         let selectedAssignmentTabIndex = 0;
         let assignmentPreviewRows = [];
         let assignmentFeedbackTarget = null;
+        let testScoreDetailResult = null;
 
         function getAdminLevel() {
             const raw = localStorage.getItem('admin_level');
@@ -1762,6 +1793,10 @@
             tbody.innerHTML = '';
             rows.forEach(item => {
                 const tr = document.createElement('tr');
+                const detailButton = `<button class="button secondary" onclick="openTestManagementScoreDetail(${item.id})">문항별</button>`;
+                const deleteButton = canDelete
+                    ? `<button class="button danger" onclick="deleteTestManagementScore(${item.id})">삭제</button>`
+                    : '<span style="color:#999;">-</span>';
                 tr.innerHTML = `
                     <td>${item.started_at || '-'}</td>
                     <td>${item.completed_at || item.create_date || '-'}</td>
@@ -1771,7 +1806,7 @@
                     <td>${item.answered_questions || 0} / ${item.total_questions || 0}</td>
                     <td>${item.solved_questions || 0} / ${item.total_questions || 0}</td>
                     <td><strong>${Number(item.score_percent || 0).toFixed(1)}점</strong></td>
-                    <td>${canDelete ? `<button class="button danger" onclick="deleteTestManagementScore(${item.id})">삭제</button>` : '<span style="color:#999;">-</span>'}</td>
+                    <td style="white-space:nowrap;">${detailButton} ${deleteButton}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -2224,6 +2259,91 @@
                 await loadTestManagementScores();
             } catch (error) {
                 alert(error.message || '테스트 결과 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        function buildTestScoreResultBadge(item) {
+            if (!item || item.is_answered === false) {
+                return '<span class="result-badge unanswered">미응답</span>';
+            }
+            if (item.is_correct === true) {
+                return '<span class="result-badge correct">정답</span>';
+            }
+            if (item.is_correct === false) {
+                return '<span class="result-badge wrong">오답</span>';
+            }
+            return '<span class="result-badge unanswered">판정불가</span>';
+        }
+
+        function renderTestManagementScoreDetailModal(payload) {
+            const titleEl = document.getElementById('testScoreDetailTitle');
+            const metaEl = document.getElementById('testScoreDetailMeta');
+            const bodyEl = document.getElementById('testScoreDetailBody');
+            if (!titleEl || !metaEl || !bodyEl) {
+                return;
+            }
+
+            const result = (payload && payload.result) ? payload.result : {};
+            const rows = Array.isArray(payload && payload.question_results) ? payload.question_results : [];
+            const scoreText = `${Number(result.score_percent || 0).toFixed(1)}점 (${result.solved_questions || 0}/${result.total_questions || 0})`;
+
+            titleEl.textContent = `문항별 결과 - ${result.member_name || '-'} (${result.member_id || '-'})`;
+            metaEl.textContent = `테스트: ${result.lab_content_subject || '-'} | 랩: ${result.lab_name || '-'} | 완료: ${result.completed_at || result.create_date || '-'} | 점수: ${scoreText}`;
+
+            if (rows.length === 0) {
+                bodyEl.innerHTML = '<div style="padding:16px; color:#6b7280; border:1px solid #e5e7eb; border-radius:8px;">문항 상세 데이터가 없습니다.</div>';
+                openModal('testScoreDetailModal');
+                return;
+            }
+
+            bodyEl.innerHTML = `
+                <table class="content-table" style="margin-top:0;">
+                    <thead>
+                        <tr>
+                            <th style="width:72px;">문항</th>
+                            <th style="min-width:280px;">문제</th>
+                            <th style="width:110px;">유형</th>
+                            <th>수강생 답안</th>
+                            <th>정답</th>
+                            <th style="width:90px;">결과</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(item => `
+                            <tr>
+                                <td>${escapeHtml(item.question_number ?? item.index ?? '-')}</td>
+                                <td>${escapeHtml(item.question_title || '-')}</td>
+                                <td>${escapeHtml(item.question_type || '-')}</td>
+                                <td>${escapeHtml(item.user_answer || '-')}</td>
+                                <td>${escapeHtml(item.correct_answer || '-')}</td>
+                                <td>${buildTestScoreResultBadge(item)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            openModal('testScoreDetailModal');
+        }
+
+        async function openTestManagementScoreDetail(resultId) {
+            try {
+                const response = await fetch(`/api/admin/test-management/scores/${resultId}/details?training_key=${encodeURIComponent(trainingKey)}`);
+                const raw = await response.text();
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch (e) {
+                    data = null;
+                }
+
+                if (!response.ok) {
+                    throw new Error((data && data.detail) || raw || '문항별 결과를 불러오지 못했습니다.');
+                }
+
+                testScoreDetailResult = data;
+                renderTestManagementScoreDetailModal(data);
+            } catch (error) {
+                alert(error.message || '문항별 결과 조회 중 오류가 발생했습니다.');
             }
         }
 

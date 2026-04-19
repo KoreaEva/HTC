@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import uvicorn
 import pymysql
 import requests
@@ -4913,6 +4913,364 @@ async def get_test_management_scores(training_key: str = Query(...)):
         conn.close()
 
 
+def normalize_choice_token(value: Any) -> str:
+    return str(value or "").strip().upper().rstrip('.')
+
+
+def normalize_yes_no(value: Any) -> str:
+    token = str(value or "").strip().upper()
+    if token in ("Y", "YES", "O", "TRUE", "1"):
+        return "YES"
+    if token in ("N", "NO", "X", "FALSE", "0"):
+        return "NO"
+    return token
+
+
+def normalize_answer_tokens(answer_value: Any) -> List[str]:
+    raw = str(answer_value or "").strip()
+    if not raw:
+        return []
+
+    normalized: List[str] = []
+    if raw.startswith('[') and raw.endswith(']'):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                normalized = [normalize_choice_token(token) for token in parsed if normalize_choice_token(token)]
+        except Exception:
+            normalized = []
+
+    if not normalized:
+        text = raw.replace('，', ',')
+        text = re.sub(r"[\[\]\"']", " ", text)
+        parts = re.split(r"[\s,;|/]+", text)
+        normalized = [normalize_choice_token(part) for part in parts if normalize_choice_token(part)]
+
+    return list(dict.fromkeys(normalized))
+
+
+def get_expected_choice_answer_keys(question: Dict[str, Any]) -> List[str]:
+    options = question.get("options") if isinstance(question, dict) else {}
+    if not isinstance(options, dict):
+        options = {}
+    expected_tokens = normalize_answer_tokens(question.get("answer") if isinstance(question, dict) else None)
+    if not expected_tokens:
+        return []
+
+    key_token_map: Dict[str, str] = {}
+    value_token_map: Dict[str, str] = {}
+    for raw_key, raw_value in options.items():
+        key_token = normalize_choice_token(raw_key)
+        value_token = normalize_choice_token(raw_value)
+        if key_token:
+            key_token_map[key_token] = key_token
+        if value_token and value_token not in value_token_map:
+            value_token_map[value_token] = key_token
+
+    mapped: List[str] = []
+    for token in expected_tokens:
+        mapped_token = key_token_map.get(token) or value_token_map.get(token) or token
+        if mapped_token:
+            mapped.append(mapped_token)
+    return list(dict.fromkeys(mapped))
+
+
+def is_response_answered(question: Dict[str, Any], response: Any) -> bool:
+    if not isinstance(response, dict):
+        return False
+
+    q_type = str(question.get("question_type") or "multiple_choice").lower()
+    answers = response.get("answers") if isinstance(response.get("answers"), list) else []
+
+    if q_type in ("yes_no", "matching"):
+        return len(answers) > 0 and all(item is not None and str(item).strip() != "" for item in answers)
+    return len(answers) > 0
+
+
+def is_response_correct(question: Dict[str, Any], response: Any) -> bool:
+    if not is_response_answered(question, response):
+        return False
+
+    q_type = str(question.get("question_type") or "multiple_choice").lower()
+    answers = response.get("answers") if isinstance(response.get("answers"), list) else []
+
+    if q_type == "yes_no":
+        items = question.get("items") if isinstance(question.get("items"), list) else []
+        if len(items) != len(answers):
+            return False
+        for idx, item in enumerate(items):
+            expected = normalize_yes_no((item or {}).get("answer"))
+            if not expected or normalize_yes_no(answers[idx]) != expected:
+                return False
+        return True
+
+    if q_type == "matching":
+        items = question.get("items") if isinstance(question.get("items"), list) else []
+        options = question.get("options") if isinstance(question.get("options"), list) else []
+        if len(items) != len(answers):
+            return False
+
+        for idx, item in enumerate(items):
+            expected_raw = str((item or {}).get("answer") or "").strip()
+            expected = expected_raw
+            if expected_raw and not expected_raw.isdigit():
+                normalized_expected = normalize_choice_token(expected_raw)
+                mapped_index = -1
+                for option_idx, option in enumerate(options):
+                    if normalize_choice_token(option) == normalized_expected:
+                        mapped_index = option_idx
+                        break
+                if mapped_index >= 0:
+                    expected = str(mapped_index + 1)
+
+            if not expected or str(answers[idx]).strip() != expected:
+                return False
+        return True
+
+    expected_answers = get_expected_choice_answer_keys(question)
+    if not expected_answers:
+        return False
+    selected_answers = [normalize_choice_token(value) for value in answers if normalize_choice_token(value)]
+    return sorted(selected_answers) == sorted(expected_answers)
+
+
+def format_user_answer(question: Dict[str, Any], response: Any) -> str:
+    if not isinstance(response, dict):
+        return "-"
+
+    q_type = str(question.get("question_type") or "multiple_choice").lower()
+    answers = response.get("answers") if isinstance(response.get("answers"), list) else []
+    if not answers:
+        return "-"
+
+    if q_type == "yes_no":
+        return ", ".join(normalize_yes_no(value) for value in answers)
+
+    if q_type == "matching":
+        options = question.get("options") if isinstance(question.get("options"), list) else []
+        formatted = []
+        for value in answers:
+            raw = str(value or "").strip()
+            if not raw:
+                formatted.append("-")
+                continue
+            if raw.isdigit():
+                idx = int(raw) - 1
+                if 0 <= idx < len(options):
+                    formatted.append(f"{raw}. {options[idx]}")
+                else:
+                    formatted.append(raw)
+            else:
+                formatted.append(raw)
+        return " | ".join(formatted)
+
+    return ", ".join(normalize_choice_token(value) for value in answers if normalize_choice_token(value)) or "-"
+
+
+def format_correct_answer(question: Dict[str, Any]) -> str:
+    q_type = str(question.get("question_type") or "multiple_choice").lower()
+    if q_type == "yes_no":
+        items = question.get("items") if isinstance(question.get("items"), list) else []
+        if not items:
+            return "-"
+        return ", ".join(normalize_yes_no((item or {}).get("answer")) for item in items)
+
+    if q_type == "matching":
+        items = question.get("items") if isinstance(question.get("items"), list) else []
+        options = question.get("options") if isinstance(question.get("options"), list) else []
+        if not items:
+            return "-"
+        formatted = []
+        for item in items:
+            expected_raw = str((item or {}).get("answer") or "").strip()
+            if not expected_raw:
+                formatted.append("-")
+                continue
+            if expected_raw.isdigit():
+                idx = int(expected_raw) - 1
+                if 0 <= idx < len(options):
+                    formatted.append(f"{expected_raw}. {options[idx]}")
+                else:
+                    formatted.append(expected_raw)
+            else:
+                formatted.append(expected_raw)
+        return " | ".join(formatted)
+
+    expected_answers = get_expected_choice_answer_keys(question)
+    if not expected_answers:
+        return "-"
+
+    options = question.get("options") if isinstance(question.get("options"), dict) else {}
+    parts = []
+    for key in expected_answers:
+        label = options.get(key)
+        parts.append(f"{key}. {label}" if label else key)
+    return " | ".join(parts)
+
+
+def load_test_center_questions(cursor, result_row: Dict[str, Any]) -> List[Dict[str, Any]]:
+    generated_test_id = result_row.get("generated_test_id")
+    questions: List[Dict[str, Any]] = []
+
+    if generated_test_id:
+        cursor.execute(
+            "SELECT questions_json FROM generated_tests WHERE id = %s LIMIT 1",
+            (generated_test_id,)
+        )
+        generated = cursor.fetchone() or {}
+        try:
+            parsed = json.loads(generated.get("questions_json") or "[]")
+            if isinstance(parsed, list):
+                questions = parsed
+        except Exception:
+            questions = []
+
+    if questions:
+        return questions
+
+    # Fallback: fetch from content payload when generated_test_id is absent in result row.
+    cursor.execute(
+        """
+        SELECT lab_content
+        FROM training_lab_contents
+        WHERE training_key = %s AND lab_id = %s AND content_id = %s
+        LIMIT 1
+        """,
+        (result_row.get("training_key"), result_row.get("lab_id"), result_row.get("content_id"))
+    )
+    content_row = cursor.fetchone() or {}
+    try:
+        parsed_content = json.loads(content_row.get("lab_content") or "{}")
+    except Exception:
+        parsed_content = {}
+
+    if isinstance(parsed_content, dict):
+        parsed_questions = parsed_content.get("questions")
+        if isinstance(parsed_questions, list):
+            return parsed_questions
+
+        fallback_generated_id = parsed_content.get("generated_test_id")
+        if fallback_generated_id:
+            cursor.execute(
+                "SELECT questions_json FROM generated_tests WHERE id = %s LIMIT 1",
+                (fallback_generated_id,)
+            )
+            generated = cursor.fetchone() or {}
+            try:
+                parsed = json.loads(generated.get("questions_json") or "[]")
+                if isinstance(parsed, list):
+                    return parsed
+            except Exception:
+                return []
+    return []
+
+
+@app.get("/api/admin/test-management/scores/{result_id}/details")
+async def get_test_management_score_detail(result_id: int, training_key: str = Query(...)):
+    ensure_test_center_results_table()
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    r.id,
+                    r.training_key,
+                    r.lab_id,
+                    tl.lab_name,
+                    r.content_id,
+                    tlc.lab_content_subject,
+                    r.generated_test_id,
+                    r.member_id,
+                    COALESCE(r.member_name, tm.member_name) AS member_name,
+                    r.total_questions,
+                    r.answered_questions,
+                    r.solved_questions,
+                    r.score_percent,
+                    r.detail_json,
+                    r.started_at,
+                    r.completed_at,
+                    r.create_date
+                FROM test_center_results r
+                LEFT JOIN training_member tm
+                    ON tm.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tm.member_id = (r.member_id COLLATE utf8mb4_0900_ai_ci)
+                LEFT JOIN training_lab tl
+                    ON tl.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tl.lab_id = r.lab_id
+                LEFT JOIN training_lab_contents tlc
+                    ON tlc.training_key = (r.training_key COLLATE utf8mb4_0900_ai_ci)
+                    AND tlc.lab_id = r.lab_id
+                    AND tlc.content_id = r.content_id
+                WHERE r.id = %s AND r.training_key = %s
+                LIMIT 1
+                """,
+                (result_id, training_key),
+            )
+            result_row = cursor.fetchone()
+            if not result_row:
+                raise HTTPException(status_code=404, detail="테스트 결과를 찾을 수 없습니다.")
+
+            try:
+                detail = json.loads(result_row.get("detail_json") or "{}")
+            except Exception:
+                detail = {}
+
+            responses = detail.get("responses") if isinstance(detail, dict) and isinstance(detail.get("responses"), list) else []
+            questions = load_test_center_questions(cursor, result_row)
+
+            max_len = max(len(questions), len(responses))
+            question_results = []
+            for idx in range(max_len):
+                question = questions[idx] if idx < len(questions) and isinstance(questions[idx], dict) else {}
+                response = responses[idx] if idx < len(responses) else None
+
+                question_number = question.get("question_number") if question else None
+                if question_number is None:
+                    question_number = idx + 1
+
+                answered = is_response_answered(question, response) if question else bool(response)
+                correct = is_response_correct(question, response) if question else None
+
+                question_results.append(
+                    {
+                        "index": idx + 1,
+                        "question_number": question_number,
+                        "question_type": str(question.get("question_type") or "multiple_choice") if question else None,
+                        "question_title": question.get("question_title") or question.get("question_text") or f"문항 {idx + 1}",
+                        "is_answered": answered,
+                        "is_correct": correct,
+                        "user_answer": format_user_answer(question, response) if question else "-",
+                        "correct_answer": format_correct_answer(question) if question else "-",
+                    }
+                )
+
+            return {
+                "result": {
+                    "id": result_row.get("id"),
+                    "training_key": result_row.get("training_key"),
+                    "lab_id": result_row.get("lab_id"),
+                    "lab_name": result_row.get("lab_name") or "",
+                    "content_id": result_row.get("content_id"),
+                    "lab_content_subject": result_row.get("lab_content_subject") or "",
+                    "generated_test_id": result_row.get("generated_test_id"),
+                    "member_id": result_row.get("member_id") or "",
+                    "member_name": result_row.get("member_name") or "",
+                    "started_at": format_kst(result_row.get("started_at"), '%Y-%m-%d %H:%M:%S') if result_row.get("started_at") else None,
+                    "completed_at": format_kst(result_row.get("completed_at"), '%Y-%m-%d %H:%M:%S') if result_row.get("completed_at") else None,
+                    "total_questions": int(result_row.get("total_questions") or 0),
+                    "answered_questions": int(result_row.get("answered_questions") or 0),
+                    "solved_questions": int(result_row.get("solved_questions") or 0),
+                    "score_percent": float(result_row.get("score_percent") or 0),
+                    "create_date": format_kst(result_row.get("create_date")),
+                },
+                "question_results": question_results,
+            }
+    finally:
+        conn.close()
+
+
 @app.delete("/api/admin/test-management/scores/{result_id}")
 async def delete_test_management_score(result_id: int, training_key: str = Query(...)):
     ensure_test_center_results_table()
@@ -6042,15 +6400,23 @@ async def update_lab_content_order(
             if not current_content_result:
                 raise HTTPException(status_code=404, detail="콘텐츠를 찾을 수 없습니다.")
             old_view_number = current_content_result['view_number']
-            # 2. Get the total number of contents in the current lab
-            cursor.execute("SELECT COUNT(*) as cnt FROM training_lab_contents WHERE training_key = %s AND lab_id = %s", (training_key, lab_id))
-            total_count_result = cursor.fetchone()
-            total_content_count = total_count_result['cnt'] if total_count_result and total_count_result['cnt'] is not None else 0
-            effective_max_view_number_for_validation = max(1, total_content_count)
+
+            # 2. Determine a safe upper bound from real ordering state.
+            # COUNT(*) can be smaller than existing view_number when there are gaps.
+            cursor.execute(
+                "SELECT COUNT(*) as cnt, MAX(view_number) as max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s",
+                (training_key, lab_id)
+            )
+            order_stats = cursor.fetchone() or {}
+            total_content_count = order_stats.get('cnt') or 0
+            max_view_number = order_stats.get('max_view_number') or 0
+            effective_max_view_number_for_validation = max(1, total_content_count, max_view_number)
+
             if new_view_number < 1 or new_view_number > effective_max_view_number_for_validation:
                 raise HTTPException(status_code=400, detail=f"유효하지 않은 순서 번호입니다. 1에서 {effective_max_view_number_for_validation} 사이의 값을 입력해주세요.")
             if old_view_number == new_view_number:
                 return {"message": "콘텐츠 순서가 변경되지 않았습니다."}
+
             # Reordering logic
             if old_view_number == 0:
                 cursor.execute(
@@ -6072,6 +6438,8 @@ async def update_lab_content_order(
                 (new_view_number, training_key, lab_id, content_id)
             )
             return {"message": "콘텐츠 순서가 성공적으로 업데이트되었습니다."}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"콘텐츠 순서 변경 중 오류가 발생했습니다: {str(e)}")
     finally:
