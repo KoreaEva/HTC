@@ -5,20 +5,20 @@
     <title>랩 콘텐츠 보기</title>
     <style>
         :root {
-            --bg: #f7f8fb;
+            --bg: #ffffff;
             --panel: #ffffff;
-            --sidebar: #f4f6fa;
-            --text: #1f2937;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --accent: #2563eb;
-            --accent-soft: #e8f0ff;
-            --hover: #eef2f7;
+            --sidebar: #fafafa;
+            --text: #1e1e1e;
+            --muted: rgba(30, 30, 30, 0.7);
+            --border: rgba(0, 0, 0, 0.06);
+            --accent: #07b53b;
+            --accent-soft: rgba(7, 181, 59, 0.08);
+            --hover: rgba(7, 181, 59, 0.05);
             --code-bg: #f6f8fa;
-            --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif;
             background: var(--bg);
             color: var(--text);
             margin: 0; /* 기본 마진 제거 */
@@ -80,7 +80,7 @@
         .sidebar h2 { font-size: 1.05em; margin-bottom: 14px; color: var(--text); font-weight: 600; }
         .content-list { list-style: none; padding: 0; margin: 0; }
         .content-list li { padding: 10px 12px; cursor: pointer; border-radius: 8px; color: var(--text); margin-bottom: 6px; }
-        .content-list li.selected { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+        .content-list li.selected { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
         .content-list li:hover { background: var(--hover); }
         .content-list li.disabled-content {
             color: var(--muted); /* 비활성화된 콘텐츠 색상 */
@@ -441,6 +441,75 @@
         .test-center-start-btn:hover {
             background: #1e4ed8;
         }
+        .live-poll-wrap {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px;
+            background: var(--panel);
+        }
+        .live-poll-question {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 14px;
+            line-height: 1.45;
+        }
+        .live-poll-option-btn {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .live-poll-option-btn.selected {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .live-poll-result-grid {
+            display: grid;
+            grid-template-columns: minmax(220px, 300px) 1fr;
+            gap: 16px;
+            align-items: start;
+            margin-top: 18px;
+        }
+        .live-poll-pie {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            margin: 0 auto;
+        }
+        .live-poll-bar {
+            display: grid;
+            grid-template-columns: minmax(90px, 1fr) minmax(120px, 2fr) 70px;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .live-poll-bar-track {
+            height: 10px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            overflow: hidden;
+        }
+        .live-poll-bar-fill {
+            height: 100%;
+            border-radius: 999px;
+        }
+        @media (max-width: 780px) {
+            .live-poll-result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         .test-center-modal {
             display: none;
             position: fixed;
@@ -552,6 +621,13 @@
             completed: false,
             completedAt: null,
         };
+        let livePollState = {
+            source: null,
+            pollId: null,
+            snapshot: null,
+            selectedOptionId: null,
+        };
+        const livePollColors = ['#2563eb', '#16a34a', '#f97316', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777', '#475569', '#65a30d', '#9333ea', '#0f766e'];
 
         function getTestCompletedMessage(completedAt) {
             return completedAt
@@ -566,6 +642,131 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
+        }
+
+        function closeLivePollStream() {
+            if (livePollState.source) {
+                livePollState.source.close();
+                livePollState.source = null;
+            }
+        }
+
+        function getLivePollPieStyle(options) {
+            const total = (options || []).reduce((sum, item) => sum + Number(item.response_count || 0), 0);
+            if (!total) return '#e5e7eb';
+            let current = 0;
+            const segments = (options || []).map((item, idx) => {
+                const start = current;
+                current += (Number(item.response_count || 0) / total) * 100;
+                return `${livePollColors[idx % livePollColors.length]} ${start}% ${current}%`;
+            });
+            return `conic-gradient(${segments.join(', ')})`;
+        }
+
+        function renderLivePoll(snapshot) {
+            const bodyDiv = document.getElementById('contentBody');
+            const poll = snapshot.poll || {};
+            const options = snapshot.options || [];
+            const selectedId = livePollState.selectedOptionId || (snapshot.my_response && snapshot.my_response.option_id);
+            livePollState.selectedOptionId = selectedId || null;
+
+            const optionButtons = options.map(option => `
+                <button type="button"
+                    class="live-poll-option-btn ${Number(selectedId) === Number(option.id) ? 'selected' : ''}"
+                    onclick="submitLivePollResponse(${poll.id}, ${option.id})">
+                    ${escapeHtml(option.option_text)}
+                </button>
+            `).join('');
+
+            const bars = options.map((option, idx) => `
+                <div class="live-poll-bar">
+                    <div><strong>${escapeHtml(option.option_text)}</strong></div>
+                    <div class="live-poll-bar-track">
+                        <div class="live-poll-bar-fill" style="width:${Number(option.percent || 0)}%; background:${livePollColors[idx % livePollColors.length]};"></div>
+                    </div>
+                    <div>${option.response_count || 0}명 · ${option.percent || 0}%</div>
+                </div>
+            `).join('');
+
+            bodyDiv.innerHTML = `
+                <div class="live-poll-wrap">
+                    <div style="color:var(--muted); font-size:13px; margin-bottom:8px;">실시간 설문 · 총 ${snapshot.total_responses || 0}명 응답</div>
+                    <div class="live-poll-question">${escapeHtml(poll.question_text || '')}</div>
+                    <div>${optionButtons}</div>
+                    <div id="livePollSubmitMsg" style="min-height:20px; color:#166534; font-size:13px; margin-top:8px;"></div>
+                    <div class="live-poll-result-grid">
+                        <div class="live-poll-pie" style="background:${getLivePollPieStyle(options)}"></div>
+                        <div>${bars || '<div style="color:var(--muted);">항목이 없습니다.</div>'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function submitLivePollResponse(pollId, optionId) {
+            const msgEl = document.getElementById('livePollSubmitMsg');
+            livePollState.selectedOptionId = optionId;
+            try {
+                const response = await fetch(`/api/portal/live-polls/${pollId}/respond`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        option_id: optionId,
+                        member_id: memberId || '',
+                        member_name: getQueryParam('member_name') || memberId || ''
+                    })
+                });
+                const raw = await response.text();
+                let data = {};
+                try { data = JSON.parse(raw); } catch (e) {}
+                if (!response.ok) {
+                    throw new Error(data.detail || raw || '응답 저장에 실패했습니다.');
+                }
+                if (msgEl) {
+                    msgEl.style.color = '#166534';
+                    msgEl.textContent = '응답이 저장되었습니다.';
+                }
+                if (livePollState.snapshot) {
+                    renderLivePoll(livePollState.snapshot);
+                }
+            } catch (error) {
+                if (msgEl) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = error.message;
+                }
+            }
+        }
+
+        async function renderLivePollContent(parsed) {
+            const pollId = parsed && parsed.poll_id ? Number(parsed.poll_id) : null;
+            const bodyDiv = document.getElementById('contentBody');
+            closeLivePollStream();
+            livePollState = { source: null, pollId, snapshot: null, selectedOptionId: null };
+            if (!pollId) {
+                bodyDiv.innerHTML = '<div style="color:#dc2626;">설문 정보를 찾을 수 없습니다.</div>';
+                return;
+            }
+            bodyDiv.innerHTML = '<div class="live-poll-wrap" style="color:var(--muted);">설문을 불러오는 중...</div>';
+            try {
+                const initialRes = await fetch(`/api/portal/live-polls/${pollId}?member_id=${encodeURIComponent(memberId || '')}`);
+                const initialData = await initialRes.json();
+                if (initialRes.ok) {
+                    livePollState.snapshot = initialData;
+                    livePollState.selectedOptionId = initialData.my_response ? initialData.my_response.option_id : null;
+                    renderLivePoll(initialData);
+                }
+            } catch (e) {}
+
+            livePollState.source = new EventSource(`/api/live-polls/${pollId}/stream`);
+            livePollState.source.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (payload.type === 'snapshot') {
+                        payload.data.my_response = { option_id: livePollState.selectedOptionId };
+                        livePollState.snapshot = payload.data;
+                        renderLivePoll(payload.data);
+                    }
+                } catch (e) {}
+            };
         }
 
         function normalizeChoiceToken(value) {
@@ -1454,6 +1655,7 @@
 
         async function selectContent(idx) {
             const content = contents[idx];
+            closeLivePollStream();
 
             // 활성화되지 않은 콘텐츠는 선택할 수 없음
             if (content.lab_content_status !== 1) {
@@ -1472,7 +1674,8 @@
             // 콘텐츠 타입에 따라 다르게 처리
             const contentText = content.lab_content || '(내용 없음)';
             
-            if (content.lab_content_type === 0) {
+            const contentTypeValue = Number(content.lab_content_type);
+            if (contentTypeValue === 0) {
                 // 타입 0: URL 기반 마크다운 처리
                 if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
                     try {
@@ -1497,7 +1700,7 @@
                 } else {
                     bodyDiv.innerHTML = '<span style="color:red">유효하지 않은 마크다운 URL입니다.</span>';
                 }
-            } else if (content.lab_content_type === 2) {
+            } else if (contentTypeValue === 2) {
                 // 타입 2: Text(Markdown) 처리 - 직접 입력된 마크다운 텍스트
                 bodyDiv.innerHTML = marked.parse(contentText);
                 
@@ -1507,7 +1710,7 @@
                         hljs.highlightElement(block);
                     });
                 }
-            } else if (content.lab_content_type === 1) {
+            } else if (contentTypeValue === 1) {
                 // 타입 1: 웹페이지 링크 버튼
                 if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
                     bodyDiv.innerHTML = `
@@ -1525,7 +1728,7 @@
                 } else {
                     bodyDiv.innerHTML = '<span style="color:red">웹페이지 URL이 아닙니다.</span>';
                 }
-            } else if (content.lab_content_type === 3) {
+            } else if (contentTypeValue === 3) {
                 // 타입 3: 코드 - Copy code 버튼 포함
                 const escapedCode = contentText
                     .replace(/&/g, '&amp;')
@@ -1547,7 +1750,7 @@
                 if (codeBlock && window.hljs) {
                     hljs.highlightElement(codeBlock);
                 }
-            } else if (content.lab_content_type === 4) {
+            } else if (contentTypeValue === 4) {
                 // 타입 4: 테스트 센터 JSON 콘텐츠
                 try {
                     const parsed = JSON.parse(contentText);
@@ -1559,7 +1762,7 @@
                 } catch (error) {
                     bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
                 }
-            } else if (content.lab_content_type === 5) {
+            } else if (contentTypeValue === 5) {
                 // 타입 5: 과제 (파일 업로드)
                 let assignmentDesc = '';
                 try {
@@ -1586,6 +1789,17 @@
                     </div>
                 `;
                 await loadLatestAssignmentSubmission(content.content_id);
+            } else if (contentTypeValue === 6) {
+                try {
+                    const parsed = JSON.parse(contentText);
+                    if (parsed && parsed.content_kind === 'live_poll') {
+                        await renderLivePollContent(parsed);
+                    } else {
+                        bodyDiv.innerHTML = '<div style="color:#dc2626;">설문 데이터 형식이 올바르지 않습니다.</div>';
+                    }
+                } catch (error) {
+                    bodyDiv.innerHTML = '<div style="color:#dc2626;">설문 데이터를 읽을 수 없습니다.</div>';
+                }
             } else {
                 // 기타 타입: 기본 텍스트 처리
                 bodyDiv.innerHTML = `<pre style="background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto;">${contentText}</pre>`;
@@ -1823,6 +2037,8 @@
             }
         }
         
+        window.addEventListener('beforeunload', closeLivePollStream);
+
         fetchUserInfoAndLoadContents(); // 페이지 로드시 사용자 정보 및 제목과 콘텐츠를 함께 불러옵니다.
     </script>
 </body>

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>AI Training Portal</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; }
-        .container { max-width: 900px; margin: 60px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 40px; }
+        body { font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif; background: #ffffff; color: #1e1e1e; }
+        .container { max-width: 900px; margin: 60px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06); padding: 40px; }
         
         /* 모바일 반응형 스타일 */
         @media (max-width: 768px) {
@@ -21,26 +21,27 @@
             h1 { font-size: 1.6em; }
             .course-title { font-size: 1.1em; }
         }
-        h1 { color: #007bff; margin-bottom: 10px; text-align: center; }
-        .course-title { font-size: 1.4em; font-weight: bold; margin-bottom: 20px; color: #333; text-align: center; }
+        h1 { color: #07b53b; margin-bottom: 10px; text-align: center; font-weight: 700; }
+        .course-title { font-size: 1.4em; font-weight: 700; margin-bottom: 20px; color: #1e1e1e; text-align: center; }
         .lab-list { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .lab-list th, .lab-list td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        .lab-list th { background-color: #f8f9fa; font-weight: bold; }
-        .lab-list tr:hover { background-color: #f5f5f5; }
+        .lab-list th, .lab-list td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(0,0,0,0.06); }
+        .lab-list th { background-color: rgba(7, 181, 59, 0.06); font-weight: 700; color: #1e1e1e; }
+        .lab-list tr:hover { background-color: rgba(7, 181, 59, 0.04); }
         
         /* 운영자 메뉴 버튼 및 모달 스타일 */
         .supervisor-btn {
-            background: #28a745;
+            background: #07b53b;
             color: white;
             border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 8px 20px;
+            border-radius: 50px;
             cursor: pointer;
             font-size: 0.9em;
-            transition: background 0.3s;
+            font-weight: 700;
+            transition: background 0.2s ease;
         }
         .supervisor-btn:hover {
-            background: #218838;
+            background: #069030;
         }
         
         .modal {
@@ -56,11 +57,11 @@
         }
         
         .modal-content {
-            background-color: #fefefe;
+            background-color: #ffffff;
             margin: 5% auto;
             padding: 20px;
-            border: 1px solid #888;
-            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
             width: 90%;
             max-width: 900px;
             max-height: 80vh;
@@ -78,7 +79,8 @@
         
         .modal-header h2 {
             margin: 0;
-            color: #333;
+            color: #1e1e1e;
+            font-weight: 700;
         }
         
         .close-btn {
@@ -100,17 +102,20 @@
         }
         
         .modal-tab {
-            padding: 10px 20px;
-            background: #f0f0f0;
-            border: none;
+            padding: 8px 20px;
+            background: transparent;
+            border: 1px solid rgba(0,0,0,0.06);
             cursor: pointer;
-            border-radius: 4px 4px 0 0;
-            font-weight: bold;
+            border-radius: 50px;
+            font-weight: 700;
+            color: rgba(30,30,30,0.7);
+            transition: all 0.2s ease;
         }
         
         .modal-tab.active {
-            background: #007bff;
+            background: #07b53b;
             color: white;
+            border-color: #07b53b;
         }
         
         .modal-content-section {
@@ -130,24 +135,24 @@
         .user-table th, .user-table td {
             padding: 10px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
         }
         
         .user-table th {
-            background-color: #f8f9fa;
-            font-weight: bold;
+            background-color: rgba(7, 181, 59, 0.06);
+            font-weight: 700;
         }
         
         .user-table tr:hover {
-            background-color: #f5f5f5;
+            background-color: rgba(7, 181, 59, 0.04);
         }
         
         .monitoring-item {
-            background: #f9f9f9;
+            background: rgba(7, 181, 59, 0.04);
             padding: 15px;
             margin-bottom: 10px;
-            border-left: 4px solid #007bff;
-            border-radius: 4px;
+            border-left: 4px solid #07b53b;
+            border-radius: 8px;
         }
         
         .monitoring-time {
@@ -158,16 +163,19 @@
         .logout-btn { 
             margin-top: 30px; 
             display: block;
-            padding: 10px 20px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            border-radius: 4px;
+            padding: 12px 32px;
+            background: transparent;
+            color: rgba(30,30,30,0.7);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 50px;
             cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s ease;
         }
         
         .logout-btn:hover {
-            background: #5a6268;
+            border-color: #ef4444;
+            color: #ef4444;
         }
     </style>
 </head>
@@ -276,7 +284,7 @@
                     
                     row.innerHTML = `
                         <td>${lab.lab_id}</td>
-                        <td>${isReady ? `<span style='color:#888;'>${lab.lab_name}</span>` : `<a href="/portal/lab_content?training_key=${encodeURIComponent(trainingKey)}&lab_id=${lab.lab_id}&member_id=${encodeURIComponent(memberId)}" style="color:#007bff; text-decoration:underline; font-weight:bold;">${lab.lab_name}</a>`}</td>
+                        <td>${isReady ? `<span style='color:rgba(30,30,30,0.4);'>${lab.lab_name}</span>` : `<a href="/portal/lab_content?training_key=${encodeURIComponent(trainingKey)}&lab_id=${lab.lab_id}&member_id=${encodeURIComponent(memberId)}" style="color:#07b53b; text-decoration:none; font-weight:700;">${lab.lab_name}</a>`}</td>
                         <td>${lab.lab_content || ''}</td>
                         <td>${lab.lab_status === 10 ? '준비중' : lab.lab_status === 20 ? '실행중' : lab.lab_status === 30 ? '완료' : lab.lab_status}</td>
                         <td>${lab.create_date || ''}</td>

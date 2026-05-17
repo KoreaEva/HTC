@@ -62,6 +62,8 @@ async def startup_event():
         print("✅ 과정 관리자 테이블 확인/생성 완료")
         ensure_assignment_submissions_table()
         print("✅ 과제 제출 테이블 확인/생성 완료")
+        ensure_live_poll_tables()
+        print("✅ 실시간 설문 테이블 확인/생성 완료")
     except Exception as e:
         print(f"⚠️ 테이블 생성 실패: {str(e)}")
 
@@ -388,6 +390,57 @@ def ensure_assignment_submissions_table():
         conn.close()
 
 
+def ensure_live_poll_tables():
+    """랩별 실시간 설문 테이블 생성"""
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS live_polls (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    training_key VARCHAR(100) NOT NULL,
+                    lab_id INT NOT NULL,
+                    content_id INT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    question_text TEXT NOT NULL,
+                    is_active TINYINT DEFAULT 1,
+                    created_by VARCHAR(100) NULL,
+                    created_by_name VARCHAR(100) NULL,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_lp_training_lab (training_key, lab_id),
+                    INDEX idx_lp_content (training_key, lab_id, content_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS live_poll_options (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    poll_id BIGINT NOT NULL,
+                    option_text VARCHAR(500) NOT NULL,
+                    sort_order INT NOT NULL DEFAULT 1,
+                    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_lpo_poll (poll_id, sort_order)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS live_poll_responses (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    poll_id BIGINT NOT NULL,
+                    option_id BIGINT NOT NULL,
+                    member_id VARCHAR(100) NOT NULL,
+                    member_name VARCHAR(100) NULL,
+                    responded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    update_date DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_lpr_poll_member (poll_id, member_id),
+                    INDEX idx_lpr_poll (poll_id),
+                    INDEX idx_lpr_option (poll_id, option_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            conn.commit()
+    finally:
+        conn.close()
+
+
 def ensure_course_admins_table():
     """과정 관리자(Course Manager / Partner) 테이블 생성"""
     conn = get_mysql_conn()
@@ -687,6 +740,10 @@ def normalize_lab_content_type(raw_type):
         '5': 5,
         'assignment': 5,
         'file': 5,
+        '6': 6,
+        'live_poll': 6,
+        'poll': 6,
+        'survey': 6,
     }
     if value in mapping:
         return mapping[value]
@@ -5321,6 +5378,425 @@ async def get_all_monitoring_events(limit: int = Query(50, le=100)):
         traceback.print_exc()
         return []
 
+
+def build_live_poll_snapshot(cursor, poll_id: int, include_responses: bool = False):
+    cursor.execute(
+        """
+        SELECT id, training_key, lab_id, content_id, title, question_text, is_active, create_date, update_date
+        FROM live_polls
+        WHERE id = %s
+        LIMIT 1
+        """,
+        (poll_id,)
+    )
+    poll = cursor.fetchone()
+    if not poll:
+        raise HTTPException(status_code=404, detail="설문을 찾을 수 없습니다.")
+
+    cursor.execute(
+        """
+        SELECT id, option_text, sort_order
+        FROM live_poll_options
+        WHERE poll_id = %s
+        ORDER BY sort_order ASC, id ASC
+        """,
+        (poll_id,)
+    )
+    option_rows = cursor.fetchall() or []
+
+    cursor.execute(
+        """
+        SELECT option_id, COUNT(*) AS response_count
+        FROM live_poll_responses
+        WHERE poll_id = %s
+        GROUP BY option_id
+        """,
+        (poll_id,)
+    )
+    count_rows = cursor.fetchall() or []
+    count_map = {int(row["option_id"]): int(row["response_count"] or 0) for row in count_rows}
+    total = sum(count_map.values())
+
+    options = []
+    for row in option_rows:
+        option_id = int(row["id"])
+        response_count = count_map.get(option_id, 0)
+        percent = round((response_count / total) * 100, 1) if total else 0
+        options.append({
+            "id": option_id,
+            "option_text": row["option_text"],
+            "sort_order": row["sort_order"],
+            "response_count": response_count,
+            "percent": percent,
+        })
+
+    snapshot = {
+        "poll": {
+            "id": poll["id"],
+            "training_key": poll["training_key"],
+            "lab_id": poll["lab_id"],
+            "content_id": poll.get("content_id"),
+            "title": poll["title"],
+            "question_text": poll["question_text"],
+            "is_active": int(poll.get("is_active") or 0),
+            "create_date": format_kst(poll.get("create_date")),
+            "update_date": format_kst(poll.get("update_date")),
+        },
+        "options": options,
+        "total_responses": total,
+    }
+
+    if include_responses:
+        cursor.execute(
+            """
+            SELECT r.id, r.member_id, r.member_name, r.option_id, o.option_text, r.responded_at
+            FROM live_poll_responses r
+            LEFT JOIN live_poll_options o ON o.id = r.option_id
+            WHERE r.poll_id = %s
+            ORDER BY r.responded_at DESC, r.id DESC
+            """,
+            (poll_id,)
+        )
+        snapshot["responses"] = [
+            {
+                "id": row["id"],
+                "member_id": row["member_id"],
+                "member_name": row.get("member_name") or "",
+                "option_id": row["option_id"],
+                "option_text": row.get("option_text") or "",
+                "responded_at": format_kst(row.get("responded_at"), '%Y-%m-%d %H:%M:%S') if row.get("responded_at") else "",
+            }
+            for row in (cursor.fetchall() or [])
+        ]
+
+    return snapshot
+
+
+def delete_live_poll_cascade(cursor, poll_id: int):
+    """설문 응답, 항목, 설문 본문을 순서대로 삭제한다."""
+    cursor.execute("DELETE FROM live_poll_responses WHERE poll_id = %s", (poll_id,))
+    deleted_responses = cursor.rowcount
+    cursor.execute("DELETE FROM live_poll_options WHERE poll_id = %s", (poll_id,))
+    deleted_options = cursor.rowcount
+    cursor.execute("DELETE FROM live_polls WHERE id = %s", (poll_id,))
+    deleted_polls = cursor.rowcount
+    return {
+        "deleted_responses": deleted_responses,
+        "deleted_options": deleted_options,
+        "deleted_polls": deleted_polls,
+    }
+
+
+@app.post("/api/admin/live-polls")
+async def create_live_poll(data: dict = Body(...)):
+    ensure_live_poll_tables()
+    training_key = str(data.get("training_key") or "").strip()
+    lab_id = data.get("lab_id")
+    title = str(data.get("title") or "").strip()
+    question_text = str(data.get("question_text") or "").strip()
+    options = data.get("options") or []
+    created_by = str(data.get("created_by") or "").strip()
+    created_by_name = str(data.get("created_by_name") or "").strip()
+    is_active = 1 if int(data.get("is_active", 1) or 0) == 1 else 0
+
+    clean_options = [str(item or "").strip() for item in options if str(item or "").strip()]
+    if not training_key or not lab_id:
+        raise HTTPException(status_code=400, detail="training_key와 lab_id는 필수입니다.")
+    if not title or not question_text:
+        raise HTTPException(status_code=400, detail="설문 제목과 질문을 입력해주세요.")
+    if len(clean_options) < 2:
+        raise HTTPException(status_code=400, detail="설문 항목은 2개 이상 필요합니다.")
+    if len(clean_options) > 12:
+        raise HTTPException(status_code=400, detail="설문 항목은 최대 12개까지 가능합니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT MAX(content_id) AS max_content_id, MAX(view_number) AS max_view_number FROM training_lab_contents WHERE training_key = %s AND lab_id = %s",
+                (training_key, lab_id)
+            )
+            max_row = cursor.fetchone() or {}
+            next_content_id = 1 if max_row.get("max_content_id") is None else int(max_row.get("max_content_id")) + 1
+            next_view_number = 1 if max_row.get("max_view_number") is None else int(max_row.get("max_view_number")) + 1
+
+            cursor.execute(
+                "SELECT is_public FROM training_lab WHERE training_key = %s AND lab_id = %s",
+                (training_key, lab_id)
+            )
+            lab_row = cursor.fetchone()
+            if not lab_row:
+                raise HTTPException(status_code=404, detail="랩을 찾을 수 없습니다.")
+            is_public = int(lab_row.get("is_public") or 0)
+
+            cursor.execute(
+                """
+                INSERT INTO live_polls
+                (training_key, lab_id, content_id, title, question_text, is_active, created_by, created_by_name, create_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (training_key, lab_id, next_content_id, title, question_text, is_active, created_by or None, created_by_name or None, now_kst_naive())
+            )
+            poll_id = cursor.lastrowid
+
+            for idx, option_text in enumerate(clean_options, start=1):
+                cursor.execute(
+                    "INSERT INTO live_poll_options (poll_id, option_text, sort_order) VALUES (%s, %s, %s)",
+                    (poll_id, option_text, idx)
+                )
+
+            content_payload = json.dumps({"content_kind": "live_poll", "poll_id": poll_id}, ensure_ascii=False)
+            cursor.execute(
+                """
+                INSERT INTO training_lab_contents
+                (training_key, lab_id, content_id, view_number, lab_content_subject, lab_content, lab_content_type, lab_content_status, lab_content_create_date, is_public)
+                VALUES (%s, %s, %s, %s, %s, %s, 6, %s, %s, %s)
+                """,
+                (training_key, lab_id, next_content_id, next_view_number, title, content_payload, is_active, now_kst_naive(), is_public)
+            )
+
+        conn.commit()
+        log_monitoring_event(
+            training_key=training_key,
+            event_type="live_poll_create",
+            event_category="poll",
+            target_type="poll",
+            target_id=str(poll_id),
+            target_name=title,
+            description=f"실시간 설문 '{title}'이(가) 생성되었습니다",
+            details={"lab_id": lab_id, "content_id": next_content_id, "poll_id": poll_id}
+        )
+        return {"success": True, "poll_id": poll_id, "content_id": next_content_id}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/live-polls")
+async def list_admin_live_polls(training_key: str = Query(...), lab_id: int = Query(None)):
+    ensure_live_poll_tables()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            conditions = ["p.training_key = %s"]
+            params = [training_key]
+            if lab_id is not None:
+                conditions.append("p.lab_id = %s")
+                params.append(lab_id)
+            where_clause = " AND ".join(conditions)
+            cursor.execute(
+                f"""
+                SELECT p.id, p.training_key, p.lab_id, p.content_id, p.title, p.question_text,
+                       p.is_active, p.create_date, tl.lab_name
+                FROM live_polls p
+                LEFT JOIN training_lab tl
+                    ON tl.training_key = p.training_key AND tl.lab_id = p.lab_id
+                WHERE {where_clause}
+                ORDER BY p.lab_id ASC, p.create_date DESC, p.id DESC
+                """,
+                params
+            )
+            poll_rows = cursor.fetchall() or []
+            polls = []
+            total_responses = 0
+            respondent_map = {}
+
+            for poll in poll_rows:
+                snapshot = build_live_poll_snapshot(cursor, int(poll["id"]), include_responses=True)
+                responses = snapshot.get("responses") or []
+                total_responses += int(snapshot.get("total_responses") or 0)
+                for response in responses:
+                    member_id = response.get("member_id") or ""
+                    member_name = response.get("member_name") or member_id
+                    if member_id not in respondent_map:
+                        respondent_map[member_id] = {
+                            "member_id": member_id,
+                            "member_name": member_name,
+                            "response_count": 0,
+                            "responses": []
+                        }
+                    respondent_map[member_id]["response_count"] += 1
+                    respondent_map[member_id]["responses"].append({
+                        "poll_id": poll["id"],
+                        "poll_title": poll["title"],
+                        "lab_id": poll["lab_id"],
+                        "lab_name": poll.get("lab_name") or "",
+                        "option_text": response.get("option_text") or "",
+                        "responded_at": response.get("responded_at") or "",
+                    })
+
+                snapshot["poll"]["lab_name"] = poll.get("lab_name") or ""
+                polls.append(snapshot)
+
+            return {
+                "polls": polls,
+                "summary": {
+                    "poll_count": len(polls),
+                    "total_responses": total_responses,
+                    "respondent_count": len(respondent_map),
+                },
+                "respondents": sorted(
+                    respondent_map.values(),
+                    key=lambda item: (str(item.get("member_name") or ""), str(item.get("member_id") or ""))
+                )
+            }
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/live-polls/{poll_id}")
+async def get_admin_live_poll(poll_id: int):
+    ensure_live_poll_tables()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            return build_live_poll_snapshot(cursor, poll_id, include_responses=True)
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/live-polls/{poll_id}")
+async def delete_admin_live_poll(poll_id: int, training_key: str = Query(...)):
+    ensure_live_poll_tables()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, training_key, lab_id, content_id, title
+                FROM live_polls
+                WHERE id = %s AND training_key = %s
+                LIMIT 1
+                """,
+                (poll_id, training_key)
+            )
+            poll = cursor.fetchone()
+            if not poll:
+                raise HTTPException(status_code=404, detail="삭제할 설문을 찾을 수 없습니다.")
+
+            if poll.get("content_id") is not None:
+                cursor.execute(
+                    """
+                    DELETE FROM training_lab_contents
+                    WHERE training_key = %s AND lab_id = %s AND content_id = %s
+                    """,
+                    (training_key, poll.get("lab_id"), poll.get("content_id"))
+                )
+            deleted = delete_live_poll_cascade(cursor, poll_id)
+        conn.commit()
+
+        log_monitoring_event(
+            training_key=training_key,
+            event_type="live_poll_delete",
+            event_category="poll",
+            target_type="poll",
+            target_id=str(poll_id),
+            target_name=poll.get("title"),
+            description=f"실시간 설문 '{poll.get('title')}'이(가) 삭제되었습니다",
+            details={
+                "lab_id": poll.get("lab_id"),
+                "content_id": poll.get("content_id"),
+                **deleted,
+            }
+        )
+        return {"success": True, "message": "설문과 관련 응답 데이터가 삭제되었습니다.", **deleted}
+    finally:
+        conn.close()
+
+
+@app.get("/api/portal/live-polls/{poll_id}")
+async def get_portal_live_poll(poll_id: int, member_id: str = Query("")):
+    ensure_live_poll_tables()
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            snapshot = build_live_poll_snapshot(cursor, poll_id, include_responses=False)
+            selected_option_id = None
+            if member_id:
+                cursor.execute(
+                    "SELECT option_id FROM live_poll_responses WHERE poll_id = %s AND member_id = %s LIMIT 1",
+                    (poll_id, member_id)
+                )
+                row = cursor.fetchone()
+                if row:
+                    selected_option_id = row.get("option_id")
+            snapshot["my_response"] = {"option_id": selected_option_id}
+            return snapshot
+    finally:
+        conn.close()
+
+
+@app.post("/api/portal/live-polls/{poll_id}/respond")
+async def respond_live_poll(poll_id: int, data: dict = Body(...)):
+    ensure_live_poll_tables()
+    option_id = data.get("option_id")
+    member_id = str(data.get("member_id") or "").strip()
+    member_name = str(data.get("member_name") or "").strip()
+    if not option_id or not member_id:
+        raise HTTPException(status_code=400, detail="option_id와 member_id는 필수입니다.")
+
+    conn = get_mysql_conn()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT training_key, is_active FROM live_polls WHERE id = %s LIMIT 1", (poll_id,))
+            poll = cursor.fetchone()
+            if not poll:
+                raise HTTPException(status_code=404, detail="설문을 찾을 수 없습니다.")
+            if int(poll.get("is_active") or 0) != 1:
+                raise HTTPException(status_code=400, detail="종료된 설문입니다.")
+            cursor.execute("SELECT id FROM live_poll_options WHERE poll_id = %s AND id = %s", (poll_id, option_id))
+            if not cursor.fetchone():
+                raise HTTPException(status_code=400, detail="설문 항목이 올바르지 않습니다.")
+
+            cursor.execute(
+                """
+                INSERT INTO live_poll_responses (poll_id, option_id, member_id, member_name, responded_at)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    option_id = VALUES(option_id),
+                    member_name = VALUES(member_name),
+                    responded_at = VALUES(responded_at)
+                """,
+                (poll_id, option_id, member_id, member_name or None, now_kst_naive())
+            )
+        conn.commit()
+        return {"success": True}
+    finally:
+        conn.close()
+
+
+@app.get("/api/live-polls/{poll_id}/stream")
+async def live_poll_stream(poll_id: int, include_responses: bool = Query(False)):
+    """실시간 설문 결과 스트림. 열린 페이지는 DB 스냅샷을 계속 갱신한다."""
+    ensure_live_poll_tables()
+
+    async def event_generator():
+        last_payload = None
+        while True:
+            try:
+                conn = get_mysql_conn()
+                try:
+                    with conn.cursor() as cursor:
+                        snapshot = build_live_poll_snapshot(cursor, poll_id, include_responses=include_responses)
+                finally:
+                    conn.close()
+                payload = json.dumps({"type": "snapshot", "data": snapshot}, ensure_ascii=False)
+                if payload != last_payload:
+                    yield f"data: {payload}\n\n"
+                    last_payload = payload
+                else:
+                    yield ": keep-alive\n\n"
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(2)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+    )
+
 @app.post("/api/admin/test-monitoring")
 async def test_monitoring(training_key: str = "TEST", member_name: str = "테스트사용자"):
     """모니터링 테스트용 엔드포인트"""
@@ -6002,10 +6478,36 @@ async def delete_lab_content(content_id: int, training_key: str = Query(...), la
     try:
         with conn.cursor() as cursor:
             # 삭제 전 콘텐츠 정보 조회
-            cursor.execute("SELECT lab_content_subject FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s", (training_key, lab_id, content_id))
+            cursor.execute(
+                """
+                SELECT lab_content_subject, lab_content, lab_content_type
+                FROM training_lab_contents
+                WHERE training_key = %s AND lab_id = %s AND content_id = %s
+                """,
+                (training_key, lab_id, content_id)
+            )
             content_info = cursor.fetchone()
             
             try:
+                deleted_poll_info = None
+                if content_info and normalize_lab_content_type(content_info.get("lab_content_type")) == 6:
+                    cursor.execute(
+                        """
+                        SELECT id, title
+                        FROM live_polls
+                        WHERE training_key = %s AND lab_id = %s AND content_id = %s
+                        LIMIT 1
+                        """,
+                        (training_key, lab_id, content_id)
+                    )
+                    poll_row = cursor.fetchone()
+                    if poll_row:
+                        deleted_poll_info = {
+                            "poll_id": poll_row.get("id"),
+                            "title": poll_row.get("title"),
+                            **delete_live_poll_cascade(cursor, int(poll_row.get("id")))
+                        }
+
                 cursor.execute("DELETE FROM training_lab_contents WHERE training_key = %s AND lab_id = %s AND content_id = %s", (training_key, lab_id, content_id))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"콘텐츠 삭제 실패: {str(e)}")
@@ -6024,11 +6526,12 @@ async def delete_lab_content(content_id: int, training_key: str = Query(...), la
                 details={
                     "lab_id": lab_id,
                     "content_id": content_id,
-                    "subject": content_info['lab_content_subject']
+                    "subject": content_info['lab_content_subject'],
+                    "deleted_poll": deleted_poll_info,
                 }
             )
         
-        return {"message": "콘텐츠가 삭제되었습니다."}
+        return {"message": "콘텐츠가 삭제되었습니다.", "deleted_poll": deleted_poll_info}
     finally:
         conn.close()
 

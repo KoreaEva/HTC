@@ -6,16 +6,17 @@
     <title>Hello AI HTC</title>
     <style>
         :root {
-            --bg: #f7f8fb;
+            --bg: #ffffff;
             --panel: #ffffff;
-            --muted: #6b7280;
-            --accent: #2563eb;
-            --text: #1f2937;
-            --border: #e5e7eb;
-            --hover: #f1f5f9;
-            --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            --muted: rgba(30, 30, 30, 0.7);
+            --accent: #07b53b;
+            --accent-dark: #069030;
+            --text: #1e1e1e;
+            --border: rgba(0, 0, 0, 0.06);
+            --hover: rgba(7, 181, 59, 0.05);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        body { font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
         
         /* 모바일 반응형 스타일 */
         @media (max-width: 768px) {
@@ -42,7 +43,7 @@
         select { background: var(--panel); color:var(--text); border:1px solid var(--border); padding:6px 8px; border-radius:6px; }
         .schedule-table { width:100%; border-collapse:collapse; margin-top:20px; font-size:0.9em; }
         .schedule-table th, .schedule-table td { border:1px solid var(--border); padding:10px; text-align:left; }
-        .schedule-table th { background: #eff6ff; color:var(--text); font-weight:600; }
+        .schedule-table th { background: rgba(7, 181, 59, 0.08); color:var(--text); font-weight:700; }
         .schedule-table td { background: var(--panel); color:var(--text); }
         .schedule-table tr:hover td { background: var(--hover); }
         .status-working { color:#FFD700; font-weight:600; }
@@ -54,8 +55,8 @@
         
         /* 탭 스타일 */
         .tab-container { display:flex; margin-bottom:20px; border-bottom:1px solid var(--border); }
-        .tab-button { background:var(--panel); color:var(--text); border:none; padding:12px 24px; cursor:pointer; border-radius:8px 8px 0 0; margin-right:4px; border:1px solid var(--border); border-bottom:none; }
-        .tab-button:hover { background: var(--hover); }
+        .tab-button { background:var(--panel); color:var(--text); border:none; padding:10px 24px; cursor:pointer; border-radius:50px 50px 0 0; margin-right:4px; border:1px solid var(--border); border-bottom:none; font-weight:700; }
+        .tab-button:hover { background: var(--hover); color:var(--accent); }
         .tab-button.active { background:var(--accent); color:#fff; border-color: var(--accent); }
         
         /* 탭 콘텐츠 */
@@ -65,13 +66,13 @@
         .welcome-banner {
             margin: 18px 0 10px;
             padding: 18px 20px;
-            background: linear-gradient(135deg, #dbeafe, #eef2ff);
-            border: 1px solid #bfdbfe;
+            background: linear-gradient(135deg, rgba(7, 181, 59, 0.08), rgba(7, 181, 59, 0.04));
+            border: 1px solid rgba(7, 181, 59, 0.2);
             border-radius: 14px;
             text-align: center;
             font-size: 1.15em;
             font-weight: 700;
-            color: #1e3a8a;
+            color: #07b53b;
         }
 
         .login-type-tabs {
@@ -85,11 +86,12 @@
         .login-type-btn {
             border: 1px solid var(--border);
             background: var(--panel);
-            color: var(--text);
-            padding: 8px 12px;
-            border-radius: 8px;
+            color: rgba(30, 30, 30, 0.7);
+            padding: 8px 15px;
+            border-radius: 50px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
+            transition: all 0.2s ease;
         }
 
         .login-type-btn.active {
@@ -108,17 +110,18 @@
         }
 
         .enter-course-btn {
-            background: #16a34a;
+            background: var(--accent);
             color: #fff;
             border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 8px 20px;
+            border-radius: 50px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
+            transition: background 0.2s ease;
         }
 
         .enter-course-btn:hover {
-            background: #15803d;
+            background: var(--accent-dark);
         }
         
         /* 로그인 폼 스타일 */
@@ -126,12 +129,12 @@
         .login-form { display:flex; flex-direction:column; gap:20px; }
         .form-group { display:flex; flex-direction:column; gap:8px; }
         .form-group label { color:var(--text); font-weight:600; }
-        .form-group input { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:12px; border-radius:6px; font-size:14px; }
-        .form-group input:focus { outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
-        .login-button { background:var(--accent); color:#fff; border:none; padding:12px; border-radius:6px; font-weight:600; cursor:pointer; font-size:14px; }
-        .login-button:hover { background:#1d4ed8; }
-        .register-button { background:#1565C0; color:white; border:none; padding:12px; border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
-        .register-button:hover { background:#1976D2; }
+        .form-group input { background:var(--panel); color:var(--text); border:1px solid var(--border); padding:12px 16px; border-radius:12px; font-size:16px; }
+        .form-group input:focus { outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px rgba(7, 181, 59, 0.12); }
+        .login-button { background:var(--accent); color:#fff; border:none; padding:12px 32px; border-radius:50px; font-weight:700; cursor:pointer; font-size:16px; transition: background 0.2s ease; }
+        .login-button:hover { background:var(--accent-dark); }
+        .register-button { background:transparent; color:var(--text); border:1px solid var(--border); padding:12px 32px; border-radius:50px; font-weight:700; cursor:pointer; font-size:16px; transition: all 0.2s ease; }
+        .register-button:hover { border-color:var(--accent); color:var(--accent); }
         
         /* 과정 목록 스타일 */
         .course-card {
@@ -150,7 +153,7 @@
         }
         .course-title {
             font-size: 1.2em;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--accent);
             margin-bottom: 10px;
         }
@@ -167,22 +170,23 @@
             font-size: 0.9em;
         }
         .course-status {
-            background: #4CAF50;
+            background: var(--accent);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 50px;
             font-size: 0.8em;
+            font-weight: 700;
         }
         
         /* 공개 과정 카드 스타일 */
         .public-course-card {
-            background: linear-gradient(135deg, #ffffff, #f3f4f6);
-            border: 2px solid #22c55e;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.06);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
         }
@@ -195,23 +199,23 @@
             opacity: 0.8;
         }
         .public-course-card:hover {
-            background: linear-gradient(135deg, #f8fafc, #eef2f7);
             border-color: var(--accent);
             transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 4px 20px rgba(7, 181, 59, 0.15);
         }
         .public-course-title {
             font-size: 1.2em;
-            font-weight: 600;
-            color: #16a34a;
+            font-weight: 700;
+            color: var(--accent);
             margin-bottom: 10px;
         }
         .public-course-badge {
-            background: #16a34a;
+            background: var(--accent);
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 50px;
             font-size: 0.8em;
+            font-weight: 700;
             margin-bottom: 10px;
             display: inline-block;
         }

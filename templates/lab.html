@@ -5,11 +5,12 @@
     <title>Lab</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f5f5f5;
+            font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif;
+            background: #ffffff;
             margin: 0;
             padding: 20px 24px;
             box-sizing: border-box;
+            color: #1e1e1e;
         }
         
         /* 모바일 반응형 스타일 */
@@ -37,8 +38,9 @@
             max-width: none;
             margin: 0;
             background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.06);
             padding: 20px;
             box-sizing: border-box;
         }
@@ -52,40 +54,46 @@
         }
         .header h1 {
             margin: 0;
-            color: #333;
+            color: #1e1e1e;
             font-size: 24px;
+            font-weight: 700;
         }
         .button {
-            background: #007bff;
+            background: #07b53b;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 8px 20px;
+            border-radius: 50px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 700;
             text-decoration: none;
             display: inline-block;
+            transition: background 0.2s ease;
         }
         .button:hover {
-            background: #0056b3;
+            background: #069030;
         }
         .button.danger {
-            background: #dc3545;
+            background: #ef4444;
         }
                  .button.danger:hover {
-             background: #c82333;
+             background: #dc2626;
          }
          .button.success {
-             background: #28a745;
+             background: #07b53b;
          }
          .button.success:hover {
-             background: #218838;
+             background: #069030;
          }
          .button.secondary {
-             background: #6c757d;
+             background: transparent;
+             color: rgba(30,30,30,0.7);
+             border: 1px solid rgba(0,0,0,0.1);
          }
          .button.secondary:hover {
-             background: #5a6268;
+             border-color: #1e1e1e;
+             color: #1e1e1e;
          }
          .button.warning {
              background: #f59e0b;
@@ -114,25 +122,25 @@
             padding-bottom: 10px;
         }
         .tab-btn {
-            border: 1px solid #d1d5db;
+            border: 1px solid rgba(0,0,0,0.06);
             background: #fff;
-            color: #333;
-            border-radius: 8px;
-            padding: 8px 14px;
-            font-weight: 600;
+            color: rgba(30,30,30,0.7);
+            border-radius: 50px;
+            padding: 8px 20px;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.18s ease;
         }
         .tab-btn:hover {
-            background: #eff6ff;
-            border-color: #93c5fd;
-            color: #1d4ed8;
+            background: rgba(7, 181, 59, 0.05);
+            border-color: rgba(7, 181, 59, 0.3);
+            color: #07b53b;
         }
         .tab-btn.active {
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            background: #07b53b;
             color: #fff;
-            border-color: #1d4ed8;
-            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
+            border-color: #07b53b;
+            box-shadow: 0 4px 12px rgba(7, 181, 59, 0.25);
             transform: translateY(-1px);
         }
         .tab-pane { display: none; }
@@ -144,25 +152,25 @@
             margin: 0 0 12px 0;
         }
         .subtab-btn {
-            border: 1px solid #d1d5db;
+            border: 1px solid rgba(0,0,0,0.06);
             background: #fff;
-            color: #334155;
+            color: rgba(30,30,30,0.7);
             border-radius: 999px;
-            padding: 6px 12px;
+            padding: 6px 15px;
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.18s ease;
         }
         .subtab-btn:hover {
-            background: #eff6ff;
-            border-color: #93c5fd;
-            color: #1d4ed8;
+            background: rgba(7, 181, 59, 0.05);
+            border-color: rgba(7, 181, 59, 0.3);
+            color: #07b53b;
         }
         .subtab-btn.active {
-            background: #1d4ed8;
+            background: #07b53b;
             color: #fff;
-            border-color: #1d4ed8;
+            border-color: #07b53b;
         }
         .metric-grid {
             display: grid;
@@ -221,13 +229,13 @@
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cfd4da; transition: .2s; border-radius: 24px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: #fff; transition: .2s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        input:checked + .slider { background-color: #2196F3; }
+        input:checked + .slider { background-color: #07b53b; }
         input:checked + .slider:before { transform: translateX(20px); }
         /* 상태 텍스트 버튼 */
         .status-text-btn {
             border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
+            border-radius: 50px;
+            padding: 6px 15px;
             min-width: 84px;
             font-size: 12px;
             font-weight: 700;
@@ -236,7 +244,7 @@
             transition: opacity .2s ease;
         }
         .status-text-btn.active {
-            background: #28a745;
+            background: #07b53b;
         }
         .status-text-btn.inactive {
             background: #6c757d;
@@ -257,8 +265,8 @@
         .icon-btn {
             width: 32px;
             height: 32px;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 8px;
             background: #fff;
             cursor: pointer;
             display: inline-flex;
@@ -270,8 +278,8 @@
             transition: all 0.2s ease;
         }
         .icon-btn:hover {
-            background: #f8f9fa;
-            border-color: #007bff;
+            background: rgba(7, 181, 59, 0.05);
+            border-color: #07b53b;
             transform: translateY(-1px);
         }
         .icon-btn.delete {
@@ -290,12 +298,12 @@
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
         }
         th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
+            background: rgba(7, 181, 59, 0.06);
+            font-weight: 700;
+            color: #1e1e1e;
         }
         tr:hover {
             background: #f8f9fa;
@@ -1006,6 +1014,47 @@
             margin-bottom: 6px;
             opacity: 0.6;
         }
+        .poll-option-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .poll-option-row input {
+            flex: 1;
+        }
+        .poll-result-grid {
+            display: grid;
+            grid-template-columns: minmax(260px, 360px) 1fr;
+            gap: 18px;
+            align-items: start;
+        }
+        .poll-pie {
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            margin: 8px auto 16px;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+        }
+        .poll-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .poll-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex: 0 0 auto;
+        }
+        @media (max-width: 900px) {
+            .poll-result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -1070,6 +1119,7 @@
             <button class="tab-btn" onclick="showCourseTab('user', this)">User</button>
             <button class="tab-btn" id="testMgmtTabBtn" onclick="showCourseTab('test', this)">Test</button>
             <button class="tab-btn" id="resultFilesTabBtn" onclick="showCourseTab('resultfiles', this)">Assignment</button>
+            <button class="tab-btn" id="surveyTabBtn" onclick="showCourseTab('survey', this)">Survay</button>
             <button class="tab-btn" onclick="showCourseTab('monitoring', this)">Monitoring</button>
             <button class="tab-btn" id="adminMgmtTabBtn" onclick="showCourseTab('admin', this)">Admin</button>
         </div>
@@ -1199,6 +1249,43 @@
                 </thead>
                 <tbody id="assignmentResultList">
                     <tr><td colspan="9" style="text-align:center; padding:30px; color:#666;">&#9203; 로딩 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="survey-tab" class="tab-pane">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="color:#333; margin:0;">Survay</h2>
+                <button class="button secondary" onclick="loadSurveyResults()">새로고침</button>
+            </div>
+            <p style="color:#6b7280; font-size:14px; margin-bottom:12px;">랩별 실시간 설문 현황과 개인별 응답 통계를 확인합니다.</p>
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-title">Total Polls</div>
+                    <div class="metric-value" id="surveyMetricPollCount">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Total Responses</div>
+                    <div class="metric-value" id="surveyMetricResponseCount">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-title">Respondents</div>
+                    <div class="metric-value" id="surveyMetricRespondentCount">0</div>
+                </div>
+            </div>
+            <div id="surveyPollList" style="margin-top:12px;"></div>
+            <h3 style="margin:22px 0 10px; color:#333;">개인별 통계</h3>
+            <table class="content-table">
+                <thead>
+                    <tr>
+                        <th>수강생</th>
+                        <th>ID</th>
+                        <th>응답 수</th>
+                        <th>최근 응답</th>
+                    </tr>
+                </thead>
+                <tbody id="surveyRespondentList">
+                    <tr><td colspan="4" style="text-align:center; padding:30px; color:#666;">설문 통계를 불러오세요.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -1357,12 +1444,24 @@
                                 <option value="web">🔗 웹페이지 (URL 링크)</option>
                                 <option value="web_markdown">🌐 웹 마크다운 (URL)</option>
                                 <option value="assignment">📎 과제 (파일 제출)</option>
+                                <option value="live_poll">📊 실시간 설문</option>
                             </select>
                         </div>
                         <div class="form-group" id="assignmentFileGroup" style="display: none;">
                             <label for="assignmentFile">과제 파일</label>
                             <input type="file" id="assignmentFile">
                             <div id="assignmentFileInfo" style="margin-top: 8px; font-size: 13px; color: #666;"></div>
+                        </div>
+                        <div id="contentPollFields" style="display:none;">
+                            <div class="form-group">
+                                <label for="contentPollQuestion">설문 질문</label>
+                                <textarea id="contentPollQuestion" rows="3" placeholder="수강생에게 보여줄 질문을 입력하세요."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>설문 항목</label>
+                                <div id="contentPollOptions"></div>
+                                <button type="button" class="button secondary" onclick="addContentPollOption()">항목 추가</button>
+                            </div>
                         </div>
                         <div class="form-group" id="codeLanguageGroup" style="display: none;">
                             <label for="codeLanguage">코드 언어:</label>
@@ -1419,6 +1518,50 @@
                     <button type="button" class="button secondary" onclick="closeModal('moveContentModal')">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="livePollModal" class="modal">
+        <div class="modal-content" style="max-width:720px;">
+            <h2>실시간 설문 추가</h2>
+            <form id="livePollForm">
+                <input type="hidden" id="livePollLabId">
+                <div class="form-group">
+                    <label for="livePollTitle">설문 제목</label>
+                    <input type="text" id="livePollTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="livePollQuestion">질문</label>
+                    <textarea id="livePollQuestion" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>항목</label>
+                    <div id="livePollOptions"></div>
+                    <button type="button" class="button secondary" onclick="addLivePollOption()">항목 추가</button>
+                </div>
+                <div class="form-group">
+                    <label for="livePollStatus">상태</label>
+                    <select id="livePollStatus">
+                        <option value="1">활성화</option>
+                        <option value="0">비활성화</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">생성</button>
+                    <button type="button" class="button secondary" onclick="closeModal('livePollModal')">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="livePollResultsModal" class="modal">
+        <div class="modal-content" style="max-width:1100px; width:94%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h2 id="livePollResultsTitle" style="margin:0;">설문 결과</h2>
+                <button class="button secondary" onclick="closeLivePollResultsModal()">닫기</button>
+            </div>
+            <div id="livePollResultsMeta" style="font-size:13px; color:#475569; margin-bottom:12px;"></div>
+            <div id="livePollResultsBody"></div>
         </div>
     </div>
 
@@ -1497,6 +1640,9 @@
         let assignmentPreviewRows = [];
         let assignmentFeedbackTarget = null;
         let testScoreDetailResult = null;
+        let livePollResultsSource = null;
+        let surveyResultsCache = null;
+        const livePollColors = ['#2563eb', '#16a34a', '#f97316', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777', '#475569', '#65a30d', '#9333ea', '#0f766e'];
 
         function getAdminLevel() {
             const raw = localStorage.getItem('admin_level');
@@ -1636,6 +1782,9 @@
             }
             if (tabName === 'resultfiles') {
                 loadAssignmentResults();
+            }
+            if (tabName === 'survey') {
+                loadSurveyResults();
             }
         }
 
@@ -2611,7 +2760,12 @@
                                 <div class="content-details" id="content-details-${lab.lab_id}">
                                     <div class="content-header">
                                         <h3 style="margin: 0; color: #333;">${lab.lab_name} - 콘텐츠 목록</h3>
-                                        ${restrictedEditor ? '' : `<button class="icon-btn" onclick="showAddContentModal(${lab.lab_id})" title="콘텐츠 추가" aria-label="콘텐츠 추가">➕</button>`}
+                                        ${restrictedEditor ? '' : `
+                                            <div style="display:flex; gap:6px;">
+                                                <button class="button secondary" onclick="showLivePollModal(${lab.lab_id})">설문 추가</button>
+                                                <button class="icon-btn" onclick="showAddContentModal(${lab.lab_id})" title="콘텐츠 추가" aria-label="콘텐츠 추가">➕</button>
+                                            </div>
+                                        `}
                                     </div>
                                     <div id="content-list-${lab.lab_id}">로딩 중...</div>
                                 </div>
@@ -2673,7 +2827,13 @@
                 document.getElementById('contentLabId').value = '';
                 document.getElementById('contentId').value = '';
                 document.getElementById('autoDetectedLabel').textContent = '';
+                document.getElementById('contentPollOptions').innerHTML = '';
+                document.getElementById('contentPollQuestion').value = '';
                 manualTypeOverride = false; // 자동 감지 플래그 리셋
+            }
+            if (modalId === 'livePollModal') {
+                document.getElementById('livePollForm').reset();
+                document.getElementById('livePollLabId').value = '';
             }
             if (modalId === 'copyLabModal') {
                 document.getElementById('copyLabForm').reset();
@@ -2681,6 +2841,331 @@
                 document.getElementById('copySourceLabName').value = '';
             }
         }
+
+        function addLivePollOption(value = '') {
+            const wrap = document.getElementById('livePollOptions');
+            const row = document.createElement('div');
+            row.className = 'poll-option-row';
+            row.innerHTML = `
+                <input type="text" class="live-poll-option-input" value="${escapeHtml(value)}" placeholder="응답 항목" required>
+                <button type="button" class="button secondary" onclick="this.closest('.poll-option-row').remove()">삭제</button>
+            `;
+            wrap.appendChild(row);
+        }
+
+        function addContentPollOption(value = '') {
+            const wrap = document.getElementById('contentPollOptions');
+            const row = document.createElement('div');
+            row.className = 'poll-option-row';
+            row.innerHTML = `
+                <input type="text" class="content-poll-option-input" value="${escapeHtml(value)}" placeholder="응답 항목" required>
+                <button type="button" class="button secondary" onclick="this.closest('.poll-option-row').remove()">삭제</button>
+            `;
+            wrap.appendChild(row);
+        }
+
+        function showLivePollModal(labId) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 설문을 생성할 수 없습니다.');
+                return;
+            }
+            document.getElementById('livePollLabId').value = labId;
+            document.getElementById('livePollTitle').value = '';
+            document.getElementById('livePollQuestion').value = '';
+            document.getElementById('livePollStatus').value = '1';
+            document.getElementById('livePollOptions').innerHTML = '';
+            addLivePollOption();
+            addLivePollOption();
+            document.getElementById('livePollModal').style.display = 'flex';
+        }
+
+        function getLivePollIdFromContent(content) {
+            try {
+                const parsed = JSON.parse(content.lab_content || '{}');
+                return parsed && parsed.poll_id ? Number(parsed.poll_id) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function openLivePollResultsFromContent(labId, contentId) {
+            try {
+                const res = await fetch(`/api/admin/lab_contents/${contentId}?training_key=${encodeURIComponent(trainingKey)}&lab_id=${labId}`);
+                if (!res.ok) throw new Error('콘텐츠 정보를 불러오지 못했습니다.');
+                const content = await res.json();
+                const pollId = getLivePollIdFromContent(content);
+                if (!pollId) throw new Error('설문 ID를 찾을 수 없습니다.');
+                openLivePollResults(pollId);
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        function buildPollPieStyle(options) {
+            const total = options.reduce((sum, item) => sum + Number(item.response_count || 0), 0);
+            if (!total) return '#e5e7eb';
+            let current = 0;
+            const segments = options.map((item, idx) => {
+                const count = Number(item.response_count || 0);
+                const start = current;
+                current += (count / total) * 100;
+                return `${livePollColors[idx % livePollColors.length]} ${start}% ${current}%`;
+            });
+            return `conic-gradient(${segments.join(', ')})`;
+        }
+
+        function renderLivePollResults(snapshot) {
+            const poll = snapshot.poll || {};
+            const options = snapshot.options || [];
+            const responses = snapshot.responses || [];
+            document.getElementById('livePollResultsTitle').textContent = poll.title || '설문 결과';
+            document.getElementById('livePollResultsMeta').textContent = `${poll.question_text || ''} · 총 ${snapshot.total_responses || 0}명 응답`;
+
+            const legendHtml = options.map((option, idx) => `
+                <div class="poll-legend-item">
+                    <span class="poll-swatch" style="background:${livePollColors[idx % livePollColors.length]}"></span>
+                    <strong>${escapeHtml(option.option_text)}</strong>
+                    <span>${option.response_count || 0}명 (${option.percent || 0}%)</span>
+                </div>
+            `).join('');
+
+            const responseHtml = responses.length
+                ? responses.map((row, idx) => `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${escapeHtml(row.member_name || row.member_id || '')}</td>
+                        <td>${escapeHtml(row.member_id || '')}</td>
+                        <td>${escapeHtml(row.option_text || '')}</td>
+                        <td>${escapeHtml(row.responded_at || '')}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="5" style="text-align:center; padding:24px; color:#64748b;">아직 응답이 없습니다.</td></tr>';
+
+            document.getElementById('livePollResultsBody').innerHTML = `
+                <div class="poll-result-grid">
+                    <div>
+                        <div class="poll-pie" style="background:${buildPollPieStyle(options)}"></div>
+                        ${legendHtml || '<div style="color:#64748b;">항목이 없습니다.</div>'}
+                    </div>
+                    <div>
+                        <table class="content-table" style="margin-top:0;">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>수강생</th>
+                                    <th>ID</th>
+                                    <th>응답</th>
+                                    <th>응답 시각</th>
+                                </tr>
+                            </thead>
+                            <tbody>${responseHtml}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function openLivePollResults(pollId) {
+            closeLivePollResultsStream();
+            document.getElementById('livePollResultsBody').innerHTML = '<div style="padding:24px; color:#64748b;">결과를 불러오는 중...</div>';
+            document.getElementById('livePollResultsModal').style.display = 'flex';
+            livePollResultsSource = new EventSource(`/api/live-polls/${pollId}/stream?include_responses=true`);
+            livePollResultsSource.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (payload.type === 'snapshot') {
+                        renderLivePollResults(payload.data);
+                    }
+                } catch (e) {}
+            };
+            livePollResultsSource.onerror = () => {
+                document.getElementById('livePollResultsMeta').textContent = '실시간 연결을 재시도 중입니다.';
+            };
+        }
+
+        function closeLivePollResultsStream() {
+            if (livePollResultsSource) {
+                livePollResultsSource.close();
+                livePollResultsSource = null;
+            }
+        }
+
+        function closeLivePollResultsModal() {
+            closeLivePollResultsStream();
+            closeModal('livePollResultsModal');
+        }
+
+        function renderSurveyPollList(data) {
+            const container = document.getElementById('surveyPollList');
+            const polls = Array.isArray(data.polls) ? data.polls : [];
+            if (!container) return;
+            if (!polls.length) {
+                container.innerHTML = '<div style="padding:24px; border:1px solid #e5e7eb; border-radius:8px; color:#64748b; text-align:center;">등록된 설문이 없습니다.</div>';
+                return;
+            }
+
+            container.innerHTML = polls.map(snapshot => {
+                const poll = snapshot.poll || {};
+                const options = snapshot.options || [];
+                const legend = options.map((option, idx) => `
+                    <div class="poll-legend-item">
+                        <span class="poll-swatch" style="background:${livePollColors[idx % livePollColors.length]}"></span>
+                        <strong>${escapeHtml(option.option_text || '')}</strong>
+                        <span>${option.response_count || 0}명 (${option.percent || 0}%)</span>
+                    </div>
+                `).join('');
+                return `
+                    <div class="content-details" style="margin-bottom:12px;">
+                        <div class="content-header" style="margin-bottom:12px;">
+                            <div>
+                                <h3 style="margin:0; color:#333;">${escapeHtml(poll.title || '')}</h3>
+                                <div style="font-size:13px; color:#64748b; margin-top:4px;">랩: ${escapeHtml(poll.lab_name || poll.lab_id || '')} · 응답 ${snapshot.total_responses || 0}명</div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="button secondary" onclick="openLivePollResults(${poll.id})">상세 보기</button>
+                                <button class="button danger" onclick="deleteLivePoll(${poll.id}, ${JSON.stringify(poll.title || '')})">삭제</button>
+                            </div>
+                        </div>
+                        <div style="color:#334155; margin-bottom:12px;">${escapeHtml(poll.question_text || '')}</div>
+                        <div class="poll-result-grid">
+                            <div class="poll-pie" style="background:${buildPollPieStyle(options)}"></div>
+                            <div>${legend}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderSurveyRespondents(data) {
+            const tbody = document.getElementById('surveyRespondentList');
+            const respondents = Array.isArray(data.respondents) ? data.respondents : [];
+            if (!tbody) return;
+            if (!respondents.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#666;">아직 응답자가 없습니다.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = respondents.map(item => {
+                const latest = Array.isArray(item.responses) && item.responses.length ? item.responses[0] : null;
+                const latestText = latest
+                    ? `${escapeHtml(latest.lab_name || '')} / ${escapeHtml(latest.poll_title || '')}: ${escapeHtml(latest.option_text || '')} (${escapeHtml(latest.responded_at || '')})`
+                    : '-';
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.member_name || '')}</td>
+                        <td>${escapeHtml(item.member_id || '')}</td>
+                        <td>${item.response_count || 0}</td>
+                        <td>${latestText}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadSurveyResults() {
+            const pollContainer = document.getElementById('surveyPollList');
+            const respondentTbody = document.getElementById('surveyRespondentList');
+            if (pollContainer) pollContainer.innerHTML = '<div style="padding:24px; color:#64748b;">설문 통계를 불러오는 중...</div>';
+            if (respondentTbody) respondentTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#666;">불러오는 중...</td></tr>';
+            try {
+                const response = await fetch(`/api/admin/live-polls?training_key=${encodeURIComponent(trainingKey)}`);
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || '설문 통계를 불러오지 못했습니다.');
+                }
+                surveyResultsCache = data;
+                const summary = data.summary || {};
+                document.getElementById('surveyMetricPollCount').textContent = summary.poll_count || 0;
+                document.getElementById('surveyMetricResponseCount').textContent = summary.total_responses || 0;
+                document.getElementById('surveyMetricRespondentCount').textContent = summary.respondent_count || 0;
+                renderSurveyPollList(data);
+                renderSurveyRespondents(data);
+            } catch (error) {
+                if (pollContainer) pollContainer.innerHTML = `<div style="padding:24px; color:#dc2626;">${escapeHtml(error.message || '설문 통계 조회 실패')}</div>`;
+                if (respondentTbody) respondentTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#dc2626;">설문 통계를 불러오지 못했습니다.</td></tr>';
+            }
+        }
+
+        async function deleteLivePoll(pollId, pollTitle) {
+            if (isRestrictedLabEditor()) {
+                alert('Partner/Course Manager 권한으로는 설문을 삭제할 수 없습니다.');
+                return;
+            }
+            const label = pollTitle ? ` "${pollTitle}"` : '';
+            if (!confirm(`설문${label}을 삭제하시겠습니까?\n관련 항목과 수강생 응답 데이터도 모두 삭제됩니다.`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/admin/live-polls/${pollId}?training_key=${encodeURIComponent(trainingKey)}`, {
+                    method: 'DELETE'
+                });
+                const raw = await response.text();
+                let data = {};
+                try { data = JSON.parse(raw); } catch (e) {}
+                if (!response.ok) {
+                    throw new Error(data.detail || raw || '설문 삭제에 실패했습니다.');
+                }
+                closeLivePollResultsStream();
+                await loadSurveyResults();
+                if (currentExpandedLab !== null) {
+                    await loadLabs();
+                }
+            } catch (error) {
+                alert(error.message || '설문 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        document.getElementById('livePollForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const labId = document.getElementById('livePollLabId').value;
+            const options = Array.from(document.querySelectorAll('.live-poll-option-input'))
+                .map(input => input.value.trim())
+                .filter(Boolean);
+            if (options.length < 2) {
+                alert('설문 항목을 2개 이상 입력해주세요.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/admin/live-polls', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        training_key: trainingKey,
+                        lab_id: Number(labId),
+                        title: document.getElementById('livePollTitle').value.trim(),
+                        question_text: document.getElementById('livePollQuestion').value.trim(),
+                        options,
+                        is_active: Number(document.getElementById('livePollStatus').value),
+                        created_by: localStorage.getItem('admin_id') || '',
+                        created_by_name: localStorage.getItem('admin_name') || ''
+                    })
+                });
+                const raw = await res.text();
+                let data = {};
+                try { data = JSON.parse(raw); } catch (e) {}
+                if (!res.ok) {
+                    throw new Error(data.detail || raw || '설문 생성에 실패했습니다.');
+                }
+                closeModal('livePollModal');
+                await loadLabs();
+                const contentRow = document.getElementById(`content-row-${labId}`);
+                const labRow = document.getElementById(`lab-row-${labId}`);
+                if (contentRow && labRow) {
+                    const expandIcon = labRow.querySelector('.lab-name-btn');
+                    const labName = expandIcon.getAttribute('data-lab-name');
+                    contentRow.style.display = 'table-row';
+                    expandIcon.innerHTML = `▼ ${labName}`;
+                    currentExpandedLab = Number(labId);
+                    await loadLabContents(Number(labId));
+                }
+                if (data.poll_id) {
+                    openLivePollResults(data.poll_id);
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        window.addEventListener('beforeunload', closeLivePollResultsStream);
+
         // 랩 수정 모달 열기
         async function editLab(labId) {
             if (isRestrictedLabEditor()) {
@@ -2991,6 +3476,9 @@
                     } else if (contentType === '4' || contentType === '40') {
                         typeDisplay = '텍스트';
                         typeIcon = '📝';
+                    } else if (contentType === '6' || contentType === '60' || contentType === 'live_poll') {
+                        typeDisplay = '실시간 설문';
+                        typeIcon = '📊';
                     } else if (contentType === 'web') {
                         typeDisplay = '웹페이지';
                         typeIcon = '🔗';
@@ -3023,6 +3511,7 @@
                             <button class="icon-btn" onclick="editContent(${labId}, ${content.content_id})" title="수정" aria-label="수정">✏️</button>
                             <button class="icon-btn" onclick="openMoveContentModal(${content.content_id}, ${labId})" title="다른 랩으로 이동" aria-label="이동">🚚</button>
                             <button class="icon-btn" onclick="openCopyContentModal(${content.content_id}, ${labId}, '${escapedTitle}')" title="다른 과정/랩으로 복사" aria-label="복사">📋</button>
+                            ${contentType === '6' ? `<button class="icon-btn" onclick="openLivePollResultsFromContent(${labId}, ${content.content_id})" title="설문 결과" aria-label="설문 결과">📈</button>` : ''}
                             <button class="icon-btn delete" onclick="deleteContent(${labId}, ${content.content_id})" title="삭제" aria-label="삭제">🗑️</button>
                           `;
 
@@ -3077,6 +3566,7 @@
             if (value === '1' || value === 'web') return 'web';
             if (value === '2' || value === 'markdown') return 'markdown';
             if (value === '3' || value === 'code') return 'code';
+            if (value === '6' || value === 'live_poll' || value === 'poll') return 'live_poll';
             return 'text';
         }
 
@@ -3087,6 +3577,7 @@
             if (value === 'markdown') return 2;
             if (value === 'code') return 3;
             if (value === 'assignment') return 5;
+            if (value === 'live_poll' || value === 'poll') return 6;
             return 4;
         }
 
@@ -3095,6 +3586,17 @@
             const subject = document.getElementById('contentSubject').value.trim();
             const body = document.getElementById('contentBody').value.trim();
             const uiType = document.getElementById('contentType').value;
+
+            if (uiType === 'live_poll') {
+                const question = document.getElementById('contentPollQuestion').value.trim();
+                const options = Array.from(document.querySelectorAll('.content-poll-option-input')).map(input => input.value.trim()).filter(Boolean);
+                previewEl.innerHTML = `
+                    <div style="margin-bottom:8px; font-weight:700;">${escapeHtml(subject || '설문 제목 없음')}</div>
+                    <div style="color:#4b5563; margin-bottom:10px;">${escapeHtml(question || '설문 질문을 입력하세요.')}</div>
+                    ${options.map((option, idx) => `<div class="poll-legend-item"><span class="poll-swatch" style="background:${livePollColors[idx % livePollColors.length]}"></span>${escapeHtml(option)}</div>`).join('') || '<div class="preview-empty">설문 항목을 입력하세요.</div>'}
+                `;
+                return;
+            }
 
             if (!body) {
                 previewEl.innerHTML = '<div class="preview-empty">콘텐츠 내용이 비어 있습니다.</div>';
@@ -3272,10 +3774,23 @@
             const contentType = document.getElementById('contentType').value;
             const codeLanguageGroup = document.getElementById('codeLanguageGroup');
             const assignmentFileGroup = document.getElementById('assignmentFileGroup');
+            const contentPollFields = document.getElementById('contentPollFields');
+            const contentBodyGroup = document.getElementById('contentBody').closest('.form-group');
             if (contentType === 'code') {
                 codeLanguageGroup.style.display = 'block';
             } else {
                 codeLanguageGroup.style.display = 'none';
+            }
+            if (contentType === 'live_poll') {
+                contentPollFields.style.display = 'block';
+                contentBodyGroup.style.display = 'none';
+                if (!document.querySelectorAll('.content-poll-option-input').length) {
+                    addContentPollOption();
+                    addContentPollOption();
+                }
+            } else {
+                contentPollFields.style.display = 'none';
+                contentBodyGroup.style.display = '';
             }
             toggleAssignmentFileUI();
         }
@@ -3490,6 +4005,10 @@
             document.getElementById('contentType').value = 'text';
             document.getElementById('contentStatus').value = '1';
             document.getElementById('autoDetectedLabel').textContent = '';
+            document.getElementById('contentPollQuestion').value = '';
+            document.getElementById('contentPollOptions').innerHTML = '';
+            addContentPollOption();
+            addContentPollOption();
             manualTypeOverride = false; // 자동 감지 활성화
             document.getElementById('contentModal').style.display = 'flex';
             toggleCodeLanguageOption(); // 코드 언어 옵션 표시/숨김 토글
@@ -3579,6 +4098,66 @@
             
             if (!subject) {
                 alert('콘텐츠 제목을 입력해주세요.');
+                return;
+            }
+
+            if (uiType === 'live_poll') {
+                if (contentId) {
+                    alert('설문 콘텐츠 수정은 설문 결과 화면에서 확인하고, 새 설문은 추가로 생성해주세요.');
+                    return;
+                }
+                const questionText = document.getElementById('contentPollQuestion').value.trim();
+                const options = Array.from(document.querySelectorAll('.content-poll-option-input'))
+                    .map(input => input.value.trim())
+                    .filter(Boolean);
+                if (!questionText) {
+                    alert('설문 질문을 입력해주세요.');
+                    return;
+                }
+                if (options.length < 2) {
+                    alert('설문 항목을 2개 이상 입력해주세요.');
+                    return;
+                }
+
+                try {
+                    const res = await fetch('/api/admin/live-polls', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            training_key: trainingKey,
+                            lab_id: parseInt(labId),
+                            title: subject,
+                            question_text: questionText,
+                            options,
+                            is_active: status,
+                            created_by: localStorage.getItem('admin_id') || '',
+                            created_by_name: localStorage.getItem('admin_name') || ''
+                        })
+                    });
+                    const raw = await res.text();
+                    let data = {};
+                    try { data = JSON.parse(raw); } catch (_) {}
+                    if (!res.ok) {
+                        throw new Error(data.detail || raw || '설문 생성에 실패했습니다.');
+                    }
+                    closeModal('contentModal');
+                    await loadLabs();
+                    const contentRow = document.getElementById(`content-row-${labId}`);
+                    const labRow = document.getElementById(`lab-row-${labId}`);
+                    if (contentRow && labRow) {
+                        const expandIcon = labRow.querySelector('.lab-name-btn');
+                        const labName = expandIcon.getAttribute('data-lab-name');
+                        contentRow.style.display = 'table-row';
+                        expandIcon.innerHTML = `▼ ${labName}`;
+                        currentExpandedLab = Number(labId);
+                        await loadLabContents(Number(labId));
+                    }
+                    if (data.poll_id) {
+                        openLivePollResults(data.poll_id);
+                    }
+                } catch (error) {
+                    alert(error.message || '설문 생성 중 오류가 발생했습니다.');
+                }
                 return;
             }
             

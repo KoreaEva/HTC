@@ -6,17 +6,18 @@
     <title>Public Training Center Portal</title>
     <style>
         :root {
-            --bg: #f7f8fb;
+            --bg: #ffffff;
             --panel: #ffffff;
-            --muted: #6b7280;
-            --accent: #2563eb;
-            --accent-soft: #e8f0ff;
-            --text: #1f2937;
-            --border: #e5e7eb;
-            --hover: #f1f5f9;
-            --shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            --muted: rgba(30, 30, 30, 0.7);
+            --accent: #07b53b;
+            --accent-dark: #069030;
+            --accent-soft: rgba(7, 181, 59, 0.08);
+            --text: #1e1e1e;
+            --border: rgba(0, 0, 0, 0.06);
+            --hover: rgba(7, 181, 59, 0.05);
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
+        body { font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif; max-width:1200px; margin:0 auto; padding:20px; background:var(--bg); color:var(--text); }
         
         /* 모바일 반응형 스타일 */
         @media (max-width: 768px) {
@@ -42,8 +43,8 @@
         
         .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
         .welcome { font-size:1.5em; font-weight:600; }
-        .home-btn { background:var(--accent); color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:600; }
-        .home-btn:hover { background:#1d4ed8; }
+        .home-btn { background:var(--accent); color:white; border:none; padding:10px 24px; border-radius:50px; cursor:pointer; font-weight:700; transition: background 0.2s ease; }
+        .home-btn:hover { background:var(--accent-dark); }
         
         /* 랩 목록 스타일 */
         .labs-section { margin-bottom:30px; }
@@ -53,13 +54,14 @@
             background:var(--accent);
             color:#fff;
             border:none;
-            padding:8px 12px;
-            border-radius:6px;
+            padding:8px 20px;
+            border-radius:50px;
             cursor:pointer;
-            font-weight:600;
+            font-weight:700;
             font-size:0.9em;
+            transition: background 0.2s ease;
         }
-        .labs-toggle:hover { background:#1d4ed8; }
+        .labs-toggle:hover { background:var(--accent-dark); }
         .labs-container { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:15px; }
         .lab-card { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; transition:all 0.3s ease; box-shadow: var(--shadow); }
         .lab-card:hover { border-color:var(--accent); transform:translateY(-2px); }
@@ -84,7 +86,7 @@
         .labs-section.collapsed .lab-meta { display:none; }
         .lab-card p { color:var(--muted); margin-bottom:10px; line-height:1.4; }
         .lab-meta { display:flex; justify-content:space-between; align-items:center; margin-top:15px; }
-        .lab-status { padding:4px 8px; border-radius:4px; font-size:0.8em; font-weight:600; background:#16a34a; color:white; }
+        .lab-status { padding:4px 10px; border-radius:50px; font-size:0.8em; font-weight:700; background:var(--accent); color:white; }
         .lab-date { color:var(--muted); font-size:0.9em; }
         
         /* 콘텐츠 목록 스타일 */
@@ -116,7 +118,7 @@
         .content-viewer li { margin-bottom:5px; }
         .content-viewer table { width:100%; border-collapse:collapse; margin:15px 0; }
         .content-viewer th, .content-viewer td { border:1px solid var(--border); padding:8px; text-align:left; }
-        .content-viewer th { background:#eff6ff; color:var(--text); }
+        .content-viewer th { background:rgba(7, 181, 59, 0.06); color:var(--text); }
         .content-viewer a { color:#2196F3; text-decoration:none; }
         .content-viewer a:hover { text-decoration:underline; }
         .content-viewer img { max-width:100%; height:auto; border-radius:5px; margin:10px 0; }
@@ -177,8 +179,8 @@
             border: 1px solid var(--border);
         }
         .markdown-content table th {
-            background-color: #eff6ff;
-            font-weight: 600;
+            background-color: rgba(7, 181, 59, 0.06);
+            font-weight: 700;
             color: var(--text);
         }
         .markdown-content img {
@@ -334,6 +336,148 @@
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('training_key');
         }
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getPublicPollMemberId() {
+            const trainingKey = getTrainingKeyFromURL() || 'public';
+            const key = `public_poll_member_${trainingKey}`;
+            let value = localStorage.getItem(key);
+            if (!value) {
+                value = `public_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                localStorage.setItem(key, value);
+            }
+            return value;
+        }
+
+        let publicLivePollState = {
+            source: null,
+            pollId: null,
+            snapshot: null,
+            selectedOptionId: null,
+        };
+        const publicLivePollColors = ['#2563eb', '#16a34a', '#f97316', '#dc2626', '#7c3aed', '#0891b2', '#ca8a04', '#db2777', '#475569', '#65a30d', '#9333ea', '#0f766e'];
+
+        function closePublicLivePollStream() {
+            if (publicLivePollState.source) {
+                publicLivePollState.source.close();
+                publicLivePollState.source = null;
+            }
+        }
+
+        function getPublicLivePollPieStyle(options) {
+            const total = (options || []).reduce((sum, item) => sum + Number(item.response_count || 0), 0);
+            if (!total) return '#e5e7eb';
+            let current = 0;
+            const segments = (options || []).map((item, idx) => {
+                const start = current;
+                current += (Number(item.response_count || 0) / total) * 100;
+                return `${publicLivePollColors[idx % publicLivePollColors.length]} ${start}% ${current}%`;
+            });
+            return `conic-gradient(${segments.join(', ')})`;
+        }
+
+        function renderPublicLivePoll(snapshot, content, contentViewer) {
+            const poll = snapshot.poll || {};
+            const options = snapshot.options || [];
+            const selectedId = publicLivePollState.selectedOptionId || (snapshot.my_response && snapshot.my_response.option_id);
+            publicLivePollState.selectedOptionId = selectedId || null;
+            const optionButtons = options.map(option => `
+                <button type="button"
+                    style="width:100%; border:1px solid ${Number(selectedId) === Number(option.id) ? '#2563eb' : 'var(--border)'}; background:${Number(selectedId) === Number(option.id) ? '#eff6ff' : '#fff'}; color:${Number(selectedId) === Number(option.id) ? '#1d4ed8' : 'var(--text)'}; border-radius:8px; padding:12px 14px; text-align:left; cursor:pointer; font-size:15px; font-weight:700; margin-bottom:8px;"
+                    onclick="submitPublicLivePollResponse(${poll.id}, ${option.id})">
+                    ${escapeHtml(option.option_text)}
+                </button>
+            `).join('');
+            const bars = options.map((option, idx) => `
+                <div style="display:grid; grid-template-columns:minmax(90px, 1fr) minmax(120px, 2fr) 80px; gap:8px; align-items:center; margin-bottom:10px; font-size:14px;">
+                    <div><strong>${escapeHtml(option.option_text)}</strong></div>
+                    <div style="height:10px; border-radius:999px; background:#e5e7eb; overflow:hidden;">
+                        <div style="height:100%; width:${Number(option.percent || 0)}%; background:${publicLivePollColors[idx % publicLivePollColors.length]}; border-radius:999px;"></div>
+                    </div>
+                    <div>${option.response_count || 0}명 · ${option.percent || 0}%</div>
+                </div>
+            `).join('');
+            contentViewer.innerHTML = `
+                <h1>${escapeHtml(content.lab_content_subject || poll.title || '실시간 설문')}</h1>
+                <div style="border:1px solid var(--border); border-radius:12px; padding:18px; background:#fff;">
+                    <div style="color:var(--muted); font-size:13px; margin-bottom:8px;">실시간 설문 · 총 ${snapshot.total_responses || 0}명 응답</div>
+                    <div style="font-size:20px; font-weight:800; color:var(--text); margin-bottom:14px; line-height:1.45;">${escapeHtml(poll.question_text || '')}</div>
+                    <div>${optionButtons}</div>
+                    <div id="publicLivePollSubmitMsg" style="min-height:20px; color:#166534; font-size:13px; margin-top:8px;"></div>
+                    <div style="display:grid; grid-template-columns:minmax(220px, 300px) 1fr; gap:16px; align-items:start; margin-top:18px;">
+                        <div style="width:220px; height:220px; border-radius:50%; background:${getPublicLivePollPieStyle(options)}; border:1px solid #d1d5db; margin:0 auto;"></div>
+                        <div>${bars || '<div style="color:var(--muted);">항목이 없습니다.</div>'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function submitPublicLivePollResponse(pollId, optionId) {
+            const msgEl = document.getElementById('publicLivePollSubmitMsg');
+            publicLivePollState.selectedOptionId = optionId;
+            try {
+                const memberId = getPublicPollMemberId();
+                const response = await fetch(`/api/portal/live-polls/${pollId}/respond`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ option_id: optionId, member_id: memberId, member_name: '공개 참여자' })
+                });
+                const raw = await response.text();
+                let data = {};
+                try { data = JSON.parse(raw); } catch (e) {}
+                if (!response.ok) {
+                    throw new Error(data.detail || raw || '응답 저장에 실패했습니다.');
+                }
+                if (msgEl) {
+                    msgEl.style.color = '#166534';
+                    msgEl.textContent = '응답이 저장되었습니다.';
+                }
+            } catch (error) {
+                if (msgEl) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = error.message;
+                }
+            }
+        }
+
+        async function renderPublicLivePollContent(parsed, content, contentViewer) {
+            const pollId = parsed && parsed.poll_id ? Number(parsed.poll_id) : null;
+            closePublicLivePollStream();
+            publicLivePollState = { source: null, pollId, snapshot: null, selectedOptionId: null };
+            if (!pollId) {
+                contentViewer.innerHTML = `<h1>${escapeHtml(content.lab_content_subject || '실시간 설문')}</h1><p style="color:#dc2626;">설문 정보를 찾을 수 없습니다.</p>`;
+                return;
+            }
+            contentViewer.innerHTML = `<h1>${escapeHtml(content.lab_content_subject || '실시간 설문')}</h1><p style="color:var(--muted);">설문을 불러오는 중...</p>`;
+            try {
+                const initialRes = await fetch(`/api/portal/live-polls/${pollId}?member_id=${encodeURIComponent(getPublicPollMemberId())}`);
+                const initialData = await initialRes.json();
+                if (initialRes.ok) {
+                    publicLivePollState.snapshot = initialData;
+                    publicLivePollState.selectedOptionId = initialData.my_response ? initialData.my_response.option_id : null;
+                    renderPublicLivePoll(initialData, content, contentViewer);
+                }
+            } catch (e) {}
+            publicLivePollState.source = new EventSource(`/api/live-polls/${pollId}/stream`);
+            publicLivePollState.source.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (payload.type === 'snapshot') {
+                        payload.data.my_response = { option_id: publicLivePollState.selectedOptionId };
+                        publicLivePollState.snapshot = payload.data;
+                        renderPublicLivePoll(payload.data, content, contentViewer);
+                    }
+                } catch (e) {}
+            };
+        }
         
         // 홈으로 이동
         function goHome() {
@@ -364,10 +508,6 @@
                 
                 // 트레이닝 정보 표시
                 if (data.training_name) {
-                        name: data.training_name,
-                        status: data.training_status,
-                        is_public: data.is_public
-                    });
                     trainingInfoContainer.innerHTML = `
                         <h2 style="margin:0 0 10px 0; color:var(--accent); font-size:1.5em;">${data.training_name}</h2>
                         <p style="margin:0; color:var(--muted); font-size:0.9em;">공개 과정 - 자유롭게 학습하세요!</p>
@@ -525,6 +665,7 @@
         // 콘텐츠 상세 로드
         async function loadContentDetail(contentId) {
             try {
+                closePublicLivePollStream();
                 const trainingKey = getTrainingKeyFromURL();
                 if (!trainingKey) {
                     window.location.href = '/';
@@ -541,10 +682,28 @@
                 
                 // 콘텐츠 타입에 따라 다르게 처리
                 const contentText = content.lab_content || '(내용 없음)';
+                const contentTypeValue = Number(content.lab_content_type);
                 
                 // 디버깅을 위한 콘텐츠 타입 로그
                 
-                if (content.lab_content_type === 0) {
+                if (contentTypeValue === 6) {
+                    try {
+                        const parsed = JSON.parse(contentText);
+                        if (parsed && parsed.content_kind === 'live_poll') {
+                            await renderPublicLivePollContent(parsed, content, contentViewer);
+                        } else {
+                            contentViewer.innerHTML = `
+                                <h1>${content.lab_content_subject || '실시간 설문'}</h1>
+                                <p style="color:#FF6B6B;">설문 데이터 형식이 올바르지 않습니다.</p>
+                            `;
+                        }
+                    } catch (error) {
+                        contentViewer.innerHTML = `
+                            <h1>${content.lab_content_subject || '실시간 설문'}</h1>
+                            <p style="color:#FF6B6B;">설문 데이터를 읽을 수 없습니다.</p>
+                        `;
+                    }
+                } else if (content.lab_content_type === 0) {
                     // 타입 0: URL 기반 마크다운 처리
                     if (contentText.startsWith('http://') || contentText.startsWith('https://')) {
                         try {
@@ -967,6 +1126,8 @@
              }
          }
          
+         window.addEventListener('beforeunload', closePublicLivePollStream);
+
          // 페이지 로드 시 실행
          document.addEventListener('DOMContentLoaded', function() {
              const trainingKey = getTrainingKeyFromURL();
